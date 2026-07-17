@@ -7,7 +7,7 @@
 - Baseline release: `0.8.0-beta` (`versionCode=1054`)
 - Last verified device: Fire TV `AFTMM` (`mantis`)
 - Product direction: authorized Xtream content owns discovery and playback; TMDB only enriches provider-backed content
-- Implementation status: Phase 1, Phase 2, and the Phase 3 availability-filtering implementation are complete; `0.7.26-beta` added mandatory QR-first Xtream setup; `0.7.27-beta` added the account profile; `0.7.28-beta` polished remote entry and sign-out; `0.7.29-beta` separates account validity from real media-delivery health and explains whether qualifying playback failures came from the provider, local connectivity, or app/device format support; Fire TV playback, QR-flow, server-health UI, and clean-install timing validation remain user-owned and pending
+- Implementation status: `0.8.0-beta` makes Xtream authoritative across Home, Search, Catalog, details availability, and grouped playback sources, with resumable Room identity hydration and TMDB enrichment; the release APK is installed on the Fire TV and left closed for user-owned visual/playback validation
 
 This document is the source of truth for the next product phases. All agents must read it before planning or changing Home, TMDB catalogs, Xtream indexing, playback availability, personalization, or catalog settings.
 
