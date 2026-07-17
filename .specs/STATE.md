@@ -11,7 +11,7 @@
 ### AD-002: Shared and personal credentials have separate lifecycles
 
 - Status: active
-- Decision: the application-level TMDB key and default Xtream server are compiled into `BuildConfig`; Xtream username/password are configured per device at runtime and encrypted with an Android Keystore-backed key.
+- Decision: the application-level TMDB key is compiled into `BuildConfig`, the setup flow supplies the editable default Xtream server, and Xtream username/password are configured per device at runtime and encrypted with an Android Keystore-backed key.
 - Rationale: one APK can be shared without exposing the owner's playback credentials, while TMDB remains an application-level integration.
 
 ### AD-005: Xtream setup is local and QR-first
@@ -35,9 +35,10 @@
 ## Handoff
 
 - Feature: QR-first per-device Xtream setup, server-health diagnostics, TMDB rate-limit resilience, playback-aware catalog, Frame 24 TV identity, and episode skip segments
-- Phase: catalog availability, skip-segment, and server-health implementations complete; release build/install verification and user-owned visual, playback, and clean-start timing validation pending
+- Phase: catalog availability, skip-segment, and server-health implementations complete; `0.7.30-beta` release build verified, Fire TV installation blocked by its offline ADB session, and user-owned visual/playback validation pending
 - Completed in `0.7.30-beta`: reverted the Xtream-first catalog experiment and retained the TMDB-first Home/Search/details architecture; VOD now reads the provider `release_date`, so Barbie (2023) matches its real server entry while the provider's `A Odisséia` (2016) cannot satisfy the TMDB `A Odisseia` (2026) candidate. The catalog snapshot schema was incremented to rebuild old cached VOD entries, and the setup DNS default is `https://capone.icu`.
-- Verified in `0.7.30-beta`: 37 focused catalog-index, availability, and playback-resolver tests pass, including regressions for Barbie (2023) and the 2016/2026 Odisseia collision; `compileFullDebugKotlin` succeeds. Release build/install verification remains pending.
+- Verified in `0.7.30-beta`: 37 focused catalog-index, availability, and playback-resolver tests pass, including regressions for Barbie (2023) and the 2016/2026 Odisseia collision; `compileFullDebugKotlin` and `assembleFullRelease` succeed. The single universal APK reports `com.jeziel.lume` `0.7.30-beta` (`1055`), is non-debuggable, and has a valid v2 signature.
+- Fire TV handoff for `0.7.30-beta`: installation was attempted at `192.168.0.7:5555`, but the device remained `offline` after disconnect/connect, an ADB server restart, and `adb reconnect offline`; the verified APK is ready at `app/build/outputs/apk/full/release/app-full-release.apk`, but is not confirmed installed.
 - Completed in `0.7.26-beta`: mandatory QR-first Xtream setup with an editable default server and remote-entry fallback, Android Keystore-backed per-device credentials, authenticated one-time local submissions, on-TV confirmation, settings reconfiguration, dynamic Xtream client/cache invalidation, and TMDB-wide four-request concurrency with bounded `429` retry.
 - Completed in `0.7.27-beta`: polished mobile setup page, default-locked DNS field with an explicit pencil edit action, persisted provider status/expiration/connection metadata, and a TV Settings profile category with account refresh and confirmed credential removal.
 - Completed in `0.7.28-beta`: dedicated full-width remote-control setup, larger focus-aware fields whose keyboard opens only after OK, permanently visible profile refresh/sign-out actions, and sign-out that retains local catalog caches.
@@ -49,9 +50,9 @@
 - Previous runtime: `0.7.28-beta` (`versionCode=1052`) `fullRelease` introduced the dedicated remote-entry layout before server-health diagnostics.
 - Previous verified behavior: the `0.7.25-beta` playback/catalog checks include the real `Barbie e o Segredo das Fadas` provider shape (`stream_id=91811`, `tmdb_id=0`); launcher evidence remains at `design/brand/lume/fire-tv-sideload-validation.png`.
 - Fire TV constraint: the official launcher uses the 1280x720 Fire TV App Icon uploaded through Amazon Developer Console for the rectangular card. A sideloaded APK that is not associated with an Amazon Appstore listing falls back to the embedded square launcher icon. The submission-ready asset is `design/brand/lume/lume-fire-tv-appstore-icon-1280x720.png`.
-- Known issue: during the first no-cache bootstrap, Home may briefly preserve the initial TMDB page and search temporarily shows availability as `Verificando`; once the background Xtream index becomes ready, loaded Home rails are automatically refetched and filtered with at most three concurrent catalog loads. Runtime visual QA remains user-owned because the release was intentionally installed without launching it. The full pre-existing unit-test suite and lint baseline remain non-green outside the focused availability scope.
+- Known issue: during the first no-cache bootstrap, Home may briefly preserve the initial TMDB page and search temporarily shows availability as `Verificando`; once the background Xtream index becomes ready, loaded Home rails are automatically refetched and filtered with at most three concurrent catalog loads. Runtime visual QA remains user-owned; the current release could not be installed because the Fire TV ADB session is offline. The full pre-existing unit-test suite and lint baseline remain non-green outside the focused availability scope.
 - In progress: user-owned server-health UI validation, Home filtering/search-badge visual validation, skip-button/auto-skip/credits playback validation, and cold-launch timing validation
-- Next step: manually launch the closed release; confirm Home removes unmatched titles after the short index-ready transition, Search labels genuinely unmatched titles, and `Barbie e o Segredo das Fadas` now resolves through the conservative provider-ID fallback; then validate a mapped series episode for `Pular Abertura`, `Pular Resumo`, `Pular Créditos`, auto-skip settings, and credits-triggered next episode; independently record first-content, download, serialization, index, ready, and navigation-jank evidence
-- Blockers: a rectangular card in the official Fire TV launcher requires an Amazon Appstore listing; no listing currently exists
-- Uncommitted files: complete feature working tree, intentionally not committed
+- Next step: restore the Fire TV ADB connection, install the verified release with `adb install -r`, leave it closed, then manually confirm Barbie (2023) is available and TMDB `A Odisseia` (2026) remains unavailable when only the provider's 2016 film exists
+- Blockers: Fire TV ADB at `192.168.0.7:5555` is offline; a rectangular card in the official launcher also requires an Amazon Appstore listing, and no listing currently exists
+- Uncommitted files: none expected after the handoff documentation commit
 - Branch: `dev`
