@@ -21,6 +21,13 @@ interface XtreamApi {
     ): List<XtreamVodItem>
 
     @GET("player_api.php")
+    suspend fun getVodCategories(
+        @Query("username") username: String,
+        @Query("password") password: String,
+        @Query("action") action: String = "get_vod_categories",
+    ): List<XtreamCategory>
+
+    @GET("player_api.php")
     suspend fun getVodInfo(
         @Query("username") username: String,
         @Query("password") password: String,
@@ -34,6 +41,13 @@ interface XtreamApi {
         @Query("password") password: String,
         @Query("action") action: String = "get_series"
     ): List<XtreamSeriesItem>
+
+    @GET("player_api.php")
+    suspend fun getSeriesCategories(
+        @Query("username") username: String,
+        @Query("password") password: String,
+        @Query("action") action: String = "get_series_categories",
+    ): List<XtreamCategory>
 
     @GET("player_api.php")
     suspend fun getSeriesInfo(
@@ -83,15 +97,32 @@ private fun Any?.asLongOrNull(): Long? = when (this) {
 }
 
 @JsonClass(generateAdapter = true)
+data class XtreamCategory(
+    @Json(name = "category_id") val categoryId: String,
+    @Json(name = "category_name") val categoryName: String,
+)
+
+@JsonClass(generateAdapter = true)
 data class XtreamVodItem(
     @Json(name = "stream_id") val streamId: Int,
     @Json(name = "name") val name: String? = null,
     @Json(name = "title") val title: String? = null,
     @Json(name = "year") val year: String? = null,
-    @Json(name = "container_extension") val containerExtension: String? = null
+    @Json(name = "release_date") val releaseDate: String? = null,
+    @Json(name = "container_extension") val containerExtension: String? = null,
+    @Json(name = "stream_icon") val streamIcon: String? = null,
+    @Json(name = "plot") val plot: String? = null,
+    @Json(name = "rating") val rating: String? = null,
+    @Json(name = "genre") val genre: String? = null,
+    @Json(name = "category_id") val categoryId: String? = null,
+    @Json(name = "category_ids") val categoryIds: List<String> = emptyList(),
+    @Json(name = "added") val added: String? = null,
 ) {
     val displayTitle: String get() = title?.takeIf { it.isNotBlank() } ?: name.orEmpty()
-    val releaseYear: Int? get() = year?.toIntOrNull() ?: XtreamTitleMatcher.extractYear(displayTitle)
+    val releaseYear: Int?
+        get() = year?.toIntOrNull()
+            ?: releaseDate?.take(4)?.toIntOrNull()
+            ?: XtreamTitleMatcher.extractYear(displayTitle)
 }
 
 @JsonClass(generateAdapter = true)
@@ -102,7 +133,15 @@ data class XtreamVodInfoResponse(
 
 @JsonClass(generateAdapter = true)
 data class XtreamVodInfo(
-    @Json(name = "tmdb_id") val tmdbId: String? = null
+    @Json(name = "tmdb_id") val tmdbId: String? = null,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "plot") val plot: String? = null,
+    @Json(name = "movie_image") val movieImage: String? = null,
+    @Json(name = "cover_big") val coverBig: String? = null,
+    @Json(name = "release_date") val releaseDate: String? = null,
+    @Json(name = "releasedate") val releaseDateLegacy: String? = null,
+    @Json(name = "rating") val rating: String? = null,
+    @Json(name = "genre") val genre: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
@@ -118,7 +157,14 @@ data class XtreamSeriesItem(
     @Json(name = "title") val title: String? = null,
     @Json(name = "year") val year: String? = null,
     @Json(name = "releaseDate") val releaseDate: String? = null,
-    @Json(name = "release_date") val releaseDateSnakeCase: String? = null
+    @Json(name = "release_date") val releaseDateSnakeCase: String? = null,
+    @Json(name = "cover") val cover: String? = null,
+    @Json(name = "plot") val plot: String? = null,
+    @Json(name = "rating") val rating: String? = null,
+    @Json(name = "genre") val genre: String? = null,
+    @Json(name = "category_id") val categoryId: String? = null,
+    @Json(name = "category_ids") val categoryIds: List<String> = emptyList(),
+    @Json(name = "last_modified") val lastModified: String? = null,
 ) {
     val displayTitle: String get() = title?.takeIf { it.isNotBlank() } ?: name.orEmpty()
     val releaseYear: Int?

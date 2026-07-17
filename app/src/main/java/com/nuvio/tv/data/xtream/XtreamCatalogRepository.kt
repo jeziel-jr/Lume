@@ -193,6 +193,7 @@ class XtreamCatalogRepository internal constructor(
     val state: StateFlow<XtreamCatalogState> = _state.asStateFlow()
 
     @Volatile private var index: XtreamCatalogIndex? = null
+    @Volatile private var snapshot: XtreamCatalogSnapshot? = null
     private var generationCounter = 0L
     private var refreshJob: Job? = null
     private var hasLoggedBootstrapStart = false
@@ -294,6 +295,12 @@ class XtreamCatalogRepository internal constructor(
 
     internal fun currentIndexOrNull(): XtreamCatalogIndex? = index
 
+    internal suspend fun currentSnapshot(): XtreamCatalogSnapshot {
+        snapshot?.let { return it }
+        initialize()
+        return snapshot ?: error("Xtream catalog is unavailable")
+    }
+
     internal fun healthProbeCandidatesOrNull(): XtreamHealthProbeCandidates? =
         index?.healthProbeCandidates()
 
@@ -330,6 +337,7 @@ class XtreamCatalogRepository internal constructor(
                 _state.value = XtreamCatalogState.Ready()
             } else {
                 index = null
+                snapshot = null
                 _state.value = XtreamCatalogState.Error("Nao foi possivel preparar o catalogo.")
             }
         }
@@ -339,6 +347,7 @@ class XtreamCatalogRepository internal constructor(
         refreshJob?.cancel()
         refreshJob = null
         index = null
+        snapshot = null
         generationCounter += 1
         if (clearStorage) storage.clear()
     }
@@ -349,6 +358,7 @@ class XtreamCatalogRepository internal constructor(
         index = withContext(indexDispatcher) {
             XtreamCatalogIndex.from(snapshot, generationCounter)
         }
+        this.snapshot = snapshot
         Log.i(
             "LumeStartup",
             "xtream_index_ms=${SystemClock.elapsedRealtime() - indexStartedAt} items=${snapshot.vod.size + snapshot.series.size}",

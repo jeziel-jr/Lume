@@ -5,7 +5,10 @@ import com.nuvio.tv.data.local.StreamAutoPlayMode
 
 object StreamAutoPlayPolicy {
     fun shouldForceDirectTmdbPlayback(videoId: String, manualSelection: Boolean): Boolean =
-        !manualSelection && videoId.startsWith("tmdb:", ignoreCase = true)
+        !manualSelection && (
+            videoId.startsWith("tmdb:", ignoreCase = true) ||
+                videoId.startsWith("xtream:", ignoreCase = true)
+            )
 
     fun canonicalTmdbVideoId(
         itemId: String,
@@ -13,6 +16,7 @@ object StreamAutoPlayPolicy {
         season: Int? = null,
         episode: Int? = null
     ): String {
+        if (itemId.startsWith("xtream:", ignoreCase = true)) return itemId
         val tmdbId = itemId
             .takeIf { it.startsWith("tmdb:", ignoreCase = true) }
             ?.substringAfter(':')

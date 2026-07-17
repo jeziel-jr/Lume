@@ -12,12 +12,20 @@ class XtreamRemoteDataSource @Inject constructor(
         api.getVodStreams(credentials.username, credentials.password)
     }
 
+    override suspend fun getVodCategories() = withApi { api, credentials ->
+        api.getVodCategories(credentials.username, credentials.password)
+    }
+
     override suspend fun getVodInfo(id: Int) = withApi { api, credentials ->
         api.getVodInfo(credentials.username, credentials.password, id)
     }
 
     override suspend fun getSeries() = withApi { api, credentials ->
         api.getSeries(credentials.username, credentials.password)
+    }
+
+    override suspend fun getSeriesCategories() = withApi { api, credentials ->
+        api.getSeriesCategories(credentials.username, credentials.password)
     }
 
     override suspend fun getSeriesInfo(id: Int) = withApi { api, credentials ->

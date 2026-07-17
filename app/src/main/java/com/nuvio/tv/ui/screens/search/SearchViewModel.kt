@@ -10,6 +10,7 @@ import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 import com.nuvio.tv.data.xtream.XtreamCatalogAvailabilityService
 import com.nuvio.tv.data.xtream.XtreamCatalogState
 import com.nuvio.tv.data.xtream.catalogAvailabilityKey
+import com.nuvio.tv.data.xtream.XtreamProviderCatalogRepository
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.SearchHistoryDataStore
 import com.nuvio.tv.domain.model.Addon
@@ -56,6 +57,7 @@ class SearchViewModel @Inject constructor(
     private val watchedSeriesStateHolder: com.nuvio.tv.data.local.WatchedSeriesStateHolder,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
     private val tmdbCatalogService: TmdbCatalogService,
+    private val xtreamProviderCatalogRepository: XtreamProviderCatalogRepository,
     private val xtreamCatalogAvailabilityService: XtreamCatalogAvailabilityService,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -165,13 +167,8 @@ class SearchViewModel @Inject constructor(
         }
         viewModelScope.launch {
             xtreamCatalogAvailabilityService.catalogState.collectLatest { state ->
-                when (state) {
-                    is XtreamCatalogState.Ready -> classifySearchRows(
-                        query = _uiState.value.submittedQuery.trim(),
-                        rows = _uiState.value.catalogRows,
-                    )
-                    XtreamCatalogState.Loading -> markSearchRowsChecking(_uiState.value.catalogRows)
-                    is XtreamCatalogState.Error -> _uiState.update { it.copy(catalogAvailability = emptyMap()) }
+                if (_uiState.value.catalogAvailability.isNotEmpty()) {
+                    _uiState.update { it.copy(catalogAvailability = emptyMap()) }
                 }
             }
         }
@@ -197,11 +194,15 @@ class SearchViewModel @Inject constructor(
             is SearchEvent.QueryChanged -> onQueryChanged(event.query)
             SearchEvent.SubmitSearch -> submitSearch()
             SearchEvent.ClearRecentSearches -> clearRecentSearches()
-            is SearchEvent.LoadMoreCatalog -> loadMoreCatalogItems(
-                catalogId = event.catalogId,
-                addonId = event.addonId,
-                type = event.type
-            )
+            is SearchEvent.LoadMoreCatalog -> if (event.addonId == "xtream") {
+                loadMoreProviderSearch(event.catalogId)
+            } else {
+                loadMoreCatalogItems(
+                    catalogId = event.catalogId,
+                    addonId = event.addonId,
+                    type = event.type,
+                )
+            }
             is SearchEvent.SelectDiscoverType -> selectDiscoverType(event.type)
             is SearchEvent.SelectDiscoverCatalog -> selectDiscoverCatalog(event.catalogKey)
             is SearchEvent.SelectDiscoverGenre -> selectDiscoverGenre(event.genre)
@@ -246,7 +247,7 @@ class SearchViewModel @Inject constructor(
 
         suggestionJob = viewModelScope.launch {
             kotlinx.coroutines.delay(SUGGESTION_DEBOUNCE_MS)
-            val suggestions = runCatching { tmdbCatalogService.search(query, "pt-BR") }
+            val suggestions = runCatching { xtreamProviderCatalogRepository.search(query) }
                 .getOrDefault(emptyList())
                 .flatMap { it.items }
                 .map { it.name }
@@ -318,13 +319,13 @@ class SearchViewModel @Inject constructor(
                     catalogAvailability = emptyMap(),
                 )
             }
-            runCatching { tmdbCatalogService.search(query, "pt-BR") }
+            runCatching { xtreamProviderCatalogRepository.search(query) }
                 .onSuccess { rows ->
                     if (uiState.value.submittedQuery.trim() == query) {
                         _uiState.update {
                             it.copy(isSearching = false, catalogRows = rows, error = null)
                         }
-                        classifySearchRows(query, rows)
+                        _uiState.update { it.copy(catalogAvailability = emptyMap()) }
                     }
                 }
                 .onFailure {
@@ -341,6 +342,28 @@ class SearchViewModel @Inject constructor(
                 }
         }
         activeSearchJobs = listOf(tmdbJob)
+    }
+
+    private fun loadMoreProviderSearch(catalogId: String) {
+        val current = _uiState.value.catalogRows.firstOrNull { it.catalogId == catalogId } ?: return
+        if (current.isLoading || !current.hasMore) return
+        _uiState.update { state ->
+            state.copy(catalogRows = state.catalogRows.map { if (it.catalogId == catalogId) it.copy(isLoading = true) else it })
+        }
+        viewModelScope.launch {
+            val page = runCatching {
+                xtreamProviderCatalogRepository.searchPage(
+                    query = _uiState.value.submittedQuery,
+                    catalogId = catalogId,
+                    offset = current.nextCatalogSkip(),
+                )
+            }.getOrNull()
+            val merged = page?.let { current.mergeCatalogPage(it) }
+                ?: current.copy(isLoading = false, hasMore = false)
+            _uiState.update { state ->
+                state.copy(catalogRows = state.catalogRows.map { if (it.catalogId == catalogId) merged.copy(isLoading = false) else it })
+            }
+        }
     }
 
     private fun classifySearchRows(query: String, rows: List<CatalogRow>) {

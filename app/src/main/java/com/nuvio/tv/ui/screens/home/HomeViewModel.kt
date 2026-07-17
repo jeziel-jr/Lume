@@ -25,6 +25,7 @@ import com.nuvio.tv.data.local.ContinueWatchingEnrichmentCache
 import com.nuvio.tv.data.trailer.TrailerService
 import com.nuvio.tv.data.xtream.XtreamPlaybackService
 import com.nuvio.tv.data.xtream.XtreamCatalogState
+import com.nuvio.tv.data.xtream.XtreamProviderCatalogRepository
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
@@ -34,6 +35,8 @@ import com.nuvio.tv.domain.model.LibraryEntryInput
 import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.catalogRowStableKey
+import com.nuvio.tv.domain.model.mergeCatalogPage
+import com.nuvio.tv.domain.model.nextCatalogSkip
 import com.nuvio.tv.data.repository.MDBListRepository
 import com.nuvio.tv.domain.model.MDBListSettings
 import com.nuvio.tv.domain.model.TmdbSettings
@@ -84,6 +87,7 @@ class HomeViewModel @Inject constructor(
     internal val tmdbMetadataService: TmdbMetadataService,
     internal val tmdbCatalogService: TmdbCatalogService,
     private val tmdbPlayableCatalogLoader: TmdbPlayableCatalogLoader,
+    private val xtreamProviderCatalogRepository: XtreamProviderCatalogRepository,
     internal val mdbListRepository: MDBListRepository,
     internal val trailerService: TrailerService,
     private val xtreamPlaybackService: XtreamPlaybackService,
@@ -595,7 +599,7 @@ class HomeViewModel @Inject constructor(
         when (event) {
             is HomeEvent.OnItemClick -> navigateToDetail(event.itemId, event.itemType)
             is HomeEvent.OnLoadMoreCatalog -> {
-                if (event.addonId == "tmdb") loadMoreLumeCatalog(event.catalogId)
+                if (event.addonId == "xtream") loadMoreLumeCatalog(event.catalogId)
                 else loadMoreCatalogItems(event.catalogId, event.addonId, event.type)
             }
             is HomeEvent.OnRemoveContinueWatching -> removeContinueWatching(
@@ -709,59 +713,42 @@ class HomeViewModel @Inject constructor(
 
     private fun loadLumeCatalogs() {
         viewModelScope.launch {
-            synchronized(catalogStateLock) {
-                tmdbCatalogRows.clear()
-                tmdbFailedCatalogIds.clear()
-                tmdbPendingCatalogIds.clear()
-                tmdbPendingCatalogIds.addAll(tmdbCatalogService.homeCatalogDefinitions.map { it.id })
-            }
-            lazyLoadRequestedKeys.removeAll { it.startsWith("${TMDB_ADDON_ID}_") }
-            publishTmdbHome(isInitialLoading = true)
-
-            kotlinx.coroutines.coroutineScope {
-                tmdbCatalogService.homeCatalogDefinitions
-                    .filter { it.id in INITIAL_TMDB_CATALOG_IDS }
-                    .map { definition ->
-                        async { loadTmdbCatalog(definition.id) }
-                    }
-                    .forEach { it.await() }
-            }
-            if (_uiState.value.catalogRows.isEmpty()) {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            runCatching { xtreamProviderCatalogRepository.homeRows() }
+                .onSuccess(::publishProviderHome)
+                .onFailure {
                 _uiState.update { state ->
                     state.copy(
                         isLoading = false,
-                        error = "Nao foi possivel carregar o catalogo inicial do TMDB.",
+                        error = "Nao foi possivel carregar o catalogo do servidor.",
                     )
                 }
-            }
+                }
         }
     }
 
     private fun observeTmdbCatalogAvailability() {
         viewModelScope.launch {
-            tmdbPlayableCatalogLoader.catalogState
-                .map { state -> state is XtreamCatalogState.Ready }
+            xtreamProviderCatalogRepository.state
+                .map { state -> state.ready }
                 .distinctUntilChanged()
                 .collect { isReady ->
-                    if (!isReady) return@collect
-                    val loadedCatalogIds = synchronized(catalogStateLock) {
-                        tmdbCatalogRows.keys.toList()
-                    }
-                    if (loadedCatalogIds.isEmpty()) return@collect
-                    android.util.Log.i(
-                        TAG,
-                        "refilter_tmdb_catalogs count=${loadedCatalogIds.size}",
-                    )
-                    kotlinx.coroutines.coroutineScope {
-                        loadedCatalogIds
-                            .chunked(MAX_CATALOG_LOAD_CONCURRENCY)
-                            .forEach { batch ->
-                                batch
-                                    .map { catalogId -> async { loadTmdbCatalog(catalogId) } }
-                                    .forEach { it.await() }
-                            }
-                    }
+                    if (isReady && _uiState.value.catalogRows.isEmpty()) loadLumeCatalogs()
                 }
+        }
+    }
+
+    private fun publishProviderHome(rows: List<CatalogRow>) {
+        _fullCatalogRows.value = rows
+        _uiState.update { state ->
+            state.copy(
+                catalogRows = rows,
+                homeRows = rows.map(HomeRow::Catalog),
+                heroItems = rows.firstOrNull()?.items.orEmpty().take(12),
+                installedAddonsCount = 0,
+                isLoading = false,
+                error = null,
+            )
         }
     }
 
@@ -831,24 +818,15 @@ class HomeViewModel @Inject constructor(
     private fun loadMoreLumeCatalog(catalogId: String) {
         val current = _uiState.value.catalogRows.firstOrNull { it.catalogId == catalogId } ?: return
         if (current.isLoading || !current.hasMore) return
-        synchronized(catalogStateLock) {
-            tmdbCatalogRows[catalogId] = current.copy(isLoading = true)
-        }
-        publishTmdbHome(isInitialLoading = false)
+        publishProviderHome(_uiState.value.catalogRows.map { if (it.catalogId == catalogId) it.copy(isLoading = true) else it })
         viewModelScope.launch {
-            runCatching { tmdbPlayableCatalogLoader.loadMore(current, "pt-BR") }
+            runCatching { xtreamProviderCatalogRepository.page(catalogId, current.nextCatalogSkip()) }
                 .onSuccess { page ->
-                    val merged = page ?: current.copy(isLoading = false, hasMore = false)
-                    synchronized(catalogStateLock) {
-                        tmdbCatalogRows[catalogId] = merged
-                    }
-                    publishTmdbHome(isInitialLoading = false)
+                    val merged = page?.let { current.mergeCatalogPage(it) } ?: current.copy(isLoading = false, hasMore = false)
+                    publishProviderHome(_uiState.value.catalogRows.map { if (it.catalogId == catalogId) merged.copy(isLoading = false) else it })
                 }
                 .onFailure {
-                    synchronized(catalogStateLock) {
-                        tmdbCatalogRows[catalogId] = current.copy(isLoading = false)
-                    }
-                    publishTmdbHome(isInitialLoading = false)
+                    publishProviderHome(_uiState.value.catalogRows.map { if (it.catalogId == catalogId) current.copy(isLoading = false) else it })
                 }
         }
     }

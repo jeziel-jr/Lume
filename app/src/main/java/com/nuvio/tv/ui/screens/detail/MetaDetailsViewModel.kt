@@ -63,6 +63,7 @@ import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.R
 import com.nuvio.tv.data.xtream.XtreamAvailability
 import com.nuvio.tv.data.xtream.XtreamPlaybackService
+import com.nuvio.tv.data.xtream.XtreamProviderCatalogRepository
 import com.nuvio.tv.core.build.AppFeaturePolicy
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
@@ -91,6 +92,7 @@ class MetaDetailsViewModel @Inject constructor(
     private val layoutPreferenceDataStore: LayoutPreferenceDataStore,
     private val playerSettingsDataStore: PlayerSettingsDataStore,
     private val xtreamPlaybackService: XtreamPlaybackService,
+    private val xtreamProviderCatalogRepository: XtreamProviderCatalogRepository,
     private val watchedSeriesStateHolder: com.nuvio.tv.data.local.WatchedSeriesStateHolder,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
     savedStateHandle: SavedStateHandle
@@ -114,7 +116,8 @@ class MetaDetailsViewModel @Inject constructor(
     val effectiveAutoplayEnabled = playerSettingsDataStore.playerSettings
         .map(StreamAutoPlayPolicy::isEffectivelyEnabled)
         .distinctUntilChanged()
-    val isTmdbPlayback: Boolean = itemId.startsWith("tmdb:", ignoreCase = true)
+    val isTmdbPlayback: Boolean = itemId.startsWith("tmdb:", ignoreCase = true) ||
+        itemId.startsWith("xtream:", ignoreCase = true)
 
     fun playbackVideoId(fallback: String, season: Int? = null, episode: Int? = null): String {
         return StreamAutoPlayPolicy.canonicalTmdbVideoId(itemId, fallback, season, episode)
@@ -609,6 +612,15 @@ class MetaDetailsViewModel @Inject constructor(
             }
 
             if (itemId.startsWith("tmdb:", ignoreCase = true) && tryApplyTmdbFallbackMeta()) {
+                return@launch
+            }
+            if (itemId.startsWith("xtream:", ignoreCase = true)) {
+                val providerMeta = runCatching { xtreamProviderCatalogRepository.meta(itemId) }.getOrNull()
+                if (providerMeta != null) {
+                    applyMetaWithEnrichment(providerMeta)
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = "Conteudo indisponivel no servidor.") }
+                }
                 return@launch
             }
 

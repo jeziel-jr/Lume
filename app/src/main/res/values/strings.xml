@@ -2005,6 +2005,7 @@
     <string name="nav_home">Home</string>
     <string name="nav_discover">Discover</string>
     <string name="nav_search">Search</string>
+    <string name="nav_catalog">Catalog</string>
     <string name="nav_library">Library</string>
     <string name="nav_addons">Addons</string>
     <string name="nav_movies">Movies</string>

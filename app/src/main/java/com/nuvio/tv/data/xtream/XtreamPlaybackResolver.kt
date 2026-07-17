@@ -17,8 +17,10 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 
 interface XtreamDataSource {
     suspend fun getVodStreams(): List<XtreamVodItem>
+    suspend fun getVodCategories(): List<com.nuvio.tv.data.remote.api.XtreamCategory> = emptyList()
     suspend fun getVodInfo(id: Int): XtreamVodInfoResponse
     suspend fun getSeries(): List<XtreamSeriesItem>
+    suspend fun getSeriesCategories(): List<com.nuvio.tv.data.remote.api.XtreamCategory> = emptyList()
     suspend fun getSeriesInfo(id: Int): XtreamSeriesInfoResponse
 }
 

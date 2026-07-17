@@ -47,6 +47,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -670,6 +671,7 @@ class MainActivity : ComponentActivity() {
                         buildSet {
                             add(Screen.Home.route)
                             add(Screen.Search.route)
+                            add(Screen.Catalog.route)
                             add(Screen.Library.route)
                             add(Screen.Settings.route)
                         }
@@ -678,12 +680,14 @@ class MainActivity : ComponentActivity() {
                     val strNavHome = stringResource(R.string.nav_home)
                     val strNavDiscover = stringResource(R.string.nav_discover)
                     val strNavSearch = stringResource(R.string.nav_search)
+                    val strNavCatalog = stringResource(R.string.nav_catalog)
                     val strNavLibrary = stringResource(R.string.nav_library)
                     val strNavSettings = stringResource(R.string.nav_settings)
                     val drawerItems = remember(
                         strNavHome,
                         strNavDiscover,
                         strNavSearch,
+                        strNavCatalog,
                         strNavLibrary,
                         strNavSettings,
                         discoverLocation
@@ -701,6 +705,13 @@ class MainActivity : ComponentActivity() {
                                     route = Screen.Search.route,
                                     label = strNavSearch,
                                     iconRes = R.raw.sidebar_search
+                                )
+                            )
+                            add(
+                                DrawerItem(
+                                    route = Screen.Catalog.route,
+                                    label = strNavCatalog,
+                                    icon = Icons.Default.GridView
                                 )
                             )
                             add(
