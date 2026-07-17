@@ -2,11 +2,11 @@
 
 ## Decisions
 
-### AD-001: Xtream owns the visible catalog
+### AD-001: TMDB owns the catalog
 
 - Status: active
-- Decision: the configured Xtream inventory is the source of truth for Home, Search, Catalog, details availability, and playback sources. TMDB may enrich provider-backed titles, but cannot introduce a visible title by itself.
-- Rationale: every visible card must represent content that actually exists on the authorized server; this eliminates TMDB/provider collisions such as a future release being matched to an older same-title asset.
+- Decision: TMDB is the source of truth for discovery, search, metadata, artwork, seasons, and episodes.
+- Rationale: Xtream is used only to resolve playback availability.
 
 ### AD-002: Shared and personal credentials have separate lifecycles
 
@@ -34,9 +34,8 @@
 
 ## Handoff
 
-- Feature: Xtream-authoritative catalog, QR-first per-device setup, server-health diagnostics, TMDB enrichment, grouped playback sources, Frame 24 TV identity, and episode skip segments
-- Phase: Xtream-authoritative Home/Search/Catalog/details/playback implementation complete in source; release build/install verification and user-owned visual/playback validation pending
-- Completed in `0.8.0-beta`: Home and Search now originate from the Xtream VOD/series inventory; adult/XXX/ReelsShort categories are excluded; duplicate provider variants collapse into one card and remain selectable under `Fontes`; a root `Catalogo` destination exposes provider categories; movie TMDB identities are persisted and hydrated resumably in the background with concurrency two and retry; TMDB is detail enrichment only; the setup DNS default is `https://capone.icu`.
+- Feature: QR-first per-device Xtream setup, server-health diagnostics, TMDB rate-limit resilience, playback-aware catalog, Frame 24 TV identity, and episode skip segments
+- Phase: catalog availability, skip-segment, and server-health implementations complete; release build/install verification and user-owned visual, playback, and clean-start timing validation pending
 - Completed in `0.7.26-beta`: mandatory QR-first Xtream setup with an editable default server and remote-entry fallback, Android Keystore-backed per-device credentials, authenticated one-time local submissions, on-TV confirmation, settings reconfiguration, dynamic Xtream client/cache invalidation, and TMDB-wide four-request concurrency with bounded `429` retry.
 - Completed in `0.7.27-beta`: polished mobile setup page, default-locked DNS field with an explicit pencil edit action, persisted provider status/expiration/connection metadata, and a TV Settings profile category with account refresh and confirmed credential removal.
 - Completed in `0.7.28-beta`: dedicated full-width remote-control setup, larger focus-aware fields whose keyboard opens only after OK, permanently visible profile refresh/sign-out actions, and sign-out that retains local catalog caches.

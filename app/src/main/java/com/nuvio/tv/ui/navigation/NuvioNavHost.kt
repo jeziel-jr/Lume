@@ -47,7 +47,6 @@ import com.nuvio.tv.ui.screens.home.ContinueWatchingItem
 import com.nuvio.tv.ui.screens.account.AuthSignInScreen
 import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
 import com.nuvio.tv.ui.screens.cast.CastDetailScreen
-import com.nuvio.tv.ui.screens.catalog.CatalogScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionMode
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.ui.screens.tmdb.TmdbEntityBrowseScreen
@@ -1010,14 +1009,6 @@ fun NuvioNavHost(
                     )
                 },
                 onOpenDiscover = { navController.navigate(Screen.Discover.route) }
-            )
-        }
-
-        composable(Screen.Catalog.route) {
-            CatalogScreen(
-                onNavigateToDetail = { itemId, itemType, addonBaseUrl ->
-                    navController.navigate(Screen.Detail.createRoute(itemId, itemType, addonBaseUrl))
-                },
             )
         }
 

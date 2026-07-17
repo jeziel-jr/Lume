@@ -13,7 +13,6 @@ import com.nuvio.tv.data.mapper.toDomain
 import com.nuvio.tv.data.remote.api.AddonApi
 import com.nuvio.tv.data.xtream.XtreamPlaybackService
 import com.nuvio.tv.data.xtream.XtreamResolution
-import com.nuvio.tv.data.xtream.XtreamProviderCatalogRepository
 import com.nuvio.tv.domain.model.ContentType
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.AddonStreams
@@ -47,7 +46,6 @@ class StreamRepositoryImpl @Inject constructor(
     private val pluginManager: PluginManager,
     private val tmdbService: TmdbService,
     private val xtreamPlaybackService: XtreamPlaybackService,
-    private val xtreamProviderCatalogRepository: XtreamProviderCatalogRepository,
     private val debridStreamPresentation: DebridStreamPresentation,
     private val localDebridAvailabilityService: LocalDebridAvailabilityService
 ) : StreamRepository {
@@ -71,17 +69,6 @@ class StreamRepositoryImpl @Inject constructor(
         emit(NetworkResult.Loading)
 
         try {
-            if (videoId.startsWith("xtream:", ignoreCase = true)) {
-                val source = runCatching {
-                    xtreamProviderCatalogRepository.streams(videoId, season, episode)
-                }.getOrNull()
-                if (source != null) {
-                    emit(NetworkResult.Success(listOf(source)))
-                } else {
-                    emit(NetworkResult.Error(context.getString(R.string.stream_error_coming_soon)))
-                }
-                return@flow
-            }
             val directTmdbId = videoId
                 .takeIf { it.startsWith("tmdb:", ignoreCase = true) }
                 ?.substringAfter(':')

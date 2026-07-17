@@ -22,7 +22,6 @@ coil = "3.3.0"
 lottie = "6.7.1"
 navigationCompose = "2.8.8"
 datastore = "1.1.1"
-room = "2.8.4"
 lifecycleViewModelCompose = "2.8.7"
 ksp = "2.3.0"
 media3 = "1.8.0"
@@ -93,11 +92,6 @@ navigation-compose = { group = "androidx.navigation", name = "navigation-compose
 
 # DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
-
-# Room
-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 # ViewModel
 lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleViewModelCompose" }
