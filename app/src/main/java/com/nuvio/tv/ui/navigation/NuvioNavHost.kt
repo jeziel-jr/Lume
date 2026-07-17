@@ -41,6 +41,7 @@ import com.nuvio.tv.ui.screens.settings.SupportersContributorsScreen
 import com.nuvio.tv.ui.screens.settings.ThemeSettingsScreen
 import com.nuvio.tv.ui.screens.settings.TraktScreen
 import com.nuvio.tv.ui.screens.settings.TmdbSettingsScreen
+import com.nuvio.tv.ui.screens.xtream.XtreamSetupScreen
 import com.nuvio.tv.ui.screens.stream.StreamScreen
 import com.nuvio.tv.ui.screens.home.ContinueWatchingItem
 import com.nuvio.tv.ui.screens.account.AuthSignInScreen
@@ -1061,6 +1062,7 @@ fun NuvioNavHost(
                 onNavigateToAddons = { navController.navigate(Screen.AddonManager.route) },
                 onNavigateToPlugins = { navController.navigate(Screen.Plugins.route) },
                 onNavigateToAuthQrSignIn = { navController.navigate(Screen.AuthQrSignIn.route) },
+                onNavigateToXtreamSetup = { navController.navigate(Screen.XtreamSetup.route) },
                 onNavigateToManageProfiles = { navController.navigate(Screen.ManageProfiles.route) },
                 onNavigateToSupportersContributors = {
                     navController.navigate(Screen.SupportersContributors.route)
@@ -1077,6 +1079,10 @@ fun NuvioNavHost(
                 screenMode = ProfileSelectionMode.Management,
                 onBackPress = { navController.popBackStack() }
             )
+        }
+
+        composable(Screen.XtreamSetup.route) {
+            XtreamSetupScreen(onConfigured = { navController.popBackStack() })
         }
 
         composable(Screen.Trakt.route) {

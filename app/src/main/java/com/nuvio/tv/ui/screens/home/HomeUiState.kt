@@ -145,7 +145,8 @@ sealed class GridItem {
         val catalogId: String,
         val addonBaseUrl: String,
         val addonId: String,
-        val type: String
+        val type: String,
+        val hideTypeSuffix: Boolean = false,
     ) : GridItem()
     @Immutable
     data class Content(

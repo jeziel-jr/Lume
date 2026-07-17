@@ -5,6 +5,7 @@ import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 
 @Immutable
 data class SearchUiState(
@@ -13,6 +14,7 @@ data class SearchUiState(
     val isSearching: Boolean = false,
     val error: String? = null,
     val catalogRows: List<CatalogRow> = emptyList(),
+    val catalogAvailability: Map<String, CatalogPlaybackAvailability> = emptyMap(),
     val installedAddons: List<Addon> = emptyList(),
     val discoverLocation: DiscoverLocation = DiscoverLocation.IN_SEARCH,
     val discoverInitialized: Boolean = false,

@@ -165,7 +165,7 @@ internal fun ModernSidebarBlurPanel(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.app_logo_wordmark),
+                    painter = painterResource(id = R.drawable.lume_wordmark),
                     contentDescription = stringResource(R.string.app_name),
                     modifier = Modifier
                         .fillMaxWidth(0.72f)

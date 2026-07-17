@@ -135,6 +135,8 @@ class StreamScreenViewModel @Inject constructor(
     private val manualSelection: Boolean = savedStateHandle.get<String>("manualSelection")
         ?.toBooleanStrictOrNull()
         ?: false
+    private val forceDirectTmdbPlayback: Boolean =
+        StreamAutoPlayPolicy.shouldForceDirectTmdbPlayback(videoId, manualSelection)
     private val streamCacheKey: String = "${contentType.lowercase()}|$videoId"
 
     private val _uiState = MutableStateFlow(
@@ -338,15 +340,21 @@ class StreamScreenViewModel @Inject constructor(
         streamLoadJob = newScope.launch {
             streamLoadCompleted = false
             val playerSettings = playerSettingsDataStore.playerSettings.first()
+            val effectiveAutoPlayMode = if (forceDirectTmdbPlayback) {
+                StreamAutoPlayMode.FIRST_STREAM
+            } else {
+                playerSettings.streamAutoPlayMode
+            }
             if (manualSelection) {
                 directAutoPlayModeInitializedForSession = true
                 directAutoPlayFlowEnabledForSession = false
                 autoPlayHandledForSession = true
             } else if (!directAutoPlayModeInitializedForSession) {
-                directAutoPlayFlowEnabledForSession = shouldUseDirectAutoPlayFlow(
-                    playerPreference = playerSettings.playerPreference,
-                    streamAutoPlayMode = playerSettings.streamAutoPlayMode
-                )
+                directAutoPlayFlowEnabledForSession = forceDirectTmdbPlayback ||
+                    shouldUseDirectAutoPlayFlow(
+                        playerPreference = playerSettings.playerPreference,
+                        streamAutoPlayMode = effectiveAutoPlayMode
+                    )
                 // In MANUAL mode, still enable direct auto-play if a persisted
                 // binge group exists - same behavior as playNextEpisode in the player.
                 if (!directAutoPlayFlowEnabledForSession &&
@@ -362,7 +370,7 @@ class StreamScreenViewModel @Inject constructor(
             }
 
             if (
-                playerSettings.streamAutoPlayMode == StreamAutoPlayMode.REGEX_MATCH &&
+                effectiveAutoPlayMode == StreamAutoPlayMode.REGEX_MATCH &&
                 !StreamAutoPlayPolicy.isRegexSelectionConfigured(playerSettings.streamAutoPlayRegex)
             ) {
                 directAutoPlayFlowEnabledForSession = false
@@ -496,7 +504,7 @@ class StreamScreenViewModel @Inject constructor(
                 } else {
                     StreamAutoPlaySelector.selectAutoPlayStream(
                         streams = allStreams,
-                        mode = playerSettings.streamAutoPlayMode,
+                        mode = effectiveAutoPlayMode,
                         regexPattern = playerSettings.streamAutoPlayRegex,
                         source = playerSettings.streamAutoPlaySource,
                         installedAddonNames = installedAddonOrder.toSet(),
@@ -695,7 +703,7 @@ class StreamScreenViewModel @Inject constructor(
                                 val allStreams = orderedStreams.flatMap { it.streams }
                                 val earlyMatch = StreamAutoPlaySelector.selectAutoPlayStream(
                                     streams = allStreams,
-                                    mode = playerSettings.streamAutoPlayMode,
+                                    mode = effectiveAutoPlayMode,
                                     regexPattern = playerSettings.streamAutoPlayRegex,
                                     source = playerSettings.streamAutoPlaySource,
                                     installedAddonNames = installedAddonOrder.toSet(),

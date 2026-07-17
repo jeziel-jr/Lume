@@ -21,6 +21,13 @@ enum class CommentsMode {
     EPISODE
 }
 
+enum class PlaybackAvailabilityState {
+    CHECKING,
+    AVAILABLE,
+    UNAVAILABLE,
+    ERROR
+}
+
 data class MetaDetailsUiState(
     val isLoading: Boolean = true,
     val meta: Meta? = null,
@@ -28,6 +35,8 @@ data class MetaDetailsUiState(
     val selectedSeason: Int = 1,
     val seasons: List<Int> = emptyList(),
     val episodesForSeason: List<Video> = emptyList(),
+    val moviePlaybackAvailability: PlaybackAvailabilityState = PlaybackAvailabilityState.CHECKING,
+    val episodePlaybackAvailability: Map<Pair<Int, Int>, PlaybackAvailabilityState> = emptyMap(),
     val isInLibrary: Boolean = false,
     val nextToWatch: NextToWatch? = null,
     val episodeProgressMap: Map<Pair<Int, Int>, WatchProgress> = emptyMap(),

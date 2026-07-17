@@ -97,7 +97,7 @@ fun AboutSettingsContent(
                 Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
 
                 Image(
-                    painter = painterResource(id = R.drawable.app_logo_wordmark),
+                    painter = painterResource(id = R.drawable.lume_wordmark),
                     contentDescription = stringResource(R.string.cd_nuvio_logo),
                     modifier = Modifier
                         .width(180.dp)
@@ -137,31 +137,6 @@ fun AboutSettingsContent(
                         }
                     )
                 }
-
-                SettingsActionRow(
-                    title = stringResource(R.string.about_privacy_policy),
-                    subtitle = stringResource(R.string.about_privacy_policy_subtitle),
-                    trailingIcon = Icons.Default.OpenInNew,
-                    modifier = if (!AppFeaturePolicy.inAppUpdatesEnabled && initialFocusRequester != null) {
-                        Modifier.focusRequester(initialFocusRequester)
-                    } else {
-                        Modifier
-                    },
-                    onClick = {
-                        val intent = Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://tapframe.github.io/NuvioStreaming/#privacy-policy")
-                        )
-                        context.startActivity(intent)
-                    }
-                )
-
-                SettingsActionRow(
-                    title = stringResource(R.string.about_supporters_contributors),
-                    subtitle = stringResource(R.string.about_supporters_contributors_subtitle),
-                    trailingIcon = Icons.Default.ChevronRight,
-                    onClick = onNavigateToSupportersContributors
-                )
 
                 SettingsActionRow(
                     title = stringResource(R.string.about_licenses_attributions),

@@ -250,6 +250,7 @@ fun SeasonTabs(
 @Composable
 fun EpisodesRow(
     episodes: List<Video>,
+    playbackAvailability: Map<Pair<Int, Int>, PlaybackAvailabilityState> = emptyMap(),
     episodeProgressMap: Map<Pair<Int, Int>, com.nuvio.tv.domain.model.WatchProgress> = emptyMap(),
     episodeRatings: Map<Pair<Int, Int>, Double> = emptyMap(),
     watchedEpisodes: Set<Pair<Int, Int>> = emptySet(),
@@ -260,6 +261,7 @@ fun EpisodesRow(
     onEpisodeStartFromBeginningClick: (Video) -> Unit = onEpisodeClick,
     onToggleEpisodeWatched: (Video) -> Unit,
     showManualPlayOption: Boolean = false,
+    onRetryPlaybackAvailability: () -> Unit = {},
     onMarkSeasonWatched: (Int) -> Unit = {},
     onMarkSeasonUnwatched: (Int) -> Unit = {},
     isSeasonFullyWatched: Boolean = false,
@@ -343,12 +345,29 @@ fun EpisodesRow(
             contentType = { EPISODE_CARD_CONTENT_TYPE }
         ) { episode ->
             val seasonEp = remember(episode.season, episode.episode) { episode.season?.let { s -> episode.episode?.let { e -> s to e } } }
+            val availability = seasonEp?.let { playbackAvailability[it] }
+                ?: PlaybackAvailabilityState.CHECKING
             val progress = remember(seasonEp, episodeProgressMap) { seasonEp?.let { episodeProgressMap[it] } }
             val imdbRating = remember(seasonEp, episodeRatings) { seasonEp?.let { episodeRatings[it] } }
             val isMarkedWatched = remember(seasonEp, watchedEpisodes) { seasonEp?.let { watchedEpisodes.contains(it) } ?: false }
             val episodeFocusRequester = remember(episode.id) { episodeFocusRequesters.getOrPut(episode.id) { FocusRequester() } }
-            val episodeOnClick = remember(episode.id) { { onEpisodeClick(episode) } }
-            val episodeOnLongPress = remember(episode.id) { { optionsEpisode = episode } }
+            val episodeOnClick = remember(episode.id, availability) {
+                {
+                    when (availability) {
+                        PlaybackAvailabilityState.AVAILABLE -> onEpisodeClick(episode)
+                        PlaybackAvailabilityState.ERROR -> onRetryPlaybackAvailability()
+                        PlaybackAvailabilityState.CHECKING,
+                        PlaybackAvailabilityState.UNAVAILABLE -> Unit
+                    }
+                }
+            }
+            val episodeOnLongPress = remember(episode.id, availability) {
+                {
+                    if (availability == PlaybackAvailabilityState.AVAILABLE) {
+                        optionsEpisode = episode
+                    }
+                }
+            }
             val episodeOnFocused = remember(episode.id) { {
                 onEpisodeFocused(episode.id)
             } }
@@ -358,6 +377,7 @@ fun EpisodesRow(
             }
             EpisodeCard(
                 episode = episode,
+                playbackAvailability = availability,
                 watchProgress = progress,
                 imdbRating = imdbRating,
                 isMarkedWatched = isMarkedWatched,
@@ -375,6 +395,9 @@ fun EpisodesRow(
     }
 
     optionsEpisode?.let { selectedEpisode ->
+        val selectedAvailability = selectedEpisode.season?.let { season ->
+            selectedEpisode.episode?.let { episode -> playbackAvailability[season to episode] }
+        } ?: PlaybackAvailabilityState.CHECKING
         val selectedWatched = selectedEpisode.season?.let { season ->
             selectedEpisode.episode?.let { episode ->
                 episodeProgressMap[season to episode]?.isCompleted() == true
@@ -389,6 +412,7 @@ fun EpisodesRow(
 
         EpisodeOptionsDialog(
             episode = selectedEpisode,
+            playbackAvailability = selectedAvailability,
             isWatched = selectedWatched,
             isPending = isPending,
             isSeasonFullyWatched = isSeasonFullyWatched,
@@ -402,7 +426,11 @@ fun EpisodesRow(
             } ?: false,
             onDismiss = { optionsEpisode = null },
             onPlay = {
-                onEpisodeClick(selectedEpisode)
+                if (selectedAvailability == PlaybackAvailabilityState.ERROR) {
+                    onRetryPlaybackAvailability()
+                } else {
+                    onEpisodeClick(selectedEpisode)
+                }
                 optionsEpisode = null
             },
             onStartFromBeginning = {
@@ -418,7 +446,7 @@ fun EpisodesRow(
                 onEpisodeManualPlayClick(selectedEpisode)
                 optionsEpisode = null
             },
-            showPlayManually = showManualPlayOption,
+            showPlayManually = showManualPlayOption && selectedAvailability == PlaybackAvailabilityState.AVAILABLE,
             onToggleWatched = {
                 onToggleEpisodeWatched(selectedEpisode)
                 optionsEpisode = null
@@ -443,6 +471,7 @@ fun EpisodesRow(
 @Composable
 private fun EpisodeCard(
     episode: Video,
+    playbackAvailability: PlaybackAvailabilityState,
     watchProgress: com.nuvio.tv.domain.model.WatchProgress? = null,
     imdbRating: Double? = null,
     isMarkedWatched: Boolean = false,
@@ -474,7 +503,9 @@ private fun EpisodeCard(
     val showProgress = remember(watchProgress) { watchProgress?.isInProgress() == true }
     val showCompletedBadge = isWatched
     val showNotStartedBadge = remember(showCompletedBadge, progressPercent) { !showCompletedBadge && progressPercent < 0.02f }
-    val isUnavailable = remember(episode.available) { episode.available == false }
+    val isUnavailable = remember(episode.available, playbackAvailability) {
+        episode.available == false || playbackAvailability == PlaybackAvailabilityState.UNAVAILABLE
+    }
     val cardBgColor = NuvioTheme.colors.BackgroundCard
     val isFocusedState = remember { mutableStateOf(false) }
     val cardCornerRadius = remember(cardMetrics.cornerRadius, density) {
@@ -905,6 +936,7 @@ private fun EpisodeCard(
 @Composable
 private fun EpisodeOptionsDialog(
     episode: Video,
+    playbackAvailability: PlaybackAvailabilityState,
     isWatched: Boolean,
     isPending: Boolean,
     isSeasonFullyWatched: Boolean = false,
@@ -974,13 +1006,22 @@ private fun EpisodeOptionsDialog(
 
         Button(
             onClick = onPlay,
+            enabled = playbackAvailability == PlaybackAvailabilityState.AVAILABLE ||
+                playbackAvailability == PlaybackAvailabilityState.ERROR,
             colors = ButtonDefaults.colors(
                 containerColor = NuvioTheme.colors.BackgroundCard,
                 contentColor = NuvioTheme.colors.TextPrimary
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(stringResource(R.string.episodes_play))
+            Text(
+                when (playbackAvailability) {
+                    PlaybackAvailabilityState.CHECKING -> stringResource(R.string.playback_availability_checking)
+                    PlaybackAvailabilityState.AVAILABLE -> stringResource(R.string.episodes_play)
+                    PlaybackAvailabilityState.UNAVAILABLE -> stringResource(R.string.stream_error_coming_soon)
+                    PlaybackAvailabilityState.ERROR -> stringResource(R.string.action_retry)
+                }
+            )
         }
 
         if (showOpenEpisodeComments) {

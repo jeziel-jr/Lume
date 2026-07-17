@@ -99,6 +99,7 @@ import com.nuvio.tv.ui.components.PosterCardDefaults
 import com.nuvio.tv.ui.components.PosterCardStyle
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.model.stableKey
+import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.platform.LocalView
@@ -686,6 +687,9 @@ fun SearchScreen(
                                 showPosterLabels = uiState.posterLabelsEnabled,
                                 showAddonName = uiState.catalogAddonNameEnabled,
                                 showCatalogTypeSuffix = uiState.catalogTypeSuffixEnabled,
+                                itemAvailability = { item ->
+                                    uiState.catalogAvailability[item.catalogAvailabilityKey()]
+                                },
                                 enableRowFocusRestorer = true,
                                 rowFocusRequester = rowFocusRequester,
                                 entryFocusRequester = entryFocusRequester,

@@ -94,6 +94,7 @@ internal enum class SettingsCategory {
     EXPERIENCE,
     ACCOUNT,
     PROFILES,
+    XTREAM_PROFILE,
     APPEARANCE,
     LAYOUT,
     CONTENT_DISCOVERY,
@@ -161,6 +162,13 @@ private fun rememberSettingsSectionSpecs() = listOf(
         destination = SettingsSectionDestination.Inline
     ),
     SettingsSectionSpec(
+        category = SettingsCategory.XTREAM_PROFILE,
+        title = stringResource(R.string.xtream_profile_title),
+        icon = Icons.Default.Person,
+        subtitle = stringResource(R.string.xtream_profile_subtitle),
+        destination = SettingsSectionDestination.Inline
+    ),
+    SettingsSectionSpec(
         category = SettingsCategory.APPEARANCE,
         title = stringResource(R.string.appearance_title),
         icon = Icons.Default.Palette,
@@ -223,7 +231,16 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_debug_subtitle),
         destination = SettingsSectionDestination.Inline
     )
-)
+).filter {
+    it.category in setOf(
+        SettingsCategory.XTREAM_PROFILE,
+        SettingsCategory.APPEARANCE,
+        SettingsCategory.LAYOUT,
+        SettingsCategory.PLAYBACK,
+        SettingsCategory.ADVANCED,
+        SettingsCategory.ABOUT
+    )
+}
 
 @Composable
 fun SettingsScreen(
@@ -232,6 +249,7 @@ fun SettingsScreen(
     onNavigateToAddons: () -> Unit = {},
     onNavigateToPlugins: () -> Unit = {},
     onNavigateToAuthQrSignIn: () -> Unit = {},
+    onNavigateToXtreamSetup: () -> Unit = {},
     onNavigateToManageProfiles: () -> Unit = {},
     onNavigateToSupportersContributors: () -> Unit = {},
     onNavigateToLicensesAttributions: () -> Unit = {},
@@ -266,6 +284,7 @@ fun SettingsScreen(
                 SettingsCategory.DEBUG -> BuildConfig.IS_DEBUG_BUILD && !isEssentialMode
                 SettingsCategory.PROFILES -> isPrimaryProfileActive
                 SettingsCategory.ACCOUNT -> isPrimaryProfileActive
+                SettingsCategory.XTREAM_PROFILE -> true
                 SettingsCategory.LAYOUT -> true
                 SettingsCategory.CONTENT_DISCOVERY -> true
                 SettingsCategory.INTEGRATION -> true
@@ -536,6 +555,7 @@ fun SettingsScreen(
                                 onNavigateToAddons = onNavigateToAddons,
                                 onNavigateToPlugins = onNavigateToPlugins,
                                 onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn,
+                                onNavigateToXtreamSetup = onNavigateToXtreamSetup,
                                 onNavigateToSupportersContributors = onNavigateToSupportersContributors,
                                 onNavigateToLicensesAttributions = onNavigateToLicensesAttributions
                             )
@@ -687,6 +707,7 @@ fun SettingsScreen(
                         onNavigateToAddons = onNavigateToAddons,
                         onNavigateToPlugins = onNavigateToPlugins,
                         onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn,
+                        onNavigateToXtreamSetup = onNavigateToXtreamSetup,
                         onNavigateToSupportersContributors = onNavigateToSupportersContributors,
                         onNavigateToLicensesAttributions = onNavigateToLicensesAttributions
                     )
@@ -715,6 +736,7 @@ private fun SettingsDetailPane(
     onNavigateToAddons: () -> Unit,
     onNavigateToPlugins: () -> Unit,
     onNavigateToAuthQrSignIn: () -> Unit,
+    onNavigateToXtreamSetup: () -> Unit,
     onNavigateToSupportersContributors: () -> Unit,
     onNavigateToLicensesAttributions: () -> Unit
 ) {
@@ -734,6 +756,13 @@ private fun SettingsDetailPane(
             } else {
                 null
             }
+        )
+        SettingsCategory.XTREAM_PROFILE -> XtreamProfileSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.XTREAM_PROFILE]
+            } else {
+                null
+            },
         )
         SettingsCategory.APPEARANCE -> ThemeSettingsContent(
             initialFocusRequester = if (allowDetailAutofocus) {
@@ -799,6 +828,7 @@ private fun SettingsDetailPane(
             tmdbFocusRequester = integrationTmdbFocusRequester,
             mdbListFocusRequester = integrationMdbListFocusRequester,
             animeSkipFocusRequester = integrationAnimeSkipFocusRequester,
+            onNavigateToXtreamSetup = onNavigateToXtreamSetup,
             autoFocusEnabled = allowDetailAutofocus
         )
         SettingsCategory.ABOUT -> AboutSettingsContent(
@@ -952,6 +982,7 @@ private fun IntegrationSettingsContent(
     tmdbFocusRequester: FocusRequester,
     mdbListFocusRequester: FocusRequester,
     animeSkipFocusRequester: FocusRequester,
+    onNavigateToXtreamSetup: () -> Unit,
     autoFocusEnabled: Boolean
 ) {
     BackHandler(enabled = selectedSection != IntegrationSettingsSection.Hub) {
@@ -999,6 +1030,13 @@ private fun IntegrationSettingsContent(
                                     subtitle = stringResource(R.string.settings_debrid_subtitle),
                                     onClick = { onSelectSection(IntegrationSettingsSection.Debrid) },
                                     modifier = Modifier.focusRequester(hubEntryFocusRequester)
+                                )
+                            }
+                            item(key = "integration_hub_xtream") {
+                                SettingsActionRow(
+                                    title = stringResource(R.string.xtream_settings_title),
+                                    subtitle = stringResource(R.string.xtream_settings_subtitle),
+                                    onClick = onNavigateToXtreamSetup,
                                 )
                             }
                             item(key = "integration_hub_tmdb") {

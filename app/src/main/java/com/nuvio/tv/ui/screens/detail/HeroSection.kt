@@ -89,6 +89,7 @@ fun HeroContentSection(
     meta: Meta,
     nextEpisode: Video?,
     nextToWatch: NextToWatch?,
+    playbackAvailability: PlaybackAvailabilityState,
     onPlayClick: () -> Unit,
     onPlayLongPress: (() -> Unit)? = null,
     isInLibrary: Boolean,
@@ -236,12 +237,18 @@ fun HeroContentSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         PlayButton(
-                            text = nextToWatch?.displayText ?: when {
-                                nextEpisode != null && nextEpisode.season != null && nextEpisode.episode != null ->
-                                    stringResource(R.string.hero_play_episode, nextEpisode.season, nextEpisode.episode)
-                                nextEpisode != null -> stringResource(R.string.hero_play)
-                                else -> stringResource(R.string.hero_play)
+                            text = when (playbackAvailability) {
+                                PlaybackAvailabilityState.CHECKING -> stringResource(R.string.playback_availability_checking)
+                                PlaybackAvailabilityState.UNAVAILABLE -> stringResource(R.string.stream_error_coming_soon)
+                                PlaybackAvailabilityState.ERROR -> stringResource(R.string.action_retry)
+                                PlaybackAvailabilityState.AVAILABLE -> nextToWatch?.displayText ?: when {
+                                    nextEpisode != null && nextEpisode.season != null && nextEpisode.episode != null ->
+                                        stringResource(R.string.hero_play_episode, nextEpisode.season, nextEpisode.episode)
+                                    else -> stringResource(R.string.hero_play)
+                                }
                             },
+                            enabled = playbackAvailability == PlaybackAvailabilityState.AVAILABLE ||
+                                playbackAvailability == PlaybackAvailabilityState.ERROR,
                             onClick = onPlayClick,
                             onLongPress = onPlayLongPress,
                             focusRequester = playButtonFocusRequester,
@@ -400,6 +407,7 @@ fun HeroContentSection(
 @Composable
 private fun PlayButton(
     text: String,
+    enabled: Boolean = true,
     onClick: () -> Unit,
     onLongPress: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
@@ -428,6 +436,7 @@ private fun PlayButton(
                 onClick()
             }
         },
+        enabled = enabled,
         modifier = Modifier
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged {

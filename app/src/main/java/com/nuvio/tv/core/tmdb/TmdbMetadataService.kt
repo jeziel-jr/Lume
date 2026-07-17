@@ -20,6 +20,7 @@ import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.MetaTrailer
 import com.nuvio.tv.domain.model.PersonDetail
 import com.nuvio.tv.domain.model.PosterShape
+import com.nuvio.tv.domain.model.Video
 import java.time.LocalDate
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -531,6 +532,54 @@ class TmdbMetadataService(
             }
             episodeInFlight.remove(cacheKey, requestDeferred)
         }
+    }
+
+    suspend fun fetchSeriesVideos(
+        tmdbId: String,
+        language: String = "pt-BR"
+    ): List<Video> = withContext(ioDispatcher) {
+        val numericId = tmdbId.toIntOrNull() ?: return@withContext emptyList()
+        val normalizedLanguage = normalizeTmdbLanguage(language)
+        val details = tmdbApi.getTvDetails(numericId, TMDB_API_KEY, normalizedLanguage).body()
+            ?: return@withContext emptyList()
+        val seasonNumbers = details.seasons.orEmpty()
+            .map { it.seasonNumber }
+            .ifEmpty { (1..(details.numberOfSeasons ?: 0)).toList() }
+            .distinct()
+            .sorted()
+
+        coroutineScope {
+            seasonNumbers.map { season ->
+                async {
+                    runCatching {
+                        tmdbApi.getTvSeasonDetails(numericId, season, TMDB_API_KEY, normalizedLanguage)
+                            .body()?.episodes.orEmpty()
+                            .mapNotNull { episode -> episode.toVideo(numericId, season) }
+                    }.getOrElse {
+                        Log.w(TAG, "Failed to generate TMDB season $season: ${it.message}")
+                        emptyList()
+                    }
+                }
+            }.awaitAll().flatten().sortedWith(compareBy({ it.season }, { it.episode }))
+        }
+    }
+
+    private fun TmdbEpisode.toVideo(tmdbId: Int, season: Int): Video? {
+        val number = episodeNumber ?: return null
+        val aired = airDate?.let { date ->
+            runCatching { !LocalDate.parse(date).isAfter(LocalDate.now()) }.getOrNull()
+        }
+        return Video(
+            id = "tmdb:$tmdbId:$season:$number",
+            title = name?.takeIf { it.isNotBlank() } ?: "Episodio $number",
+            released = airDate,
+            thumbnail = buildImageUrl(stillPath, size = "w780"),
+            season = season,
+            episode = number,
+            overview = overview,
+            runtime = runtime,
+            available = aired
+        )
     }
 
     suspend fun fetchMoreLikeThis(

@@ -23,6 +23,7 @@ import com.nuvio.tv.core.sync.RealtimeSyncInvalidationService
 import com.nuvio.tv.core.sync.StartupSyncService
 import com.nuvio.tv.core.sync.androidtv.AndroidTvChannelSyncService
 import com.nuvio.tv.data.local.SentrySettingsDataStore
+import com.nuvio.tv.core.network.IPv4FirstDns
 import dagger.hilt.android.HiltAndroidApp
 import okhttp3.Cookie
 import okhttp3.CookieJar
@@ -76,7 +77,7 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         // SharedPreferences reads are fast (cached in memory after first access).
         val tag = getSharedPreferences("app_locale", Context.MODE_PRIVATE)
             .getString("locale_tag", null)
-        LocaleCache.localeTag = tag ?: ""
+        LocaleCache.localeTag = tag ?: "pt-BR"
     }
 
     override fun newImageLoader(context: android.content.Context): ImageLoader {
@@ -93,7 +94,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
                 add(
                     coil3.network.okhttp.OkHttpNetworkFetcherFactory(
                         callFactory = {
-                            OkHttpClient.Builder()
+                             OkHttpClient.Builder()
+                                .dns(IPv4FirstDns())
                                 .followRedirects(true)
                                 .followSslRedirects(true)
                                 .build()

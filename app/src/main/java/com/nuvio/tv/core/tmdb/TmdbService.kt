@@ -27,8 +27,8 @@ class TmdbService @Inject constructor(
     // Cache: IMDB ID -> TMDB ID
     private val imdbToTmdbCache = ConcurrentHashMap<String, Int>()
     
-    // Cache: TMDB ID -> IMDB ID  
-    private val tmdbToImdbCache = ConcurrentHashMap<Int, String>()
+    // Cache: media type + TMDB ID -> IMDB ID. Movie and TV IDs use separate namespaces.
+    private val tmdbToImdbCache = ConcurrentHashMap<String, String>()
 
     private val imdbToTmdbInFlight = ConcurrentHashMap<String, CompletableDeferred<Int?>>()
     private val tmdbToImdbInFlight = ConcurrentHashMap<String, CompletableDeferred<String?>>()
@@ -97,7 +97,7 @@ class TmdbService @Inject constructor(
                 // Cache both directions
                 cacheMutex.withLock {
                     imdbToTmdbCache[imdbId] = found.id
-                    tmdbToImdbCache[found.id] = imdbId
+                    tmdbToImdbCache[tmdbToImdbCacheKey(found.id, normalizedType)] = imdbId
                 }
 
                 requestDeferred.complete(found.id)
@@ -129,13 +129,14 @@ class TmdbService @Inject constructor(
      * @return The IMDB ID, or null if not found
      */
     suspend fun tmdbToImdb(tmdbId: Int, mediaType: String): String? = withContext(Dispatchers.IO) {
+        val normalizedType = normalizeMediaType(mediaType)
+        val cacheKey = tmdbToImdbCacheKey(tmdbId, normalizedType)
         // Check cache first
-        tmdbToImdbCache[tmdbId]?.let { cached ->
+        tmdbToImdbCache[cacheKey]?.let { cached ->
             Log.d(TAG, "Cache hit: TMDB $tmdbId -> IMDB $cached")
             return@withContext cached
         }
         
-        val normalizedType = normalizeMediaType(mediaType)
         val requestKey = "$tmdbId:$normalizedType"
         val requestDeferred = CompletableDeferred<String?>()
         tmdbToImdbInFlight.putIfAbsent(requestKey, requestDeferred)?.let { existing ->
@@ -168,7 +169,7 @@ class TmdbService @Inject constructor(
                 
                 // Cache both directions
                 cacheMutex.withLock {
-                    tmdbToImdbCache[tmdbId] = imdbId
+                    tmdbToImdbCache[cacheKey] = imdbId
                     imdbToTmdbCache[imdbId] = tmdbId
                 }
 
@@ -241,6 +242,9 @@ class TmdbService @Inject constructor(
             else -> mediaType.lowercase()
         }
     }
+
+    private fun tmdbToImdbCacheKey(tmdbId: Int, normalizedType: String): String =
+        "$normalizedType:$tmdbId"
     
     /**
      * Clear all caches
@@ -256,9 +260,10 @@ class TmdbService @Inject constructor(
     /**
      * Pre-populate cache with known mappings
      */
-    fun preCacheMapping(imdbId: String, tmdbId: Int) {
+    fun preCacheMapping(imdbId: String, tmdbId: Int, mediaType: String = "movie") {
         imdbToTmdbCache[imdbId] = tmdbId
-        tmdbToImdbCache[tmdbId] = imdbId
+        val normalizedType = normalizeMediaType(mediaType)
+        tmdbToImdbCache[tmdbToImdbCacheKey(tmdbId, normalizedType)] = imdbId
     }
 
     /** Returns the cached TMDB ID for an IMDB ID without making any network call. */

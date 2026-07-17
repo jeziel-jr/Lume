@@ -46,6 +46,7 @@ import com.nuvio.tv.domain.model.legacyKey
 import com.nuvio.tv.domain.model.stableKey
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import com.nuvio.tv.ui.components.CatalogRowSection
@@ -54,6 +55,7 @@ import com.nuvio.tv.ui.components.ContinueWatchingSection
 import com.nuvio.tv.ui.components.HeroCarousel
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.components.PosterCardStyle
+import androidx.tv.material3.Text
 
 private class FocusSnapshot(
     var rowIndex: Int,
@@ -625,7 +627,24 @@ fun ClassicHomeContent(
                     )
                 }
 
-                is HomeRow.PlaceholderCatalog -> { }
+                is HomeRow.PlaceholderCatalog -> {
+                    LaunchedEffect(homeRow.catalogKey) {
+                        delay(150L)
+                        onRequestLazyCatalogLoad(homeRow.catalogKey)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(260.dp)
+                            .padding(horizontal = 48.dp, vertical = 24.dp),
+                        contentAlignment = Alignment.TopStart,
+                    ) {
+                        Text(
+                            text = homeRow.displayTitle,
+                            color = NuvioTheme.colors.TextSecondary,
+                        )
+                    }
+                }
             }
         }
     }

@@ -114,6 +114,9 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
+import com.nuvio.tv.data.xtream.XtreamComponentHealth
+import com.nuvio.tv.data.xtream.XtreamHealthReason
+import com.nuvio.tv.data.xtream.XtreamHealthState
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.LibassRenderType
 import com.nuvio.tv.data.local.SubtitleStyleSettings
@@ -797,6 +800,8 @@ fun PlayerScreen(
         if (uiState.error != null) {
             ErrorOverlay(
                 message = uiState.error!!,
+                serverDiagnosisChecking = uiState.serverDiagnosisChecking,
+                serverDiagnosis = uiState.serverDiagnosis,
                 showReportAction = uiState.playbackIssueReportsEnabled,
                 reportStatus = uiState.playbackIssueReportStatus,
                 reportId = uiState.playbackIssueReportId,
@@ -2663,6 +2668,8 @@ private fun LoadingIssueReportAction(
 @Composable
 private fun ErrorOverlay(
     message: String,
+    serverDiagnosisChecking: Boolean,
+    serverDiagnosis: XtreamComponentHealth?,
     showReportAction: Boolean,
     reportStatus: PlaybackIssueReportStatus,
     reportId: String?,
@@ -2700,6 +2707,35 @@ private fun ErrorOverlay(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = NuvioTheme.spacing.xxl)
             )
+
+            val serverDiagnosisMessage = when {
+                serverDiagnosisChecking -> stringResource(R.string.player_server_diagnosis_checking)
+                serverDiagnosis?.state == XtreamHealthState.LOCAL_NETWORK_FAILURE ->
+                    stringResource(R.string.player_server_diagnosis_network)
+                serverDiagnosis?.state == XtreamHealthState.APP_FORMAT_FAILURE ->
+                    stringResource(R.string.player_server_diagnosis_format)
+                serverDiagnosis?.reason == XtreamHealthReason.HTTP_UNAUTHORIZED ||
+                    serverDiagnosis?.reason == XtreamHealthReason.HTTP_FORBIDDEN ->
+                    stringResource(R.string.player_server_diagnosis_access)
+                serverDiagnosis?.reason == XtreamHealthReason.HTTP_RATE_LIMITED ->
+                    stringResource(R.string.player_server_diagnosis_rate_limit)
+                serverDiagnosis?.state == XtreamHealthState.PROVIDER_FAILURE ->
+                    stringResource(R.string.player_server_diagnosis_provider)
+                else -> null
+            }
+            if (serverDiagnosisMessage != null) {
+                Text(
+                    text = serverDiagnosisMessage,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (serverDiagnosisChecking) {
+                        Color.White.copy(alpha = 0.7f)
+                    } else {
+                        NuvioTheme.colors.Secondary
+                    },
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = NuvioTheme.spacing.xxl),
+                )
+            }
 
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
 

@@ -15,6 +15,7 @@ import com.nuvio.tv.domain.model.Stream
 import com.nuvio.tv.domain.model.Subtitle
 import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.domain.model.WatchProgress
+import com.nuvio.tv.data.xtream.XtreamComponentHealth
 import com.nuvio.tv.ui.components.SourceChipItem
 
 enum class PlayerExitReason {
@@ -161,6 +162,8 @@ data class PlayerUiState(
     val showAddonLogo: Boolean = true,
     val streamBadgePlacement: StreamBadgePlacement = StreamBadgePlacement.BOTTOM,
     val error: String? = null,
+    val serverDiagnosisChecking: Boolean = false,
+    val serverDiagnosis: XtreamComponentHealth? = null,
     val playbackIssueReportStatus: PlaybackIssueReportStatus = PlaybackIssueReportStatus.Idle,
     val playbackIssueReportId: String? = null,
     val playbackIssueReportError: String? = null,

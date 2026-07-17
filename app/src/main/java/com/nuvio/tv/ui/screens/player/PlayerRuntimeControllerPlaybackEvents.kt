@@ -1376,6 +1376,8 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
             _uiState.update { state ->
                 state.copy(
                     error = null,
+                    serverDiagnosisChecking = false,
+                    serverDiagnosis = null,
                     playbackIssueReportStatus = PlaybackIssueReportStatus.Idle,
                     playbackIssueReportId = null,
                     playbackIssueReportError = null,

@@ -2,6 +2,7 @@ package com.nuvio.tv.data.repository
 
 import android.util.Log
 import com.nuvio.tv.BuildConfig
+import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.data.local.AnimeSkipSettingsDataStore
 import com.nuvio.tv.data.remote.api.AniSkipApi
 import com.nuvio.tv.data.remote.api.AnimeSkipApi
@@ -30,12 +31,60 @@ class SkipIntroRepository @Inject constructor(
     private val aniSkipApi: AniSkipApi,
     private val animeSkipApi: AnimeSkipApi,
     private val armApi: ArmApi,
-    private val animeSkipSettingsDataStore: AnimeSkipSettingsDataStore
+    private val animeSkipSettingsDataStore: AnimeSkipSettingsDataStore,
+    private val tmdbService: TmdbService,
 ) {
     private val cache = ConcurrentHashMap<String, List<SkipInterval>>()
     private val imdbEntriesCache = ConcurrentHashMap<String, List<ArmEntry>>()
     private val animeSkipShowIdCache = ConcurrentHashMap<String, String>()
     private val introDbConfigured = BuildConfig.INTRODB_API_URL.isNotEmpty()
+
+    /**
+     * Resolves every episode ID format accepted by the player into the existing provider
+     * pipelines. TMDB-backed Lume routes use `tmdb:<series>:<season>:<episode>` and are bridged
+     * through TMDB external IDs before querying IntroDB/Anime-Skip/AniSkip.
+     */
+    suspend fun getSkipIntervalsForContent(
+        contentId: String?,
+        contentType: String?,
+        season: Int?,
+        episode: Int?,
+    ): List<SkipInterval> {
+        val effectiveId = contentId?.trim()?.takeIf { it.isNotEmpty() } ?: return emptyList()
+        val parts = effectiveId.split(':')
+
+        return when {
+            effectiveId.startsWith("mal:", ignoreCase = true) -> {
+                val malId = parts.getOrNull(1)?.takeIf { it.isNotBlank() } ?: return emptyList()
+                val resolvedEpisode = parts.getOrNull(2)?.toIntOrNull() ?: episode ?: return emptyList()
+                getSkipIntervalsForMal(malId, resolvedEpisode)
+            }
+
+            effectiveId.startsWith("kitsu:", ignoreCase = true) -> {
+                val kitsuId = parts.getOrNull(1)?.takeIf { it.isNotBlank() } ?: return emptyList()
+                val resolvedEpisode = parts.getOrNull(2)?.toIntOrNull() ?: episode ?: return emptyList()
+                getSkipIntervalsForKitsu(kitsuId, resolvedEpisode)
+            }
+
+            effectiveId.startsWith("tmdb:", ignoreCase = true) -> {
+                val tmdbId = parts.getOrNull(1)?.toIntOrNull() ?: return emptyList()
+                val resolvedSeason = parts.getOrNull(2)?.toIntOrNull() ?: season ?: return emptyList()
+                val resolvedEpisode = parts.getOrNull(3)?.toIntOrNull() ?: episode ?: return emptyList()
+                val mediaType = contentType
+                    ?.takeIf { it.equals("series", true) || it.equals("tv", true) }
+                    ?: "series"
+                val imdbId = tmdbService.tmdbToImdb(tmdbId, mediaType) ?: return emptyList()
+                getSkipIntervals(imdbId, resolvedSeason, resolvedEpisode)
+            }
+
+            else -> {
+                val imdbId = parts.firstOrNull()?.takeIf { it.startsWith("tt") } ?: return emptyList()
+                val resolvedSeason = parts.getOrNull(1)?.toIntOrNull() ?: season ?: return emptyList()
+                val resolvedEpisode = parts.getOrNull(2)?.toIntOrNull() ?: episode ?: return emptyList()
+                getSkipIntervals(imdbId, resolvedSeason, resolvedEpisode)
+            }
+        }
+    }
 
     suspend fun getSkipIntervals(imdbId: String?, season: Int, episode: Int): List<SkipInterval> = coroutineScope {
         if (imdbId == null) return@coroutineScope emptyList()

@@ -11,6 +11,9 @@ import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.data.mapper.toDomain
 import com.nuvio.tv.data.remote.api.AddonApi
+import com.nuvio.tv.data.xtream.XtreamPlaybackService
+import com.nuvio.tv.data.xtream.XtreamResolution
+import com.nuvio.tv.domain.model.ContentType
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.AddonStreams
 import com.nuvio.tv.domain.model.LocalScraperResult
@@ -42,6 +45,7 @@ class StreamRepositoryImpl @Inject constructor(
     private val addonRepository: AddonRepository,
     private val pluginManager: PluginManager,
     private val tmdbService: TmdbService,
+    private val xtreamPlaybackService: XtreamPlaybackService,
     private val debridStreamPresentation: DebridStreamPresentation,
     private val localDebridAvailabilityService: LocalDebridAvailabilityService
 ) : StreamRepository {
@@ -65,6 +69,27 @@ class StreamRepositoryImpl @Inject constructor(
         emit(NetworkResult.Loading)
 
         try {
+            val directTmdbId = videoId
+                .takeIf { it.startsWith("tmdb:", ignoreCase = true) }
+                ?.substringAfter(':')
+                ?.substringBefore(':')
+                ?.toIntOrNull()
+            if (directTmdbId != null) {
+                val contentType = ContentType.fromString(type)
+                val resolution = xtreamPlaybackService.resolve(
+                    tmdbId = directTmdbId,
+                    contentType = contentType,
+                    season = season,
+                    episode = episode
+                )
+                when (resolution) {
+                    is XtreamResolution.Available -> emit(NetworkResult.Success(listOf(resolution.source)))
+                    XtreamResolution.Unavailable -> emit(NetworkResult.Error(context.getString(R.string.stream_error_coming_soon)))
+                    is XtreamResolution.Failure -> emit(NetworkResult.Error(resolution.message))
+                }
+                return@flow
+            }
+
             val addons = addonRepository.getInstalledAddons().first().enabledAddons()
             
             // Filter addons that support streams for this type and id

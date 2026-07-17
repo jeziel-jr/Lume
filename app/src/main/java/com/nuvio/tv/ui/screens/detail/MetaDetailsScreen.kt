@@ -468,6 +468,8 @@ fun MetaDetailsScreen(
                     isInLibrary = uiState.isInLibrary,
                     librarySourceMode = uiState.librarySourceMode,
                     nextToWatch = uiState.nextToWatch,
+                    moviePlaybackAvailability = uiState.moviePlaybackAvailability,
+                    episodePlaybackAvailability = uiState.episodePlaybackAvailability,
                     episodeProgressMap = uiState.episodeProgressMap,
                     watchedEpisodes = uiState.watchedEpisodes,
                     episodeWatchedPendingKeys = uiState.episodeWatchedPendingKeys,
@@ -498,7 +500,7 @@ fun MetaDetailsScreen(
                     onSeasonSelected = { viewModel.onEvent(MetaDetailsEvent.OnSeasonSelected(it)) },
                     onEpisodeClick = { video ->
                         onPlayClick(
-                            video.id,
+                            viewModel.playbackVideoId(video.id, video.season, video.episode),
                             meta.apiType,
                             meta.id,
                             meta.name,
@@ -516,7 +518,7 @@ fun MetaDetailsScreen(
                     },
                     onEpisodeManualPlayClick = { video ->
                         onPlayManuallyClick(
-                            video.id,
+                            viewModel.playbackVideoId(video.id, video.season, video.episode),
                             meta.apiType,
                             meta.id,
                             meta.name,
@@ -534,7 +536,7 @@ fun MetaDetailsScreen(
                     },
                     onPlayClick = { videoId ->
                         onPlayClick(
-                            videoId,
+                            viewModel.playbackVideoId(videoId),
                             meta.apiType,
                             meta.id,
                             meta.name,
@@ -552,7 +554,7 @@ fun MetaDetailsScreen(
                     },
                     onPlayManuallyClick = { videoId ->
                         onPlayManuallyClick(
-                            videoId,
+                            viewModel.playbackVideoId(videoId),
                             meta.apiType,
                             meta.id,
                             meta.name,
@@ -570,7 +572,7 @@ fun MetaDetailsScreen(
                     },
                     onEpisodeStartFromBeginningClick = { video ->
                         onPlayStartFromBeginningClick(
-                            video.id,
+                            viewModel.playbackVideoId(video.id, video.season, video.episode),
                             meta.apiType,
                             meta.id,
                             meta.name,
@@ -588,7 +590,7 @@ fun MetaDetailsScreen(
                     },
                     onPlayStartFromBeginningClick = { videoId ->
                         onPlayStartFromBeginningClick(
-                            videoId,
+                            viewModel.playbackVideoId(videoId),
                             meta.apiType,
                             meta.id,
                             meta.name,
@@ -604,7 +606,8 @@ fun MetaDetailsScreen(
                             meta.resolveContentLanguage()
                         )
                     },
-                    showManualPlayOption = effectiveAutoplayEnabled,
+                    showManualPlayOption = viewModel.isTmdbPlayback || effectiveAutoplayEnabled,
+                    onRetryPlaybackAvailability = viewModel::retryPlaybackAvailability,
                     onPlayButtonFocused = { viewModel.onEvent(MetaDetailsEvent.OnPlayButtonFocused) },
                     onToggleLibrary = { viewModel.onEvent(MetaDetailsEvent.OnToggleLibrary) },
                     onLibraryLongPress = { viewModel.onEvent(MetaDetailsEvent.OnLibraryLongPress) },
@@ -826,6 +829,8 @@ private fun MetaDetailsContent(
     isInLibrary: Boolean,
     librarySourceMode: LibrarySourceMode,
     nextToWatch: NextToWatch?,
+    moviePlaybackAvailability: PlaybackAvailabilityState,
+    episodePlaybackAvailability: Map<Pair<Int, Int>, PlaybackAvailabilityState>,
     episodeProgressMap: Map<Pair<Int, Int>, WatchProgress>,
     watchedEpisodes: Set<Pair<Int, Int>>,
     episodeWatchedPendingKeys: Set<String>,
@@ -861,6 +866,7 @@ private fun MetaDetailsContent(
     onPlayManuallyClick: (String) -> Unit,
     onPlayStartFromBeginningClick: (String) -> Unit = {},
     showManualPlayOption: Boolean,
+    onRetryPlaybackAvailability: () -> Unit,
     onPlayButtonFocused: () -> Unit,
     onToggleLibrary: () -> Unit,
     onLibraryLongPress: () -> Unit,
@@ -1374,13 +1380,38 @@ private fun MetaDetailsContent(
     // Pre-compute gradient brushes once
 
     // Stable hero play callback
-    val heroPlayClick = remember(heroVideo, meta.id, onEpisodeClick, onPlayClick) {
+    val heroPlaybackAvailability = remember(
+        heroVideo,
+        isSeries,
+        moviePlaybackAvailability,
+        episodePlaybackAvailability
+    ) {
+        if (!isSeries) {
+            moviePlaybackAvailability
+        } else {
+            val season = heroVideo?.season
+            val episode = heroVideo?.episode
+            if (season == null || episode == null) PlaybackAvailabilityState.CHECKING
+            else episodePlaybackAvailability[season to episode] ?: PlaybackAvailabilityState.CHECKING
+        }
+    }
+    val heroPlayClick = remember(
+        heroVideo,
+        meta.id,
+        onEpisodeClick,
+        onPlayClick,
+        heroPlaybackAvailability,
+        onRetryPlaybackAvailability
+    ) {
         {
             markHeroRestore()
-            if (heroVideo != null) {
-                onEpisodeClick(heroVideo)
-            } else {
-                onPlayClick(meta.id)
+            when (heroPlaybackAvailability) {
+                PlaybackAvailabilityState.AVAILABLE -> {
+                    if (heroVideo != null) onEpisodeClick(heroVideo) else onPlayClick(meta.id)
+                }
+                PlaybackAvailabilityState.ERROR -> onRetryPlaybackAvailability()
+                PlaybackAvailabilityState.CHECKING,
+                PlaybackAvailabilityState.UNAVAILABLE -> Unit
             }
         }
     }
@@ -1622,8 +1653,12 @@ private fun MetaDetailsContent(
                         meta = meta,
                         nextEpisode = nextEpisode,
                         nextToWatch = nextToWatch,
+                        playbackAvailability = heroPlaybackAvailability,
                         onPlayClick = heroPlayClick,
-                        onPlayLongPress = if (showManualPlayOption || nextToWatch?.isResume == true) {
+                        onPlayLongPress = if (
+                            heroPlaybackAvailability == PlaybackAvailabilityState.AVAILABLE &&
+                            (showManualPlayOption || nextToWatch?.isResume == true)
+                        ) {
                             { showHeroPlayOptionsDialog = true }
                         } else {
                             null
@@ -1690,6 +1725,7 @@ private fun MetaDetailsContent(
                     Box(modifier = Modifier.bringIntoViewResponder(noVerticalScrollResponder)) {
                         EpisodesRow(
                             episodes = episodesForSeason,
+                            playbackAvailability = episodePlaybackAvailability,
                             episodeProgressMap = episodeProgressMap,
                             episodeRatings = episodeImdbRatings,
                             watchedEpisodes = watchedEpisodes,
@@ -1702,6 +1738,7 @@ private fun MetaDetailsContent(
                                 onEpisodeStartFromBeginningClick(video)
                             },
                             showManualPlayOption = showManualPlayOption,
+                            onRetryPlaybackAvailability = onRetryPlaybackAvailability,
                             onToggleEpisodeWatched = onToggleEpisodeWatched,
                             onMarkSeasonWatched = onMarkSeasonWatched,
                             onMarkSeasonUnwatched = onMarkSeasonUnwatched,

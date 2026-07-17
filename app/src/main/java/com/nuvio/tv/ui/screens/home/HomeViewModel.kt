@@ -9,6 +9,8 @@ import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.recommendations.TvRecommendationManager
 import com.nuvio.tv.core.tmdb.TmdbMetadataService
+import com.nuvio.tv.core.tmdb.TmdbCatalogService
+import com.nuvio.tv.core.tmdb.TmdbPlayableCatalogLoader
 import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.data.local.AuthSessionNoticeDataStore
 import com.nuvio.tv.data.local.CollectionsDataStore
@@ -21,6 +23,8 @@ import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.data.local.WatchedItemsPreferences
 import com.nuvio.tv.data.local.ContinueWatchingEnrichmentCache
 import com.nuvio.tv.data.trailer.TrailerService
+import com.nuvio.tv.data.xtream.XtreamPlaybackService
+import com.nuvio.tv.data.xtream.XtreamCatalogState
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
@@ -29,6 +33,7 @@ import com.nuvio.tv.domain.model.ContinueWatchingSortMode
 import com.nuvio.tv.domain.model.LibraryEntryInput
 import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.domain.model.catalogRowStableKey
 import com.nuvio.tv.data.repository.MDBListRepository
 import com.nuvio.tv.domain.model.MDBListSettings
 import com.nuvio.tv.domain.model.TmdbSettings
@@ -40,6 +45,8 @@ import com.nuvio.tv.domain.repository.WatchProgressRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -75,8 +82,11 @@ class HomeViewModel @Inject constructor(
     internal val authSessionNoticeDataStore: AuthSessionNoticeDataStore,
     internal val tmdbService: TmdbService,
     internal val tmdbMetadataService: TmdbMetadataService,
+    internal val tmdbCatalogService: TmdbCatalogService,
+    private val tmdbPlayableCatalogLoader: TmdbPlayableCatalogLoader,
     internal val mdbListRepository: MDBListRepository,
     internal val trailerService: TrailerService,
+    private val xtreamPlaybackService: XtreamPlaybackService,
     internal val watchedItemsPreferences: WatchedItemsPreferences,
     internal val watchedSeriesStateHolder: com.nuvio.tv.data.local.WatchedSeriesStateHolder,
     internal val cwEnrichmentCache: ContinueWatchingEnrichmentCache,
@@ -92,6 +102,16 @@ class HomeViewModel @Inject constructor(
         private const val MAX_NEXT_UP_LOOKUPS = 24
         private const val MAX_NEXT_UP_CONCURRENCY = 4
         private const val MAX_CATALOG_LOAD_CONCURRENCY = 3
+        private val INITIAL_TMDB_CATALOG_IDS = setOf(
+            "trending-movies",
+            "trending-series",
+            "popular-movies",
+            "popular-series",
+            "recent-releases",
+            "new-tv-episodes",
+        )
+        private const val TMDB_ADDON_ID = "tmdb"
+        private const val TMDB_BASE_URL = "https://api.themoviedb.org/3/"
         internal const val EXTERNAL_META_PREFETCH_FOCUS_DEBOUNCE_MS = 220L
         internal const val EXTERNAL_META_PREFETCH_ADJACENT_DEBOUNCE_MS = 120L
     }
@@ -220,6 +240,8 @@ class HomeViewModel @Inject constructor(
     internal var cwPipelineJob: Job? = null
     internal val fullyWatchedSeriesIds get() = watchedSeriesStateHolder
     internal var tmdbEnrichFocusJob: Job? = null
+    private var availabilityPrefetchJob: Job? = null
+    private val availabilityPrefetchedIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
     internal var pendingTmdbEnrichItemId: String? = null
     /** Item that was focused during startup grace period — will be enriched once grace ends. */
     internal var deferredEnrichItem: MetaPreview? = null
@@ -244,6 +266,11 @@ class HomeViewModel @Inject constructor(
     internal val eagerCatalogLoadCount: Int = 4
     internal val lazyLoadRequestedKeys: MutableSet<String> = ConcurrentHashMap.newKeySet()
     internal val pendingLazyCatalogs = linkedMapOf<String, Pair<Addon, CatalogDescriptor>>()
+    private val tmdbCatalogRows = linkedMapOf<String, CatalogRow>()
+    private val tmdbPendingCatalogIds = mutableSetOf<String>()
+    private val tmdbFailedCatalogIds = mutableSetOf<String>()
+    private var hasLoggedFirstTmdbRow = false
+    private var hasLoggedInitialTmdbGroup = false
     /** All placeholder descriptors for homeRow construction. */
     internal data class PlaceholderDescriptor(
         val catalogKey: String,
@@ -287,17 +314,11 @@ class HomeViewModel @Inject constructor(
             watchedSeriesStateHolder.loadFromDisk()
             observeExternalMetaPrefetchPreference()
             observeContinueWatchingSortMode()
-            loadHomeCatalogOrderPreference()
-            loadFollowAddonsOrder()
-            loadDisabledHomeCatalogPreference()
-            loadCustomCatalogTitles()
             observeLibraryState()
-            observeTmdbSettings()
-            observeMdbListSettings()
             observeBlurUnwatchedEpisodes()
             observeProgressSourceChanges()
-            observeCollections()
-            observeInstalledAddons()
+            observeTmdbCatalogAvailability()
+            loadLumeCatalogs()
 
             viewModelScope.launch {
                 combine(
@@ -470,7 +491,25 @@ class HomeViewModel @Inject constructor(
         apiType = apiType
     )
 
-    fun onItemFocus(item: MetaPreview) = onItemFocusPipeline(item)
+    fun onItemFocus(item: MetaPreview) {
+        onItemFocusPipeline(item)
+        scheduleAvailabilityPrefetch(item)
+    }
+
+    private fun scheduleAvailabilityPrefetch(item: MetaPreview) {
+        val tmdbId = item.id.takeIf { it.startsWith("tmdb:", ignoreCase = true) }
+            ?.substringAfter(':')
+            ?.substringBefore(':')
+            ?.toIntOrNull()
+            ?: return
+        if (item.id in availabilityPrefetchedIds) return
+        availabilityPrefetchJob?.cancel()
+        availabilityPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(450L)
+            if (!availabilityPrefetchedIds.add(item.id)) return@launch
+            runCatching { xtreamPlaybackService.prefetchAvailability(tmdbId, item.type) }
+        }
+    }
 
     fun preloadAdjacentItem(item: MetaPreview) = preloadAdjacentItemPipeline(item)
 
@@ -555,14 +594,17 @@ class HomeViewModel @Inject constructor(
     fun onEvent(event: HomeEvent) {
         when (event) {
             is HomeEvent.OnItemClick -> navigateToDetail(event.itemId, event.itemType)
-            is HomeEvent.OnLoadMoreCatalog -> loadMoreCatalogItems(event.catalogId, event.addonId, event.type)
+            is HomeEvent.OnLoadMoreCatalog -> {
+                if (event.addonId == "tmdb") loadMoreLumeCatalog(event.catalogId)
+                else loadMoreCatalogItems(event.catalogId, event.addonId, event.type)
+            }
             is HomeEvent.OnRemoveContinueWatching -> removeContinueWatching(
                 contentId = event.contentId,
                 season = event.season,
                 episode = event.episode,
                 isNextUp = event.isNextUp
             )
-            HomeEvent.OnRetry -> viewModelScope.launch { loadAllCatalogs(addonsCache, forceReload = true) }
+            HomeEvent.OnRetry -> loadLumeCatalogs()
         }
     }
 
@@ -665,6 +707,152 @@ class HomeViewModel @Inject constructor(
 
     private fun observeInstalledAddons() = observeInstalledAddonsPipeline()
 
+    private fun loadLumeCatalogs() {
+        viewModelScope.launch {
+            synchronized(catalogStateLock) {
+                tmdbCatalogRows.clear()
+                tmdbFailedCatalogIds.clear()
+                tmdbPendingCatalogIds.clear()
+                tmdbPendingCatalogIds.addAll(tmdbCatalogService.homeCatalogDefinitions.map { it.id })
+            }
+            lazyLoadRequestedKeys.removeAll { it.startsWith("${TMDB_ADDON_ID}_") }
+            publishTmdbHome(isInitialLoading = true)
+
+            kotlinx.coroutines.coroutineScope {
+                tmdbCatalogService.homeCatalogDefinitions
+                    .filter { it.id in INITIAL_TMDB_CATALOG_IDS }
+                    .map { definition ->
+                        async { loadTmdbCatalog(definition.id) }
+                    }
+                    .forEach { it.await() }
+            }
+            if (_uiState.value.catalogRows.isEmpty()) {
+                _uiState.update { state ->
+                    state.copy(
+                        isLoading = false,
+                        error = "Nao foi possivel carregar o catalogo inicial do TMDB.",
+                    )
+                }
+            }
+        }
+    }
+
+    private fun observeTmdbCatalogAvailability() {
+        viewModelScope.launch {
+            tmdbPlayableCatalogLoader.catalogState
+                .map { state -> state is XtreamCatalogState.Ready }
+                .distinctUntilChanged()
+                .collect { isReady ->
+                    if (!isReady) return@collect
+                    val loadedCatalogIds = synchronized(catalogStateLock) {
+                        tmdbCatalogRows.keys.toList()
+                    }
+                    if (loadedCatalogIds.isEmpty()) return@collect
+                    android.util.Log.i(
+                        TAG,
+                        "refilter_tmdb_catalogs count=${loadedCatalogIds.size}",
+                    )
+                    kotlinx.coroutines.coroutineScope {
+                        loadedCatalogIds
+                            .chunked(MAX_CATALOG_LOAD_CONCURRENCY)
+                            .forEach { batch ->
+                                batch
+                                    .map { catalogId -> async { loadTmdbCatalog(catalogId) } }
+                                    .forEach { it.await() }
+                            }
+                    }
+                }
+        }
+    }
+
+    private suspend fun loadTmdbCatalog(catalogId: String) {
+        val startedAt = SystemClock.elapsedRealtime()
+        val row = runCatching { tmdbPlayableCatalogLoader.loadInitial(catalogId, "pt-BR") }.getOrNull()
+        android.util.Log.i(
+            TAG,
+            "tmdb_catalog id=$catalogId duration_ms=${SystemClock.elapsedRealtime() - startedAt} items=${row?.items?.size ?: 0}",
+        )
+        synchronized(catalogStateLock) {
+            tmdbPendingCatalogIds.remove(catalogId)
+            if (row != null && row.items.isNotEmpty()) {
+                tmdbCatalogRows[catalogId] = row
+                tmdbFailedCatalogIds.remove(catalogId)
+            } else {
+                tmdbFailedCatalogIds.add(catalogId)
+            }
+        }
+        publishTmdbHome(isInitialLoading = false)
+    }
+
+    private fun publishTmdbHome(isInitialLoading: Boolean) {
+        val (rows, homeRows) = synchronized(catalogStateLock) {
+            val orderedRows = tmdbCatalogService.homeCatalogDefinitions.mapNotNull { tmdbCatalogRows[it.id] }
+            val orderedHomeRows = tmdbCatalogService.homeCatalogDefinitions.mapNotNull { definition ->
+                tmdbCatalogRows[definition.id]?.let(HomeRow::Catalog)
+                    ?: definition.takeIf { it.id in tmdbPendingCatalogIds }?.let {
+                        val apiType = it.contentType.toApiString()
+                        val legacyKey = "${TMDB_ADDON_ID}_${apiType}_${it.id}"
+                        HomeRow.PlaceholderCatalog(
+                            catalogKey = legacyKey,
+                            stableCatalogKey = catalogRowStableKey(TMDB_ADDON_ID, TMDB_BASE_URL, apiType, it.id),
+                            addonId = TMDB_ADDON_ID,
+                            addonName = "TMDB",
+                            addonBaseUrl = TMDB_BASE_URL,
+                            catalogId = it.id,
+                            catalogName = it.title,
+                            apiType = apiType,
+                            displayTitle = it.title,
+                        )
+                    }
+            }
+            orderedRows to orderedHomeRows
+        }
+        _fullCatalogRows.value = rows
+        _uiState.update { state ->
+            state.copy(
+                catalogRows = rows,
+                homeRows = homeRows,
+                heroItems = rows.firstOrNull()?.items.orEmpty().take(12),
+                installedAddonsCount = 0,
+                isLoading = isInitialLoading && rows.isEmpty(),
+                error = null,
+            )
+        }
+        if (rows.isNotEmpty() && !hasLoggedFirstTmdbRow) {
+            hasLoggedFirstTmdbRow = true
+            android.util.Log.i(TAG, "first_useful_home_ms=${SystemClock.elapsedRealtime() - startupStartedAtMs}")
+        }
+        if (!hasLoggedInitialTmdbGroup && INITIAL_TMDB_CATALOG_IDS.all { id -> rows.any { it.catalogId == id } }) {
+            hasLoggedInitialTmdbGroup = true
+            android.util.Log.i(TAG, "initial_tmdb_group_ms=${SystemClock.elapsedRealtime() - startupStartedAtMs}")
+        }
+    }
+
+    private fun loadMoreLumeCatalog(catalogId: String) {
+        val current = _uiState.value.catalogRows.firstOrNull { it.catalogId == catalogId } ?: return
+        if (current.isLoading || !current.hasMore) return
+        synchronized(catalogStateLock) {
+            tmdbCatalogRows[catalogId] = current.copy(isLoading = true)
+        }
+        publishTmdbHome(isInitialLoading = false)
+        viewModelScope.launch {
+            runCatching { tmdbPlayableCatalogLoader.loadMore(current, "pt-BR") }
+                .onSuccess { page ->
+                    val merged = page ?: current.copy(isLoading = false, hasMore = false)
+                    synchronized(catalogStateLock) {
+                        tmdbCatalogRows[catalogId] = merged
+                    }
+                    publishTmdbHome(isInitialLoading = false)
+                }
+                .onFailure {
+                    synchronized(catalogStateLock) {
+                        tmdbCatalogRows[catalogId] = current.copy(isLoading = false)
+                    }
+                    publishTmdbHome(isInitialLoading = false)
+                }
+        }
+    }
+
     private suspend fun loadAllCatalogs(addons: List<Addon>, forceReload: Boolean = false) =
         loadAllCatalogsPipeline(addons, forceReload)
 
@@ -700,6 +888,18 @@ class HomeViewModel @Inject constructor(
      * Called from the UI when a placeholder catalog row becomes visible.
      */
     fun requestLazyCatalogLoad(catalogKey: String) {
+        val tmdbDefinition = tmdbCatalogService.homeCatalogDefinitions.firstOrNull { definition ->
+            catalogKey == "${TMDB_ADDON_ID}_${definition.contentType.toApiString()}_${definition.id}"
+        }
+        if (tmdbDefinition != null) {
+            val shouldLoad = synchronized(catalogStateLock) {
+                tmdbDefinition.id in tmdbPendingCatalogIds && lazyLoadRequestedKeys.add(catalogKey)
+            }
+            if (shouldLoad) {
+                viewModelScope.launch { loadTmdbCatalog(tmdbDefinition.id) }
+            }
+            return
+        }
         if (catalogKey in lazyLoadRequestedKeys) {
             return
         }
@@ -723,6 +923,15 @@ class HomeViewModel @Inject constructor(
      * which needs all catalogs available upfront.
      */
     internal fun loadAllPendingLazyCatalogs() {
+        val pendingTmdb = synchronized(catalogStateLock) {
+            tmdbCatalogService.homeCatalogDefinitions.filter { it.id in tmdbPendingCatalogIds }
+        }
+        pendingTmdb.forEach { definition ->
+            val key = "${TMDB_ADDON_ID}_${definition.contentType.toApiString()}_${definition.id}"
+            if (lazyLoadRequestedKeys.add(key)) {
+                viewModelScope.launch { loadTmdbCatalog(definition.id) }
+            }
+        }
         val pending = synchronized(catalogStateLock) {
             val copy = pendingLazyCatalogs.toMap()
             pendingLazyCatalogs.clear()

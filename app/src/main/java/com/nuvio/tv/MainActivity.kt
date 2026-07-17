@@ -126,6 +126,8 @@ import com.nuvio.tv.core.sync.ProfileSettingsSyncService
 import com.nuvio.tv.core.sync.ProfileSyncService
 import com.nuvio.tv.core.sync.StartupSyncService
 import com.nuvio.tv.data.local.AppOnboardingDataStore
+import com.nuvio.tv.data.xtream.XtreamCredentialsStore
+import com.nuvio.tv.ui.screens.xtream.XtreamSetupScreen
 import com.nuvio.tv.data.local.AuthSessionNoticeDataStore
 import com.nuvio.tv.data.local.ExperienceModeDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
@@ -133,6 +135,7 @@ import com.nuvio.tv.data.local.StartupAuthNotice
 import com.nuvio.tv.data.local.ThemeDataStore
 import com.nuvio.tv.data.remote.supabase.AvatarRepository
 import com.nuvio.tv.data.repository.TraktProgressService
+import com.nuvio.tv.data.xtream.XtreamCatalogRepository
 import com.nuvio.tv.domain.model.AppFont
 import com.nuvio.tv.domain.model.AppTheme
 import com.nuvio.tv.domain.model.AuthState
@@ -226,6 +229,9 @@ class MainActivity : ComponentActivity() {
     lateinit var startupSyncService: StartupSyncService
 
     @Inject
+    lateinit var xtreamCatalogRepository: XtreamCatalogRepository
+
+    @Inject
     lateinit var androidTvChannelSyncService: com.nuvio.tv.core.sync.androidtv.AndroidTvChannelSyncService
 
     @Inject
@@ -245,6 +251,8 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var appOnboardingDataStore: AppOnboardingDataStore
+    @Inject
+    lateinit var xtreamCredentialsStore: XtreamCredentialsStore
 
     @Inject
     lateinit var avatarRepository: AvatarRepository
@@ -293,6 +301,7 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.i("LumeStartup", "activity_on_create elapsed_realtime_ms=${android.os.SystemClock.elapsedRealtime()}")
         installSplashScreen()
         super.onCreate(savedInstanceState)
         isFirstResumeAfterCreate = true
@@ -322,7 +331,12 @@ class MainActivity : ComponentActivity() {
             }
             val hasSeenAuthQrOnFirstLaunch by hasSeenAuthQrFlow.collectAsState(initial = null)
             val authState by authManager.authState.collectAsState()
+            val xtreamCredentials by xtreamCredentialsStore.credentials.collectAsState()
             val context = LocalContext.current
+
+            LaunchedEffect(xtreamCatalogRepository, xtreamCredentials) {
+                if (xtreamCredentials != null) xtreamCatalogRepository.initialize()
+            }
 
             LaunchedEffect(authSessionNoticeDataStore, context) {
                 authSessionNoticeDataStore.pendingNotice.collect { notice ->
@@ -492,72 +506,11 @@ class MainActivity : ComponentActivity() {
                         containerColor = NuvioTheme.colors.Background
                     )
                 ) {
-                    if (hasSeenAuthQrOnFirstLaunch == null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(NuvioTheme.colors.Background)
-                        )
+                    if (xtreamCredentials == null) {
+                        XtreamSetupScreen(onConfigured = {})
                         return@Surface
                     }
-
-                    if (authState is AuthState.Loading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(NuvioTheme.colors.Background)
-                        )
-                        return@Surface
-                    }
-
-                    if (
-                        hasSeenAuthQrOnFirstLaunch == false &&
-                        authState !is AuthState.FullAccount &&
-                        !onboardingCompletedThisSession
-                    ) {
-                        AuthQrSignInScreen(
-                            onBackPress = { finish() },
-                            onContinue = {
-                                lifecycleScope.launch {
-                                    val shouldRunRemoteOnboardingSync =
-                                        authManager.authState.value is AuthState.FullAccount
-
-                                    if (shouldRunRemoteOnboardingSync) {
-                                        if (onboardingProfileSyncInProgress) return@launch
-                                        onboardingProfileSyncInProgress = true
-                                        val maxAttempts = 3
-                                        var synced = false
-                                        for (attempt in 0 until maxAttempts) {
-                                            val result = profileSyncService.pullFromRemote()
-                                            if (result.isSuccess) {
-                                                synced = true
-                                                break
-                                            }
-                                            if (attempt < maxAttempts - 1) {
-                                                delay(1_000)
-                                            }
-                                        }
-                                        if (!synced) {
-                                            android.util.Log.w(
-                                                "MainActivity",
-                                                "Onboarding profile sync failed after retries; continuing"
-                                            )
-                                        }
-                                    }
-                                    appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
-                                    onboardingCompletedThisSession = true
-                                    onboardingProfileSyncInProgress = false
-                                }
-                                if (authManager.authState.value is AuthState.FullAccount) {
-                                    startupSyncService.requestSyncNow()
-                                }
-                            }
-                        )
-                        return@Surface
-                    }
-
-                    val shouldShowProfileSelection =
-                        !hasSelectedProfileThisSession && (profiles.size > 1 || activeProfileHasPin)
+                    val shouldShowProfileSelection = false
 
                     if (shouldShowProfileSelection) {
                         ProfileSelectionScreen(
@@ -571,22 +524,10 @@ class MainActivity : ComponentActivity() {
                         return@Surface
                     }
 
-                    val layoutChosen = mainUiPrefs.hasChosenLayout
-                    if (layoutChosen == null || !mainUiPrefs.experienceModeLoaded || installedAddons == null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(NuvioTheme.colors.Background)
-                        )
-                        return@Surface
-                    }
-                    val effectiveExperienceMode = mainUiPrefs.experienceMode
-                        ?: if (layoutChosen) ExperienceMode.ADVANCED else null
-                    val needsExperienceSelection = effectiveExperienceMode == null
-                    val needsEssentialAddonSetup =
-                        effectiveExperienceMode == ExperienceMode.ESSENTIAL &&
-                            installedAddons.orEmpty().isEmpty() &&
-                            !mainUiPrefs.addonSetupSkipped
+                    val layoutChosen = true
+                    val effectiveExperienceMode = ExperienceMode.ADVANCED
+                    val needsExperienceSelection = false
+                    val needsEssentialAddonSetup = false
                     val pendingDeepLink by pendingDeepLinkUrl.collectAsState()
 
                     LaunchedEffect(pendingDeepLink) {
@@ -602,27 +543,13 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (needsEssentialAddonSetup) {
-                        EssentialAddonSetupScreen(
-                            onSkip = {
-                                lifecycleScope.launch {
-                                    experienceModeDataStore.setAddonSetupSkipped(true)
-                                }
-                            }
-                        )
-                        return@Surface
-                    }
                     val sidebarCollapsed = mainUiPrefs.sidebarCollapsed
                     val modernSidebarEnabled = mainUiPrefs.modernSidebarEnabled
                     val modernSidebarBlurEnabled =
                         mainUiPrefs.modernSidebarBlurPref && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
                     val hideBuiltInHeadersForFloatingPill = modernSidebarEnabled && !sidebarCollapsed
 
-                    val startDestination = when {
-                        needsExperienceSelection -> Screen.ExperienceModeSelection.route
-                        layoutChosen -> Screen.Home.route
-                        else -> Screen.LayoutSelection.route
-                    }
+                    val startDestination = Screen.Home.route
                     val navController = rememberNavController()
                     var optimisticRoute by remember { mutableStateOf<String?>(null) }
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -745,9 +672,6 @@ class MainActivity : ComponentActivity() {
                             add(Screen.Search.route)
                             add(Screen.Library.route)
                             add(Screen.Settings.route)
-                            if (discoverLocation == DiscoverLocation.IN_SIDEBAR) {
-                                add(Screen.Discover.route)
-                            }
                         }
                     }
 
@@ -772,15 +696,6 @@ class MainActivity : ComponentActivity() {
                                     icon = Icons.Default.Home
                                 )
                             )
-                            if (discoverLocation == DiscoverLocation.IN_SIDEBAR) {
-                                add(
-                                    DrawerItem(
-                                        route = Screen.Discover.route,
-                                        label = strNavDiscover,
-                                        icon = Icons.Default.Explore
-                                    )
-                                )
-                            }
                             add(
                                 DrawerItem(
                                     route = Screen.Search.route,
@@ -1164,7 +1079,7 @@ private fun LegacySidebarScaffold(
                                 }
                             } else {
                                 Image(
-                                    painter = painterResource(id = R.drawable.app_logo_wordmark),
+                                    painter = painterResource(id = R.drawable.lume_wordmark),
                                     contentDescription = stringResource(R.string.app_name),
                                     modifier = Modifier
                                         .fillMaxWidth()

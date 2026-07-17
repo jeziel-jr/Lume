@@ -1350,11 +1350,25 @@ internal fun PlayerRuntimeController.initializePlayer(
                         _uiState.update {
                             it.copy(
                                 error = detailedError,
+                                serverDiagnosisChecking = xtreamServerHealthMonitor.isXtreamStream(currentStreamUrl),
+                                serverDiagnosis = null,
                                 showLoadingOverlay = false,
                                 showPauseOverlay = false,
                                 loadingIssueReportVisible = false,
                                 loadingIssueElapsedMs = 0L
                             )
+                        }
+                        if (xtreamServerHealthMonitor.isXtreamStream(currentStreamUrl)) {
+                            scope.launch {
+                                val diagnosis = xtreamServerHealthMonitor
+                                    .diagnosePlaybackFailure(currentStreamUrl)
+                                _uiState.update { state ->
+                                    if (state.error == null) state else state.copy(
+                                        serverDiagnosisChecking = false,
+                                        serverDiagnosis = diagnosis,
+                                    )
+                                }
+                            }
                         }
                     }
                 })

@@ -9,6 +9,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -64,6 +65,7 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.domain.model.ContentType
 import com.nuvio.tv.domain.model.CardDepthSurface
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 import com.nuvio.tv.domain.model.PosterShape
 import com.nuvio.tv.ui.theme.NuvioTheme
 import coil3.compose.AsyncImage
@@ -98,6 +100,7 @@ fun ContentCard(
     trailerPreviewAudioUrl: String? = null,
     onRequestTrailerPreview: (MetaPreview) -> Unit = {},
     isWatched: Boolean = false,
+    catalogAvailability: CatalogPlaybackAvailability? = null,
     onFocus: (MetaPreview) -> Unit = {},
     onBackdropExpandedChanged: ((Boolean) -> Unit)? = null,
     expandedDownFocusRequester: FocusRequester? = null,
@@ -489,6 +492,41 @@ fun ContentCard(
                                 color = Color.White,
                             )
                         }
+                    }
+                }
+
+                if (catalogAvailability == CatalogPlaybackAvailability.UNAVAILABLE ||
+                    catalogAvailability == CatalogPlaybackAvailability.UNKNOWN
+                ) {
+                    val availabilityLabel = if (catalogAvailability == CatalogPlaybackAvailability.UNAVAILABLE) {
+                        stringResource(R.string.catalog_availability_unavailable)
+                    } else {
+                        stringResource(R.string.catalog_availability_checking)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = NuvioTheme.spacing.sm, bottom = NuvioTheme.spacing.sm)
+                            .zIndex(3f)
+                            .height(20.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(NuvioTheme.colors.BackgroundCard.copy(alpha = 0.92f))
+                            .padding(horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(2.dp)
+                                .height(12.dp)
+                                .background(NuvioTheme.colors.Warning, RoundedCornerShape(1.dp)),
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = availabilityLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = NuvioTheme.colors.TextPrimary,
+                            maxLines = 1,
+                        )
                     }
                 }
 

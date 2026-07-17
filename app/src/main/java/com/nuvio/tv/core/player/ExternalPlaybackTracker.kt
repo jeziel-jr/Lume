@@ -402,27 +402,12 @@ class ExternalPlaybackTracker @Inject constructor(
         val effectiveId = metadata.videoId.takeIf { it.isNotBlank() } ?: metadata.contentId
 
         val intervals = withTimeoutOrNull(SKIP_RESOLVE_TIMEOUT_MS) {
-            when {
-                effectiveId.startsWith("mal:") -> {
-                    val parts = effectiveId.split(":")
-                    val malId = parts.getOrNull(1) ?: return@withTimeoutOrNull null
-                    val ep = parts.getOrNull(2)?.toIntOrNull() ?: metadata.episode ?: return@withTimeoutOrNull null
-                    skipIntroRepository.getSkipIntervalsForMal(malId, ep)
-                }
-                effectiveId.startsWith("kitsu:") -> {
-                    val parts = effectiveId.split(":")
-                    val kitsuId = parts.getOrNull(1) ?: return@withTimeoutOrNull null
-                    val ep = parts.getOrNull(2)?.toIntOrNull() ?: metadata.episode ?: return@withTimeoutOrNull null
-                    skipIntroRepository.getSkipIntervalsForKitsu(kitsuId, ep)
-                }
-                else -> {
-                    val imdbId = effectiveId.split(":").firstOrNull()?.takeIf { it.startsWith("tt") }
-                        ?: return@withTimeoutOrNull null
-                    val s = metadata.season ?: return@withTimeoutOrNull null
-                    val e = metadata.episode ?: return@withTimeoutOrNull null
-                    skipIntroRepository.getSkipIntervals(imdbId, s, e)
-                }
-            }
+            skipIntroRepository.getSkipIntervalsForContent(
+                contentId = effectiveId,
+                contentType = metadata.contentType,
+                season = metadata.season,
+                episode = metadata.episode,
+            )
         }
         if (intervals.isNullOrEmpty()) return null
 

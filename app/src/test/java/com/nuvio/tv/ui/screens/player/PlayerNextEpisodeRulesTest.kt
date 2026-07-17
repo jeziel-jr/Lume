@@ -1,6 +1,10 @@
 package com.nuvio.tv.ui.screens.player
 
 import com.nuvio.tv.domain.model.Video
+import com.nuvio.tv.data.local.NextEpisodeThresholdMode
+import com.nuvio.tv.data.repository.SkipInterval
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -66,5 +70,33 @@ class PlayerNextEpisodeRulesTest {
         val videos = listOf(ep(null, 5, "e5"), ep(null, 6, "e6"))
         val next = PlayerNextEpisodeRules.resolveNextEpisode(videos, currentSeason = null, currentEpisode = 6)
         assertNull(next)
+    }
+
+    @Test
+    fun `outro starts the next episode card when credits end near video end`() {
+        val visible = PlayerNextEpisodeRules.shouldShowNextEpisodeCard(
+            positionMs = 1_200_000L,
+            durationMs = 1_260_000L,
+            skipIntervals = listOf(SkipInterval(1_200.0, 1_258.0, "outro", "introdb")),
+            thresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
+            thresholdPercent = 99f,
+            thresholdMinutesBeforeEnd = 2f,
+        )
+
+        assertTrue(visible)
+    }
+
+    @Test
+    fun `next episode card stays hidden before outro`() {
+        val visible = PlayerNextEpisodeRules.shouldShowNextEpisodeCard(
+            positionMs = 1_199_000L,
+            durationMs = 1_260_000L,
+            skipIntervals = listOf(SkipInterval(1_200.0, 1_258.0, "outro", "introdb")),
+            thresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
+            thresholdPercent = 99f,
+            thresholdMinutesBeforeEnd = 2f,
+        )
+
+        assertFalse(visible)
     }
 }

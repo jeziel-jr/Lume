@@ -26,6 +26,7 @@ import com.nuvio.tv.domain.repository.WatchProgressRepository
 import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.core.tmdb.TmdbMetadataService
 import com.nuvio.tv.data.local.TmdbSettingsDataStore
+import com.nuvio.tv.data.xtream.XtreamServerHealthMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.StateFlow
@@ -64,6 +65,7 @@ class PlayerViewModel @Inject constructor(
     private val directDebridStreamPreparer: DirectDebridStreamPreparer,
     private val streamBadgePresentation: com.nuvio.tv.core.streams.StreamBadgePresentation,
     private val playbackIssueReportRepository: com.nuvio.tv.data.repository.PlaybackIssueReportRepository,
+    private val xtreamServerHealthMonitor: XtreamServerHealthMonitor,
     private val externalPlaybackTracker: com.nuvio.tv.core.player.ExternalPlaybackTracker,
     private val subtitleFileCache: com.nuvio.tv.core.player.SubtitleFileCache,
     savedStateHandle: SavedStateHandle
@@ -105,6 +107,7 @@ class PlayerViewModel @Inject constructor(
         directDebridStreamPreparer = directDebridStreamPreparer,
         streamBadgePresentation = streamBadgePresentation,
         playbackIssueReportRepository = playbackIssueReportRepository,
+        xtreamServerHealthMonitor = xtreamServerHealthMonitor,
         savedStateHandle = savedStateHandle,
         scope = viewModelScope
     )

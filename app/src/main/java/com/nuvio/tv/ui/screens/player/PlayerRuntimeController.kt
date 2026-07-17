@@ -47,6 +47,7 @@ import com.nuvio.tv.domain.repository.WatchProgressRepository
 import com.nuvio.tv.data.repository.extractYear
 import com.nuvio.tv.data.repository.parseContentIds
 import com.nuvio.tv.data.repository.toTraktIds
+import com.nuvio.tv.data.xtream.XtreamServerHealthMonitor
 import androidx.media3.session.MediaSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
@@ -91,6 +92,7 @@ class PlayerRuntimeController(
     internal val directDebridStreamPreparer: DirectDebridStreamPreparer,
     internal val streamBadgePresentation: com.nuvio.tv.core.streams.StreamBadgePresentation,
     internal val playbackIssueReportRepository: PlaybackIssueReportRepository,
+    internal val xtreamServerHealthMonitor: XtreamServerHealthMonitor,
     savedStateHandle: SavedStateHandle,
     internal val scope: CoroutineScope
 ) {

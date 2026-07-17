@@ -797,7 +797,8 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
                                 catalogId = row.catalogId,
                                 addonBaseUrl = row.addonBaseUrl,
                                 addonId = row.addonId,
-                                type = row.apiType
+                                type = row.apiType,
+                                hideTypeSuffix = row.extraArgs["hideTypeSuffix"] == "true",
                             ))
                             val hasEnoughForSeeAll = row.hasMore || row.items.size >= seeAllThreshold
                             val displayItems = if (hasEnoughForSeeAll) row.items.take(maxWithSeeAll) else row.items.take(maxWithoutSeeAll)

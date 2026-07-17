@@ -23,6 +23,10 @@ import com.nuvio.tv.data.remote.api.SeriesGraphApi
 import com.nuvio.tv.data.remote.api.TmdbApi
 import com.nuvio.tv.data.remote.api.TorboxApi
 import com.nuvio.tv.data.remote.api.UniqueContributionsApi
+import com.nuvio.tv.data.xtream.XtreamDataSource
+import com.nuvio.tv.data.xtream.XtreamCatalogRepository
+import com.nuvio.tv.data.xtream.XtreamPlaybackResolver
+import com.nuvio.tv.data.xtream.XtreamCredentialsStore
 import com.nuvio.tv.LocaleCache
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -32,11 +36,13 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.Cache
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import com.nuvio.tv.core.network.IPv4FirstDns
+import com.nuvio.tv.core.tmdb.TmdbRateLimitInterceptor
 import com.nuvio.tv.core.diagnostics.SentryNetworkBreadcrumbInterceptor
 import java.io.File
 import java.security.SecureRandom
@@ -91,6 +97,30 @@ object NetworkModule {
     fun provideMoshi(): Moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
+
+    @Provides
+    @Singleton
+    @Named("xtream")
+    fun provideXtreamOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+        .dns(IPv4FirstDns())
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .build()
+
+    @Provides
+    @Singleton
+    fun provideXtreamPlaybackResolver(
+        dataSource: XtreamDataSource,
+        catalogRepository: XtreamCatalogRepository,
+        availabilityStore: com.nuvio.tv.data.xtream.XtreamAvailabilityStore,
+        credentialsStore: XtreamCredentialsStore,
+    ): XtreamPlaybackResolver =
+        XtreamPlaybackResolver(
+            credentialsProvider = { credentialsStore.current() ?: error("Xtream is not configured") },
+            dataSource = dataSource,
+            catalogRepository = catalogRepository,
+            availabilityStore = availabilityStore,
+        )
 
     @Provides
     @Singleton
@@ -154,6 +184,18 @@ object NetworkModule {
                 chain.proceed(request)
             }
             .addInterceptor(SentryNetworkBreadcrumbInterceptor())
+            .build()
+
+    @Provides
+    @Singleton
+    @Named("tmdb")
+    fun provideTmdbOkHttpClient(okHttpClient: OkHttpClient): OkHttpClient =
+        okHttpClient.newBuilder()
+            .dispatcher(Dispatcher().apply {
+                maxRequests = 4
+                maxRequestsPerHost = 4
+            })
+            .addInterceptor(TmdbRateLimitInterceptor())
             .build()
 
     @Provides
@@ -229,7 +271,7 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("tmdb")
-    fun provideTmdbRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
+    fun provideTmdbRetrofit(@Named("tmdb") okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
         Retrofit.Builder()
             .baseUrl("https://api.themoviedb.org/3/")
             .client(okHttpClient)
@@ -340,7 +382,7 @@ object NetworkModule {
     @Named("introDb")
     fun provideIntroDbRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
         Retrofit.Builder()
-            .baseUrl(BuildConfig.INTRODB_API_URL.ifEmpty { "https://localhost/" })
+            .baseUrl(BuildConfig.INTRODB_API_URL.ifEmpty { "https://api.introdb.app/" })
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()

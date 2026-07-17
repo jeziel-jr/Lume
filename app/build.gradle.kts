@@ -27,6 +27,10 @@ fun buildConfigString(value: String): String {
     return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 }
 
+fun requiredLocalProperty(properties: Properties, key: String): String =
+    properties.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
+        ?: error("Missing required $key in local.properties")
+
 fun cmakePath(path: String): String {
     if (path.isBlank()) return ""
     val file = File(path)
@@ -47,6 +51,9 @@ val devProperties = Properties().apply {
         load(devPropertiesFile.inputStream())
     }
 }
+
+val tmdbApiKey = requiredLocalProperty(localProperties, "TMDB_API_KEY")
+val xtreamBaseUrl = requiredLocalProperty(localProperties, "XTREAM_BASE_URL").trimEnd('/')
 
 val enableDoviNative = parseBooleanProperty(
     resolveProperty(devProperties, localProperties, "DOVI_NATIVE_ENABLED")
@@ -87,7 +94,6 @@ fun truthy(value: String?): Boolean {
         value.equals("yes", ignoreCase = true)
 }
 
-val buildingAppBundle = gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
 val useDebugReleaseSigning = env("CI_USE_DEBUG_SIGNING").equals("true", ignoreCase = true)
 val useLocalFfmpegDecoder = truthy(
     providers.gradleProperty("useLocalFfmpegDecoder").orNull
@@ -109,14 +115,15 @@ android {
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = "com.nuvio.tv"
+        applicationId = "com.jeziel.lume"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1035
-        versionName = "0.7.17-beta"
+        versionCode = 1053
+        versionName = "0.7.29-beta"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
-        buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
+        buildConfigField("String", "INTRODB_API_URL", buildConfigString(localProperties.getProperty("INTRODB_API_URL", "https://api.introdb.app/")))
+        buildConfigField("String", "ANIMESKIP_CLIENT_ID", buildConfigString(localProperties.getProperty("ANIMESKIP_CLIENT_ID", "")))
         buildConfigField("String", "TRAILER_API_URL", "\"${localProperties.getProperty("TRAILER_API_URL", "")}\"")
         buildConfigField("String", "IMDB_RATINGS_API_BASE_URL", "\"${localProperties.getProperty("IMDB_RATINGS_API_BASE_URL", "")}\"")
         buildConfigField("String", "IMDB_TAPFRAME_API_BASE_URL", "\"${localProperties.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}\"")
@@ -124,7 +131,9 @@ android {
         buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${localProperties.getProperty("TRAKT_CLIENT_SECRET", "")}\"")
         buildConfigField("String", "TRAKT_API_URL", "\"${localProperties.getProperty("TRAKT_API_URL", "https://api.trakt.tv/")}\"")
         buildConfigField("String", "TRAKT_REDIRECT_URI", "\"${localProperties.getProperty("TRAKT_REDIRECT_URI", "urn:ietf:wg:oauth:2.0:oob")}\"")
-        buildConfigField("String", "TMDB_API_KEY", "\"${localProperties.getProperty("TMDB_API_KEY", "")}\"")
+        buildConfigField("String", "TMDB_API_KEY", buildConfigString(tmdbApiKey))
+        buildConfigField("String", "XTREAM_DEFAULT_BASE_URL", buildConfigString(xtreamBaseUrl))
+        buildConfigField("String", "TMDB_HOME_LIST_IDS", buildConfigString(localProperties.getProperty("TMDB_HOME_LIST_IDS", "")))
         buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
         buildConfigField("boolean", "DOVI_NATIVE_ENABLED", enableDoviNative.toString())
         buildConfigField("boolean", "DOVI_EXTRACTOR_HOOK_READY", doviExtractorHookReady.toString())
@@ -160,14 +169,14 @@ android {
     productFlavors {
         create("full") {
             dimension = "distribution"
-            buildConfigField("boolean", "FEATURE_PLUGINS_ENABLED", "true")
-            buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "true")
+            buildConfigField("boolean", "FEATURE_PLUGINS_ENABLED", "false")
+            buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "false")
             buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_EXTERNAL_TRAILERS_ENABLED", "true")
         }
         create("playstore") {
             dimension = "distribution"
-            applicationId = "com.nuvio.app"
+            applicationId = "com.jeziel.lume"
             buildConfigField("boolean", "FEATURE_PLUGINS_ENABLED", "false")
             buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "false")
             buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "false")
@@ -194,8 +203,8 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("release")
-            isDebuggable = false
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = true
             isMinifyEnabled = false
 
             buildConfigField("boolean", "IS_DEBUG_BUILD", "true")
@@ -207,7 +216,8 @@ android {
             buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_FALLBACK_URL")))
             buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${devProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
             buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${devProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
-            buildConfigField("String", "INTRODB_API_URL", "\"${devProperties.getProperty("INTRODB_API_URL", "")}\"")
+            buildConfigField("String", "INTRODB_API_URL", buildConfigString(resolveProperty(devProperties, localProperties, "INTRODB_API_URL", "https://api.introdb.app/")))
+            buildConfigField("String", "ANIMESKIP_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "ANIMESKIP_CLIENT_ID")))
             buildConfigField("String", "TRAILER_API_URL", "\"${devProperties.getProperty("TRAILER_API_URL", "")}\"")
             buildConfigField("String", "IMDB_RATINGS_API_BASE_URL", "\"${devProperties.getProperty("IMDB_RATINGS_API_BASE_URL", "")}\"")
             buildConfigField("String", "IMDB_TAPFRAME_API_BASE_URL", "\"${devProperties.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}\"")
@@ -241,7 +251,8 @@ android {
             buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_FALLBACK_URL", "")))
             buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
             buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
-            buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
+            buildConfigField("String", "INTRODB_API_URL", buildConfigString(localProperties.getProperty("INTRODB_API_URL", "https://api.introdb.app/")))
+            buildConfigField("String", "ANIMESKIP_CLIENT_ID", buildConfigString(localProperties.getProperty("ANIMESKIP_CLIENT_ID", "")))
             buildConfigField("String", "TRAILER_API_URL", "\"${localProperties.getProperty("TRAILER_API_URL", "")}\"")
             buildConfigField("String", "IMDB_RATINGS_API_BASE_URL", "\"${localProperties.getProperty("IMDB_RATINGS_API_BASE_URL", "")}\"")
             buildConfigField("String", "IMDB_TAPFRAME_API_BASE_URL", "\"${localProperties.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}\"")
@@ -272,10 +283,8 @@ android {
 
     splits {
         abi {
-            isEnable = !buildingAppBundle
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = true
+            // Produce a single universal APK instead of one APK per CPU architecture.
+            isEnable = false
         }
     }
 
@@ -334,8 +343,7 @@ android {
 
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
-        val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
-        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuviodebug.com")
+        variant.applicationId.set("com.jeziel.lume.debug")
     }
 }
 

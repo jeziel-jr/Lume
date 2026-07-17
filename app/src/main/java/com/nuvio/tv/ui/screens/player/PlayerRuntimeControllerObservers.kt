@@ -517,54 +517,30 @@ internal fun PlayerRuntimeController.fetchSkipIntervals(id: String?, season: Int
     if (!skipIntroEnabled) return
     if (id.isNullOrBlank()) return
 
-    // Prefer videoId over contentId — videoId carries the season/episode-specific ID
+    // Prefer videoId over contentId because it carries the episode-specific identity.
     val effectiveId = currentVideoId?.takeIf { it.isNotBlank() } ?: id
-
-    // MAL ID format: "mal:57658:1" (malId:episode)
-    if (effectiveId.startsWith("mal:")) {
-        val parts = effectiveId.split(":")
-        val malId = parts.getOrNull(1) ?: return
-        val malEpisode = parts.getOrNull(2)?.toIntOrNull() ?: episode ?: return
-        val key = "mal:$malId:$malEpisode"
-        if (skipIntroFetchedKey == key) return
-        skipIntroFetchedKey = key
-        scope.launch {
-            skipIntervals = withTimeoutOrNull(15_000L) {
-                skipIntroRepository.getSkipIntervalsForMal(malId, malEpisode)
-            } ?: emptyList()
-        }
-        return
-    }
-
-    // Kitsu ID format: "kitsu:12345:1" (kitsuId:episode)
-    if (effectiveId.startsWith("kitsu:")) {
-        val parts = effectiveId.split(":")
-        val kitsuId = parts.getOrNull(1) ?: return
-        val kitsuEpisode = parts.getOrNull(2)?.toIntOrNull() ?: episode ?: return
-        val key = "kitsu:$kitsuId:$kitsuEpisode"
-        if (skipIntroFetchedKey == key) return
-        skipIntroFetchedKey = key
-        scope.launch {
-            skipIntervals = withTimeoutOrNull(15_000L) {
-                skipIntroRepository.getSkipIntervalsForKitsu(kitsuId, kitsuEpisode)
-            } ?: emptyList()
-        }
-        return
-    }
-
-    val imdbId = effectiveId.split(":").firstOrNull()?.takeIf { it.startsWith("tt") } ?: return
-    if (season == null || episode == null) return
-
-    val key = "$imdbId:$season:$episode"
+    val key = "$effectiveId|${season ?: "_"}|${episode ?: "_"}"
     if (skipIntroFetchedKey == key) return
     skipIntroFetchedKey = key
 
     scope.launch {
-        skipIntervals = withTimeoutOrNull(15_000L) {
-            skipIntroRepository.getSkipIntervals(imdbId, season, episode)
+        val resolved = withTimeoutOrNull(15_000L) {
+            skipIntroRepository.getSkipIntervalsForContent(
+                contentId = effectiveId,
+                contentType = contentType,
+                season = season,
+                episode = episode,
+            )
         } ?: emptyList()
+        // Episode switches can overlap requests; only the latest identity may publish results.
+        if (shouldPublishSkipIntervals(key, skipIntroFetchedKey)) {
+            skipIntervals = resolved
+        }
     }
 }
+
+internal fun shouldPublishSkipIntervals(requestKey: String, activeRequestKey: String?): Boolean =
+    requestKey == activeRequestKey
 
 internal fun PlayerRuntimeController.tryApplyPendingResumeProgress(player: Player) {
     val saved = pendingResumeProgress ?: return

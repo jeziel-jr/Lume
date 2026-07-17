@@ -8,6 +8,46 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface TmdbApi {
+    @GET("trending/movie/week")
+    suspend fun getTrendingMovies(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String? = null,
+        @Query("page") page: Int = 1
+    ): Response<TmdbDiscoverResponse>
+
+    @GET("trending/tv/week")
+    suspend fun getTrendingTv(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String? = null,
+        @Query("page") page: Int = 1
+    ): Response<TmdbDiscoverResponse>
+
+    @GET("tv/on_the_air")
+    suspend fun getTvOnTheAir(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("timezone") timezone: String = "America/Recife"
+    ): Response<TmdbDiscoverResponse>
+
+    @GET("search/movie")
+    suspend fun searchMovies(
+        @Query("api_key") apiKey: String,
+        @Query("query") query: String,
+        @Query("language") language: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("include_adult") includeAdult: Boolean = false
+    ): Response<TmdbDiscoverResponse>
+
+    @GET("search/tv")
+    suspend fun searchTv(
+        @Query("api_key") apiKey: String,
+        @Query("query") query: String,
+        @Query("language") language: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("include_adult") includeAdult: Boolean = false
+    ): Response<TmdbDiscoverResponse>
+
     
     @GET("find/{external_id}")
     suspend fun findByExternalId(
@@ -342,7 +382,16 @@ data class TmdbDetailsResponse(
     @Json(name = "poster_path") val posterPath: String? = null,
     @Json(name = "last_air_date") val lastAirDate: String? = null,
     @Json(name = "status") val status: String? = null,
+    @Json(name = "number_of_seasons") val numberOfSeasons: Int? = null,
+    @Json(name = "seasons") val seasons: List<TmdbSeasonSummary>? = null,
     @Json(name = "belongs_to_collection") val belongsToCollection: TmdbCollectionSummary? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class TmdbSeasonSummary(
+    @Json(name = "season_number") val seasonNumber: Int,
+    @Json(name = "episode_count") val episodeCount: Int? = null,
+    @Json(name = "air_date") val airDate: String? = null
 )
 
 @JsonClass(generateAdapter = true)

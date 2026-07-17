@@ -194,7 +194,7 @@ internal fun SettingsBrandPanel(
         Spacer(modifier = Modifier.height(26.dp))
 
         Image(
-            painter = painterResource(id = R.drawable.app_logo_wordmark),
+            painter = painterResource(id = R.drawable.lume_wordmark),
             contentDescription = stringResource(R.string.cd_nuvio_logo),
             modifier = Modifier
                 .fillMaxWidth(0.9f)

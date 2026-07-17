@@ -7,6 +7,14 @@ import org.junit.Test
 
 class DeepLinkParserTest {
     @Test
+    fun parsesLumeTmdbDetailDeepLink() {
+        assertEquals(
+            AppDeepLink.Meta(type = "movie", id = "tmdb:1177672"),
+            DeepLinkParser.parse("lume://tmdb/movie/1177672")
+        )
+    }
+
+    @Test
     fun parsesMetaQueryDeepLink() {
         assertEquals(
             AppDeepLink.Meta(type = "series", id = "tt0944947"),

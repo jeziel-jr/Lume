@@ -8,6 +8,8 @@ import com.nuvio.tv.data.repository.StreamRepositoryImpl
 import com.nuvio.tv.data.repository.SubtitleRepositoryImpl
 import com.nuvio.tv.data.repository.SyncRepositoryImpl
 import com.nuvio.tv.data.repository.WatchProgressRepositoryImpl
+import com.nuvio.tv.data.xtream.XtreamDataSource
+import com.nuvio.tv.data.xtream.XtreamRemoteDataSource
 import com.nuvio.tv.domain.repository.AddonRepository
 import com.nuvio.tv.domain.repository.CatalogRepository
 import com.nuvio.tv.domain.repository.LibraryRepository
@@ -25,6 +27,10 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindXtreamDataSource(impl: XtreamRemoteDataSource): XtreamDataSource
 
     @Binds
     @Singleton

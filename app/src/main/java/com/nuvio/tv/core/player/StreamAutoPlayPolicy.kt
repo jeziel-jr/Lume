@@ -4,6 +4,28 @@ import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 
 object StreamAutoPlayPolicy {
+    fun shouldForceDirectTmdbPlayback(videoId: String, manualSelection: Boolean): Boolean =
+        !manualSelection && videoId.startsWith("tmdb:", ignoreCase = true)
+
+    fun canonicalTmdbVideoId(
+        itemId: String,
+        fallback: String,
+        season: Int? = null,
+        episode: Int? = null
+    ): String {
+        val tmdbId = itemId
+            .takeIf { it.startsWith("tmdb:", ignoreCase = true) }
+            ?.substringAfter(':')
+            ?.substringBefore(':')
+            ?.toIntOrNull()
+            ?: return fallback
+        return if (season != null && episode != null) {
+            "tmdb:$tmdbId:$season:$episode"
+        } else {
+            "tmdb:$tmdbId"
+        }
+    }
+
     fun isEffectivelyEnabled(playerSettings: PlayerSettings): Boolean {
         if (playerSettings.streamReuseLastLinkEnabled) return true
         if (playerSettings.streamAutoPlayReuseBingeGroup &&

@@ -153,7 +153,7 @@ fun HomeScreen(
         modernPresentationReady
     ) {
         // Track that addons are known (even if isLoading flipped too fast to catch).
-        if (uiState.installedAddonsCount > 0) {
+        if (uiState.isLoading || hasCatalogContent || uiState.installedAddonsCount > 0) {
             catalogLoadingStarted = true
         }
         // Wait until catalog loading has completed with content AND the CW

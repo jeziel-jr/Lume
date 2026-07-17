@@ -62,6 +62,7 @@ import androidx.tv.material3.Text
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.stableItemKey
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 import com.nuvio.tv.ui.util.formatAddonTypeLabel
 import com.nuvio.tv.ui.util.localizedContentType
 import androidx.compose.ui.platform.LocalContext
@@ -86,6 +87,7 @@ fun CatalogRowSection(
     trailerPreviewAudioUrls: Map<String, String> = emptyMap(),
     onRequestTrailerPreview: (MetaPreview) -> Unit = {},
     onItemFocus: (MetaPreview) -> Unit = {},
+    itemAvailability: (MetaPreview) -> CatalogPlaybackAvailability? = { null },
     isItemWatched: (MetaPreview) -> Boolean = { false },
     onItemLongPress: (MetaPreview, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
@@ -146,6 +148,7 @@ fun CatalogRowSection(
     val latestOnItemClick by rememberUpdatedState(onItemClick)
     val latestOnSeeAll by rememberUpdatedState(onSeeAll)
     val latestOnItemFocus by rememberUpdatedState(onItemFocus)
+    val latestItemAvailability by rememberUpdatedState(itemAvailability)
     val latestIsItemWatched by rememberUpdatedState(isItemWatched)
     val latestOnItemLongPress by rememberUpdatedState(onItemLongPress)
     val latestOnItemFocused by rememberUpdatedState(onItemFocused)
@@ -189,9 +192,10 @@ fun CatalogRowSection(
         val raw = catalogRow.rawType.takeIf { it.isNotBlank() } ?: catalogRow.apiType
         localizedContentType(catalogContext, raw)
     }
-    val catalogTitle = remember(catalogRow.catalogName, typeLabel, showCatalogTypeSuffix) {
+    val hideTypeSuffix = catalogRow.extraArgs["hideTypeSuffix"] == "true"
+    val catalogTitle = remember(catalogRow.catalogName, typeLabel, showCatalogTypeSuffix, hideTypeSuffix) {
         val formattedName = catalogRow.catalogName.replaceFirstChar { it.uppercase() }
-        if (showCatalogTypeSuffix && typeLabel.isNotEmpty()) "$formattedName - $typeLabel" else formattedName
+        if (showCatalogTypeSuffix && !hideTypeSuffix && typeLabel.isNotEmpty()) "$formattedName - $typeLabel" else formattedName
     }
 
     Column(modifier = modifier.fillMaxWidth().then(
@@ -334,6 +338,7 @@ fun CatalogRowSection(
                     trailerPreviewAudioUrl = trailerPreviewAudioUrls[item.id],
                     onRequestTrailerPreview = latestOnRequestTrailerPreview,
                     isWatched = latestIsItemWatched(item),
+                    catalogAvailability = latestItemAvailability(item),
                     onFocus = onFocusStable,
                     onBackdropExpandedChanged = null,
                     onClick = onItemClickStable,

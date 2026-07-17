@@ -5,6 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.network.NetworkResult
+import com.nuvio.tv.core.tmdb.TmdbCatalogService
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
+import com.nuvio.tv.data.xtream.XtreamCatalogAvailabilityService
+import com.nuvio.tv.data.xtream.XtreamCatalogState
+import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.SearchHistoryDataStore
 import com.nuvio.tv.domain.model.Addon
@@ -50,6 +55,8 @@ class SearchViewModel @Inject constructor(
     private val watchProgressRepository: com.nuvio.tv.domain.repository.WatchProgressRepository,
     private val watchedSeriesStateHolder: com.nuvio.tv.data.local.WatchedSeriesStateHolder,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
+    private val tmdbCatalogService: TmdbCatalogService,
+    private val xtreamCatalogAvailabilityService: XtreamCatalogAvailabilityService,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -73,6 +80,7 @@ class SearchViewModel @Inject constructor(
     private var discoverJob: Job? = null
     private var catalogRowsUpdateJob: Job? = null
     private var suggestionJob: Job? = null
+    private var availabilityJob: Job? = null
     private var hasRenderedFirstCatalog = false
     private var pendingCatalogResponses = 0
     private var revealBatchAfterNextDiscoverFetch = false
@@ -155,6 +163,18 @@ class SearchViewModel @Inject constructor(
                 _uiState.update { it.copy(recentSearches = recent.take(MAX_RECENT_SEARCHES)) }
             }
         }
+        viewModelScope.launch {
+            xtreamCatalogAvailabilityService.catalogState.collectLatest { state ->
+                when (state) {
+                    is XtreamCatalogState.Ready -> classifySearchRows(
+                        query = _uiState.value.submittedQuery.trim(),
+                        rows = _uiState.value.catalogRows,
+                    )
+                    XtreamCatalogState.Loading -> markSearchRowsChecking(_uiState.value.catalogRows)
+                    is XtreamCatalogState.Error -> _uiState.update { it.copy(catalogAvailability = emptyMap()) }
+                }
+            }
+        }
     }
 
     private data class LayoutPrefs(
@@ -198,7 +218,8 @@ class SearchViewModel @Inject constructor(
                 query = query,
                 error = null,
                 isSearching = false,
-                catalogRows = if (trimmedInput == submitted) it.catalogRows else emptyList()
+                catalogRows = if (trimmedInput == submitted) it.catalogRows else emptyList(),
+                catalogAvailability = if (trimmedInput == submitted) it.catalogAvailability else emptyMap(),
             )
         }
 
@@ -225,62 +246,15 @@ class SearchViewModel @Inject constructor(
 
         suggestionJob = viewModelScope.launch {
             kotlinx.coroutines.delay(SUGGESTION_DEBOUNCE_MS)
-
-            val addons = try {
-                addonRepository.getInstalledAddons().first().enabledAddons()
-            } catch (_: Exception) {
-                return@launch
+            val suggestions = runCatching { tmdbCatalogService.search(query, "pt-BR") }
+                .getOrDefault(emptyList())
+                .flatMap { it.items }
+                .map { it.name }
+                .distinct()
+                .take(MAX_SUGGESTIONS)
+            if (_uiState.value.query.trim() == query) {
+                _uiState.update { it.copy(suggestions = suggestions) }
             }
-
-            val allTargets = buildSearchTargets(addons)
-            val firstAddonId = allTargets.firstOrNull()?.first?.id
-            val searchTargets = if (firstAddonId != null) allTargets.filter { it.first.id == firstAddonId } else emptyList()
-            if (searchTargets.isEmpty()) {
-                _uiState.update { it.copy(suggestions = emptyList()) }
-                return@launch
-            }
-
-            val collectedNames = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-            val queryLower = query.lowercase()
-            val suggestionJobs = searchTargets.map { (addon, catalog) ->
-                launch {
-                    try {
-                        catalogRepository.getCatalog(
-                            addonBaseUrl = addon.baseUrl,
-                            addonId = addon.id,
-                            addonName = addon.displayName,
-                            catalogId = catalog.id,
-                            catalogName = catalog.name,
-                            type = catalog.apiType,
-                            skip = 0,
-                            skipStep = 100,
-                            extraArgs = mapOf("search" to query),
-                            supportsSkip = false
-                        ).collect { result ->
-                            if (result is NetworkResult.Success && _uiState.value.query.trim() == query) {
-                                var added = false
-                                result.data.items.forEach { item ->
-                                    if (collectedNames.add(item.name)) added = true
-                                }
-                                // Push updated suggestions immediately as each addon responds
-                                if (added) {
-                                    val sorted = collectedNames
-                                        .sortedWith(
-                                            compareByDescending<String> { it.lowercase().startsWith(queryLower) }
-                                                .thenBy { it.lowercase() }
-                                        )
-                                        .take(MAX_SUGGESTIONS)
-                                    _uiState.update { it.copy(suggestions = sorted) }
-                                }
-                            }
-                        }
-                    } catch (_: Exception) {
-                        // Ignore per-catalog errors for suggestions
-                    }
-                }
-            }
-
-            suggestionJobs.joinAll()
         }
     }
 
@@ -315,6 +289,7 @@ class SearchViewModel @Inject constructor(
         activeSearchJobs.forEach { it.cancel() }
         activeSearchJobs = emptyList()
         catalogRowsUpdateJob?.cancel()
+        availabilityJob?.cancel()
 
         catalogsMap.clear()
         catalogOrder.clear()
@@ -326,116 +301,75 @@ class SearchViewModel @Inject constructor(
                 it.copy(
                     isSearching = false,
                     error = null,
-                    catalogRows = emptyList()
+                    catalogRows = emptyList(),
+                    catalogAvailability = emptyMap(),
                 )
             }
             ensureDiscoverLoaded()
             return
         }
 
-        viewModelScope.launch {
-            _uiState.update { it.copy(isSearching = true, error = null, catalogRows = emptyList()) }
-
-            val addons = try {
-                addonRepository.getInstalledAddons().first().enabledAddons()
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isSearching = false, error = e.message ?: context.getString(com.nuvio.tv.R.string.search_error_load_addons_failed)) }
-                return@launch
-            }
-
-            _uiState.update { it.copy(installedAddons = addons) }
-
-            val searchTargets = buildSearchTargets(addons)
-
-            if (searchTargets.isEmpty()) {
-                _uiState.update {
-                    it.copy(
-                        isSearching = false,
-                        error = context.getString(R.string.search_error_no_catalogs),
-                        catalogRows = emptyList()
-                    )
-                }
-                return@launch
-            }
-
-            // Preserve addon manifest order.
-            searchTargets.forEach { (addon, catalog) ->
-                val key = catalogKey(
-                    addonId = addon.id,
-                    addonBaseUrl = addon.baseUrl,
-                    type = catalog.apiType,
-                    catalogId = catalog.id
-                )
-                if (key !in catalogOrder) {
-                    catalogOrder.add(key)
-                }
-            }
-
-            // Emit placeholder rows with shimmer items so the UI shows
-            // skeleton rows immediately instead of a spinner.
-            val placeholderRows = searchTargets.map { (addon, catalog) ->
-                val key = catalogKey(
-                    addonId = addon.id,
-                    addonBaseUrl = addon.baseUrl,
-                    type = catalog.apiType,
-                    catalogId = catalog.id
-                )
-                val fakeItems = (0 until 8).map { i ->
-                    MetaPreview(
-                        id = "__placeholder_${key}_$i",
-                        type = ContentType.fromString(catalog.apiType),
-                        rawType = catalog.apiType,
-                        name = " ",
-                        poster = "placeholder://empty",
-                        posterShape = PosterShape.POSTER,
-                        background = null,
-                        logo = null,
-                        description = null,
-                        releaseInfo = " ",
-                        imdbRating = null,
-                        genres = emptyList()
-                    )
-                }
-                CatalogRow(
-                    addonId = addon.id,
-                    addonName = addon.displayName,
-                    addonBaseUrl = addon.baseUrl,
-                    catalogId = catalog.id,
-                    catalogName = catalog.name,
-                    type = ContentType.fromString(catalog.apiType),
-                    rawType = catalog.apiType,
-                    items = fakeItems,
-                    isLoading = true,
-                    hasMore = false,
-                    currentPage = 0,
-                    supportsSkip = false,
-                    skipStep = 0,
-                    extraArgs = emptyMap()
+        val tmdbJob = viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isSearching = true,
+                    error = null,
+                    catalogRows = emptyList(),
+                    catalogAvailability = emptyMap(),
                 )
             }
-            _uiState.update { it.copy(catalogRows = placeholderRows) }
-
-            val jobs = searchTargets.map { (addon, catalog) ->
-                viewModelScope.launch {
-                    loadCatalog(addon, catalog, query)
-                }
-            }
-            pendingCatalogResponses = jobs.size
-            activeSearchJobs = jobs
-
-            // Wait for all jobs to complete so we can stop showing the global loading state.
-            viewModelScope.launch {
-                try {
-                    jobs.joinAll()
-                } catch (_: Exception) {
-                    // Cancellations are expected when query changes.
-                } finally {
+            runCatching { tmdbCatalogService.search(query, "pt-BR") }
+                .onSuccess { rows ->
                     if (uiState.value.submittedQuery.trim() == query) {
-                        _uiState.update { it.copy(isSearching = false) }
+                        _uiState.update {
+                            it.copy(isSearching = false, catalogRows = rows, error = null)
+                        }
+                        classifySearchRows(query, rows)
                     }
                 }
+                .onFailure {
+                    if (uiState.value.submittedQuery.trim() == query) {
+                        _uiState.update {
+                            it.copy(
+                                isSearching = false,
+                                catalogRows = emptyList(),
+                                catalogAvailability = emptyMap(),
+                                error = context.getString(R.string.search_error_failed)
+                            )
+                        }
+                    }
+                }
+        }
+        activeSearchJobs = listOf(tmdbJob)
+    }
+
+    private fun classifySearchRows(query: String, rows: List<CatalogRow>) {
+        availabilityJob?.cancel()
+        if (query.isBlank() || rows.isEmpty()) {
+            _uiState.update { it.copy(catalogAvailability = emptyMap()) }
+            return
+        }
+        when (xtreamCatalogAvailabilityService.catalogState.value) {
+            XtreamCatalogState.Loading -> markSearchRowsChecking(rows)
+            is XtreamCatalogState.Error -> {
+                _uiState.update { it.copy(catalogAvailability = emptyMap()) }
+                return
+            }
+            is XtreamCatalogState.Ready -> Unit
+        }
+        availabilityJob = viewModelScope.launch {
+            val availability = xtreamCatalogAvailabilityService.classify(rows.flatMap { it.items })
+            if (_uiState.value.submittedQuery.trim() == query) {
+                _uiState.update { it.copy(catalogAvailability = availability) }
             }
         }
+    }
+
+    private fun markSearchRowsChecking(rows: List<CatalogRow>) {
+        val checking = rows.flatMap { it.items }.associate { item ->
+            item.catalogAvailabilityKey() to CatalogPlaybackAvailability.UNKNOWN
+        }
+        _uiState.update { it.copy(catalogAvailability = checking) }
     }
 
     private suspend fun loadCatalog(addon: Addon, catalog: CatalogDescriptor, query: String) {
