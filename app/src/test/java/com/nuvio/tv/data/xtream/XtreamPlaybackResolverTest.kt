@@ -75,6 +75,56 @@ class XtreamPlaybackResolverTest {
     }
 
     @Test
+    fun `barbie live action uses provider release date when year field is absent`() = runTest {
+        val source = FakeSource(
+            vod = listOf(
+                XtreamVodItem(
+                    streamId = 100,
+                    name = "Barbie (2023) [4K Dublado]",
+                    releaseDate = "2023-07-19",
+                    containerExtension = "mkv",
+                ),
+            ),
+            vodInfo = mapOf(
+                100 to XtreamVodInfoResponse(
+                    XtreamVodInfo("346698"),
+                    XtreamMovieData(100, "mkv"),
+                ),
+            ),
+        )
+
+        val result = resolver(source).resolveMovie(
+            tmdbId = 346698,
+            titles = listOf("Barbie"),
+            year = 2023,
+        )
+
+        assertTrue(result is XtreamResolution.Available)
+    }
+
+    @Test
+    fun `odyssey future release does not match older provider movie`() = runTest {
+        val source = FakeSource(
+            vod = listOf(
+                XtreamVodItem(
+                    streamId = 200,
+                    name = "A Odisséia",
+                    releaseDate = "2016-04-01",
+                ),
+            ),
+        )
+
+        val result = resolver(source).resolveMovie(
+            tmdbId = 1368337,
+            titles = listOf("A Odisseia"),
+            year = 2026,
+        )
+
+        assertEquals(XtreamResolution.Unavailable, result)
+        assertTrue(source.requestedVodDetails.isEmpty())
+    }
+
+    @Test
     fun `movie rejects same title from a different year before detail lookup`() = runTest {
         val source = FakeSource(vod = listOf(XtreamVodItem(10, name = "Duna", year = "1984")))
 

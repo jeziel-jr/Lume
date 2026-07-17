@@ -30,7 +30,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.asCoroutineDispatcher
 
-private const val CATALOG_SCHEMA_VERSION = 1
+private const val CATALOG_SCHEMA_VERSION = 2
 private const val CATALOG_TTL_MILLIS = 6L * 60L * 60L * 1_000L
 
 sealed interface XtreamCatalogState {

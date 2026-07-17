@@ -88,10 +88,14 @@ data class XtreamVodItem(
     @Json(name = "name") val name: String? = null,
     @Json(name = "title") val title: String? = null,
     @Json(name = "year") val year: String? = null,
+    @Json(name = "release_date") val releaseDate: String? = null,
     @Json(name = "container_extension") val containerExtension: String? = null
 ) {
     val displayTitle: String get() = title?.takeIf { it.isNotBlank() } ?: name.orEmpty()
-    val releaseYear: Int? get() = year?.toIntOrNull() ?: XtreamTitleMatcher.extractYear(displayTitle)
+    val releaseYear: Int?
+        get() = year?.toIntOrNull()
+            ?: releaseDate?.take(4)?.toIntOrNull()
+            ?: XtreamTitleMatcher.extractYear(displayTitle)
 }
 
 @JsonClass(generateAdapter = true)

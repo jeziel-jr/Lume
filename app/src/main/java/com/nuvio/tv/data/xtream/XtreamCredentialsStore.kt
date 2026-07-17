@@ -4,7 +4,6 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
-import com.nuvio.tv.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -61,7 +60,7 @@ class XtreamCredentialsStore @Inject constructor(
     val accountInfo: StateFlow<XtreamAccountInfo?> = _accountInfo.asStateFlow()
 
     val defaultBaseUrl: String
-        get() = normalizeXtreamBaseUrl(BuildConfig.XTREAM_DEFAULT_BASE_URL)
+        get() = normalizeXtreamBaseUrl(DEFAULT_XTREAM_BASE_URL)
 
     fun current(): XtreamCredentials? = _credentials.value
 
@@ -174,6 +173,7 @@ class XtreamCredentialsStore @Inject constructor(
         const val KEY_ALIAS = "lume_xtream_credentials_v1"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val FORMAT_VERSION = "v1"
+        const val DEFAULT_XTREAM_BASE_URL = "https://capone.icu"
     }
 
     private data class StoredAccount(

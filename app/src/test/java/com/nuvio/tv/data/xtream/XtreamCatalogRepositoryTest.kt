@@ -153,6 +153,24 @@ class XtreamCatalogRepositoryTest {
     }
 
     @Test
+    fun `vod release date separates remakes when year field is absent`() {
+        val index = XtreamCatalogIndex.from(
+            XtreamCatalogSnapshot(
+                fetchedAtMillis = 1L,
+                vod = listOf(
+                    XtreamVodItem(1, name = "Barbie", releaseDate = "2023-07-19"),
+                    XtreamVodItem(2, name = "A Odisséia", releaseDate = "2016-04-01"),
+                ),
+                series = emptyList(),
+            ),
+            generation = 1L,
+        )
+
+        assertEquals(listOf(1), index.findVod(listOf("barbie"), 2023).map { it.streamId })
+        assertTrue(index.findVod(listOf("a odisseia"), 2026).isEmpty())
+    }
+
+    @Test
     fun `current index joins an initialization already in progress`() = runTest {
         val release = CompletableDeferred<Unit>()
         val source = ControlledSource(release = release)
