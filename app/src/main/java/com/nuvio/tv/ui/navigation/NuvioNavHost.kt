@@ -34,7 +34,6 @@ import com.nuvio.tv.ui.screens.search.DiscoverScreen
 import com.nuvio.tv.ui.screens.search.SearchScreen
 import com.nuvio.tv.ui.screens.settings.AboutScreen
 import com.nuvio.tv.ui.screens.settings.LayoutSettingsScreen
-import com.nuvio.tv.ui.screens.settings.LicensesAttributionsScreen
 import com.nuvio.tv.ui.screens.settings.PlaybackSettingsScreen
 import com.nuvio.tv.ui.screens.settings.SettingsScreen
 import com.nuvio.tv.ui.screens.settings.SupportersContributorsScreen
@@ -1066,9 +1065,6 @@ fun NuvioNavHost(
                 onNavigateToManageProfiles = { navController.navigate(Screen.ManageProfiles.route) },
                 onNavigateToSupportersContributors = {
                     navController.navigate(Screen.SupportersContributors.route)
-                },
-                onNavigateToLicensesAttributions = {
-                    navController.navigate(Screen.LicensesAttributions.route)
                 }
             )
         }
@@ -1114,21 +1110,12 @@ fun NuvioNavHost(
                 onBackPress = { navController.popBackStack() },
                 onNavigateToSupportersContributors = {
                     navController.navigate(Screen.SupportersContributors.route)
-                },
-                onNavigateToLicensesAttributions = {
-                    navController.navigate(Screen.LicensesAttributions.route)
                 }
             )
         }
 
         composable(Screen.SupportersContributors.route) {
             SupportersContributorsScreen(
-                onBackPress = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.LicensesAttributions.route) {
-            LicensesAttributionsScreen(
                 onBackPress = { navController.popBackStack() }
             )
         }

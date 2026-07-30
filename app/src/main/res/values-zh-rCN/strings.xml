@@ -336,7 +336,7 @@
 
     <string name="about_title">关于</string>
     <string name="about_subtitle">应用信息、更新和法律链接</string>
-    <string name="about_made_with_love">由 Tapframe 和朋友们 ❤️ 制作</string>
+    <string name="about_made_with_love">由 Mendax❤️ 制作</string>
     <string name="about_version">版本 %1$s</string>
     <string name="about_check_updates">检查更新</string>
     <string name="about_check_updates_subtitle">下载最新版本</string>
@@ -344,33 +344,6 @@
     <string name="about_privacy_policy_subtitle">查看我们的隐私政策</string>
     <string name="about_supporters_contributors">支持者与贡献者</string>
     <string name="about_supporters_contributors_subtitle">开放认可与项目致谢</string>
-    <string name="about_licenses_attributions">许可与出处</string>
-    <string name="about_licenses_attributions_subtitle">数据来源、致谢与 Android 许可</string>
-    <string name="licenses_attributions_title">许可与出处</string>
-    <string name="licenses_attributions_subtitle">Nuvio TV 使用的数据提供者、服务致谢与 Android 播放许可。</string>
-    <string name="licenses_attributions_section_app">应用许可</string>
-    <string name="licenses_attributions_section_data">数据与服务</string>
-    <string name="licenses_attributions_section_playback">Android 播放许可</string>
-    <string name="licenses_attributions_nuvio_title">Nuvio TV</string>
-    <string name="licenses_attributions_nuvio_body">源代码和许可条款可在项目仓库中获取。基于 GNU General Public License v3.0 许可。</string>
-    <string name="licenses_attributions_tmdb_title">The Movie Database (TMDB)</string>
-    <string name="licenses_attributions_tmdb_body">Nuvio 使用 TMDB API 获取电影和电视节目的元数据、美术图、预告片、演员、制作细节、收藏和推荐内容。本产品使用 TMDB API，但未经 TMDB 认可或认证。</string>
-    <string name="licenses_attributions_trakt_title">Trakt</string>
-    <string name="licenses_attributions_trakt_body">Nuvio 连接至 Trakt 以进行账户验证、观看历史、进度同步、媒体库数据、评分、列表和评论。Nuvio 与 Trakt 无关联或未经其认可。</string>
-    <string name="licenses_attributions_premiumize_title">Premiumize</string>
-    <string name="licenses_attributions_premiumize_body">Nuvio 连接至 Premiumize 以进行账户验证、云媒体库访问、缓存检查和云播放功能。Nuvio 与 Premiumize 无关联或未经其认可。</string>
-    <string name="licenses_attributions_torbox_title">TorBox</string>
-    <string name="licenses_attributions_torbox_body">Nuvio 连接至 TorBox 以进行账户验证、云媒体库访问、缓存检查和云播放功能。Nuvio 与 TorBox 无关联或未经其认可。</string>
-    <string name="licenses_attributions_mdblist_title">MDBList</string>
-    <string name="licenses_attributions_mdblist_body">Nuvio 使用 MDBList 获取评分和外部评分提供者数据。Nuvio 与 MDBList 无关联或未经其认可。</string>
-    <string name="licenses_attributions_introdb_title">IntroDB</string>
-    <string name="licenses_attributions_introdb_body">Nuvio 使用 IntroDB API 获取社区提供的片头、前情提要、片尾和演职员表时间戳，用于跳过控制。Nuvio 与 IntroDB 无关联或未经其认可。</string>
-    <string name="licenses_attributions_imdb_title">IMDb 非商业数据集</string>
-    <string name="licenses_attributions_imdb_body">Nuvio 使用 IMDb 非商业数据集，包括 title.ratings.tsv.gz，以获取 IMDb 评分和投票数。信息由 IMDb 提供 (https://www.imdb.com)。经许可使用。IMDb 数据根据 IMDb 条款仅供个人和非商业使用。</string>
-    <string name="licenses_attributions_exoplayer_title">AndroidX Media3 ExoPlayer 1.8.0</string>
-    <string name="licenses_attributions_exoplayer_body">用作 Android 播放引擎。基于 Apache License, Version 2.0 许可。</string>
-    <string name="licenses_attributions_libmpv_title">libmpv / libmpv-android</string>
-    <string name="licenses_attributions_libmpv_body">用作 Android 播放引擎。libmpv-android 包装基于 MIT 许可；mpv/libmpv 及包含的原生组件保留其上游许可条款。</string>
 
     <!-- SettingsScreen categories -->
     <string name="settings_experience">使用体验</string>

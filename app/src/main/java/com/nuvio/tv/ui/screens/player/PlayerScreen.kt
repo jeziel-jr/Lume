@@ -180,13 +180,7 @@ fun PlayerScreen(
     val currentOnPlaybackEnded by rememberUpdatedState(onPlaybackEnded)
     val currentOnBackPress by rememberUpdatedState(onBackPress)
     val nextEpisodeForEndPrompt = uiState.nextEpisode?.takeIf { it.hasAired }
-    val shouldConfirmNextEpisodeOnEnd =
-        uiState.playbackEnded &&
-            uiState.error == null &&
-            (uiState.streamAutoPlayMode != StreamAutoPlayMode.MANUAL ||
-                uiState.streamAutoPlayPreferBingeGroupForNextEpisode) &&
-            !uiState.streamAutoPlayNextEpisodeEnabled &&
-            nextEpisodeForEndPrompt != null
+    val shouldConfirmNextEpisodeOnEnd = shouldShowNextEpisodeEndPrompt(uiState)
     val returnToDetailsFromEndPrompt = {
         viewModel.stopAndRelease()
         currentOnBackPress(
@@ -1302,6 +1296,13 @@ fun PlayerScreen(
             )
         }
     }
+}
+
+internal fun shouldShowNextEpisodeEndPrompt(state: PlayerUiState): Boolean {
+    return state.playbackEnded &&
+        state.error == null &&
+        !state.streamAutoPlayNextEpisodeEnabled &&
+        state.nextEpisode?.hasAired == true
 }
 
 @Composable

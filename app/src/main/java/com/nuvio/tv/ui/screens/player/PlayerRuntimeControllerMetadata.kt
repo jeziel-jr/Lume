@@ -7,26 +7,99 @@ import com.nuvio.tv.data.repository.SkipInterval
 import com.nuvio.tv.domain.model.ContentType
 import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.Stream
+import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.domain.model.resolveContentLanguage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+internal data class PlayerMetadataRequestKey(
+    val contentId: String,
+    val contentType: String,
+    val videoId: String?,
+    val season: Int?,
+    val episode: Int?,
+)
+
+internal fun tmdbSeriesFallbackId(
+    id: String?,
+    type: String?,
+    legacyVideos: List<Video>,
+): String? {
+    if (legacyVideos.isNotEmpty()) return null
+
+    val normalizedType = type?.trim()?.lowercase() ?: return null
+    if (normalizedType != "series" && normalizedType != "tv") return null
+
+    val numericId = id
+        ?.trim()
+        ?.takeIf { it.startsWith("tmdb:", ignoreCase = true) }
+        ?.substringAfter(':')
+        ?.substringBefore(':')
+        ?.trim()
+        ?: return null
+
+    return numericId.takeIf { it.toIntOrNull()?.let { value -> value > 0 } == true }
+}
+
+internal fun shouldPublishTmdbSeriesVideos(
+    requestKey: PlayerMetadataRequestKey,
+    activeRequestKey: PlayerMetadataRequestKey?,
+    currentMetaVideos: List<Video>,
+    tmdbVideos: List<Video>,
+): Boolean = requestKey == activeRequestKey &&
+    currentMetaVideos.isEmpty() &&
+    tmdbVideos.isNotEmpty()
+
 internal fun PlayerRuntimeController.fetchMetaDetails(id: String?, type: String?) {
     if (id.isNullOrBlank() || type.isNullOrBlank()) return
 
+    val requestKey = metadataRequestKey(id = id, type = type)
     scope.launch {
-        when (
-            val result = metaRepository.getMetaFromAllAddons(type = type, id = id)
+        val result = try {
+            metaRepository.getMetaFromAllAddons(type = type, id = id)
                 .first { it !is NetworkResult.Loading }
-        ) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
+        }
+
+        when (result) {
             is NetworkResult.Success -> {
                 applyMetaDetails(result.data)
+                fetchTmdbSeriesVideosIfNeeded(
+                    id = id,
+                    type = type,
+                    legacyVideos = result.data.videos,
+                    requestKey = requestKey,
+                )
             }
             is NetworkResult.Error -> {
+                fetchTmdbSeriesVideosIfNeeded(
+                    id = id,
+                    type = type,
+                    legacyVideos = emptyList(),
+                    requestKey = requestKey,
+                )
             }
             NetworkResult.Loading -> {
+                fetchTmdbSeriesVideosIfNeeded(
+                    id = id,
+                    type = type,
+                    legacyVideos = emptyList(),
+                    requestKey = requestKey,
+                )
+            }
+            null -> {
+                fetchTmdbSeriesVideosIfNeeded(
+                    id = id,
+                    type = type,
+                    legacyVideos = emptyList(),
+                    requestKey = requestKey,
+                )
             }
         }
     }
@@ -34,6 +107,58 @@ internal fun PlayerRuntimeController.fetchMetaDetails(id: String?, type: String?
     scope.launch {
         enrichDescriptionFromTmdb(id, type)
     }
+}
+
+private suspend fun PlayerRuntimeController.fetchTmdbSeriesVideosIfNeeded(
+    id: String,
+    type: String,
+    legacyVideos: List<Video>,
+    requestKey: PlayerMetadataRequestKey,
+) {
+    val tmdbId = tmdbSeriesFallbackId(
+        id = id,
+        type = type,
+        legacyVideos = legacyVideos,
+    ) ?: return
+
+    val tmdbVideos = try {
+        val language = tmdbSettingsDataStore.settings.first().language
+        tmdbMetadataService.fetchSeriesVideos(tmdbId = tmdbId, language = language)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    if (!shouldPublishTmdbSeriesVideos(
+            requestKey = requestKey,
+            activeRequestKey = currentMetadataRequestKey(),
+            currentMetaVideos = metaVideos,
+            tmdbVideos = tmdbVideos,
+        )
+    ) {
+        return
+    }
+
+    metaVideos = tmdbVideos
+    recomputeNextEpisode(resetVisibility = false)
+}
+
+private fun PlayerRuntimeController.metadataRequestKey(
+    id: String,
+    type: String,
+): PlayerMetadataRequestKey = PlayerMetadataRequestKey(
+    contentId = id,
+    contentType = type.trim().lowercase(),
+    videoId = currentVideoId,
+    season = currentSeason,
+    episode = currentEpisode,
+)
+
+private fun PlayerRuntimeController.currentMetadataRequestKey(): PlayerMetadataRequestKey? {
+    val id = contentId ?: return null
+    val type = contentType ?: return null
+    return metadataRequestKey(id = id, type = type)
 }
 
 internal fun PlayerRuntimeController.applyMetaDetails(meta: Meta) {

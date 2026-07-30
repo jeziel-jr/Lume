@@ -333,7 +333,7 @@
 <!-- AboutScreen -->
 <string name="about_title">O aplikaci</string>
 <string name="about_subtitle">Informace o aplikaci, aktualizace a právní odkazy</string>
-<string name="about_made_with_love">Vytvořeno s ❤️ týmem Tapframe a přáteli</string>
+<string name="about_made_with_love">Vytvořeno s ❤️ týmem Mendax</string>
 <string name="about_version">Verze %1$s</string>
 <string name="about_check_updates">Zkontrolovat aktualizace</string>
 <string name="about_check_updates_subtitle">Stáhnout nejnovější verzi</string>
@@ -341,29 +341,6 @@
 <string name="about_privacy_policy_subtitle">Zobrazit naše zásady ochrany osobních údajů</string>
 <string name="about_supporters_contributors">Podporovatelé a přispěvatelé</string>
 <string name="about_supporters_contributors_subtitle">Otevřít uznání a kredity projektu</string>
-<string name="about_licenses_attributions">Licence a atribuce</string>
-<string name="about_licenses_attributions_subtitle">Zdroje dat, poděkování a licence Android</string>
-<string name="licenses_attributions_title">Licence a atribuce</string>
-<string name="licenses_attributions_subtitle">Poskytovatelé dat, servisní kredity a licence pro přehrávání Android používané Nuvio TV.</string>
-<string name="licenses_attributions_section_app">LICENCE APLIKACE</string>
-<string name="licenses_attributions_section_data">DATA A SLUŽBY</string>
-<string name="licenses_attributions_section_playback">LICENCE PRO PŘEHRÁVÁNÍ ANDROID</string>
-<string name="licenses_attributions_nuvio_title">Nuvio TV</string>
-<string name="licenses_attributions_nuvio_body">Zdrojový kód a licenční podmínky jsou dostupné v repozitáři projektu. Licencováno pod GNU General Public License v3.0.</string>
-<string name="licenses_attributions_tmdb_title">The Movie Database (TMDB)</string>
-<string name="licenses_attributions_tmdb_body">Nuvio používá API TMDB pro metadata filmů a seriálů, artwork, trailery, obsazení, produkční detaily, kolekce a doporučení. Tento produkt používá API TMDB, ale není schválen ani certifikován TMDB.</string>
-<string name="licenses_attributions_trakt_title">Trakt</string>
-<string name="licenses_attributions_trakt_body">Nuvio se připojuje k Trakt pro autentizaci účtu, historii sledování, synchronizaci postupu, data knihovny, hodnocení, seznamy a komentáře. Nuvio není spojen ani schválen Trakt.</string>
-<string name="licenses_attributions_mdblist_title">MDBList</string>
-<string name="licenses_attributions_mdblist_body">Nuvio používá MDBList pro hodnocení a data externích poskytovatelů skóre. Nuvio není spojen ani schválen MDBList.</string>
-<string name="licenses_attributions_introdb_title">IntroDB</string>
-<string name="licenses_attributions_introdb_body">Nuvio používá API IntroDB pro komunitně poskytované časové značky intra, rekapitulace, titulků a náhledů používané ovládacími prvky přeskočení. Nuvio není spojen ani schválen IntroDB.</string>
-<string name="licenses_attributions_imdb_title">IMDb nekomerční datové sady</string>
-<string name="licenses_attributions_imdb_body">Nuvio používá IMDb nekomerční datové sady, včetně title.ratings.tsv.gz, pro hodnocení IMDb a počty hlasů. Informace s laskavým svolením IMDb (https://www.imdb.com). Použito se svolením. Data IMDb jsou pro osobní a nekomerční použití podle podmínek IMDb.</string>
-<string name="licenses_attributions_exoplayer_title">AndroidX Media3 ExoPlayer 1.8.0</string>
-<string name="licenses_attributions_exoplayer_body">Používá se jako přehrávací engine Android. Licencováno pod Apache License, Version 2.0.</string>
-<string name="licenses_attributions_libmpv_title">libmpv / libmpv-android</string>
-<string name="licenses_attributions_libmpv_body">Používá se jako přehrávací engine Android. Obal libmpv-android je licencován pod MIT licencí; mpv/libmpv a přibalené nativní komponenty si ponechávají své upstream licenční podmínky.</string>
 
 <!-- SettingsScreen categories -->
 <string name="settings_experience">Zkušenost</string>

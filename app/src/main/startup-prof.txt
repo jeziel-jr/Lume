@@ -22189,9 +22189,6 @@ HSPLcom/nuvio/tv/ui/navigation/Screen$LayoutSettings;-><init>()V
 Lcom/nuvio/tv/ui/navigation/Screen$Library;
 HSPLcom/nuvio/tv/ui/navigation/Screen$Library;-><clinit>()V
 HSPLcom/nuvio/tv/ui/navigation/Screen$Library;-><init>()V
-Lcom/nuvio/tv/ui/navigation/Screen$LicensesAttributions;
-HSPLcom/nuvio/tv/ui/navigation/Screen$LicensesAttributions;-><clinit>()V
-HSPLcom/nuvio/tv/ui/navigation/Screen$LicensesAttributions;-><init>()V
 Lcom/nuvio/tv/ui/navigation/Screen$ManageProfiles;
 HSPLcom/nuvio/tv/ui/navigation/Screen$ManageProfiles;-><clinit>()V
 HSPLcom/nuvio/tv/ui/navigation/Screen$ManageProfiles;-><init>()V

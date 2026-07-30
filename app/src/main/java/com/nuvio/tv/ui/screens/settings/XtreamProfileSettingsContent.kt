@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -37,6 +39,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun XtreamProfileSettingsContent(
@@ -47,6 +50,14 @@ internal fun XtreamProfileSettingsContent(
     var showSignOutConfirmation by remember { mutableStateOf(false) }
     val credentials = state.credentials
     val info = state.accountInfo
+    var currentInstant by remember { mutableStateOf(Instant.now()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(XTREAM_EXPIRATION_REFRESH_INTERVAL_MILLIS)
+            currentInstant = Instant.now()
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -77,7 +88,7 @@ internal fun XtreamProfileSettingsContent(
                 )
                 XtreamAccountInfoRow(
                     stringResource(R.string.xtream_profile_expiration),
-                    formatExpiration(info?.expirationEpochSeconds),
+                    formatExpiration(info?.expirationEpochSeconds, currentInstant),
                 )
                 XtreamAccountInfoRow(
                     stringResource(R.string.xtream_profile_server),
@@ -216,10 +227,32 @@ private fun formatLastCheck(epochMillis: Long?): String {
 }
 
 @Composable
-private fun formatExpiration(epochSeconds: Long?): String {
-    if (epochSeconds == null) return stringResource(R.string.xtream_profile_no_expiration)
-    return runCatching {
-        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-            .format(Instant.ofEpochSecond(epochSeconds).atZone(ZoneId.systemDefault()).toLocalDate())
-    }.getOrElse { stringResource(R.string.xtream_profile_status_unknown) }
+private fun formatExpiration(epochSeconds: Long?, now: Instant): String = when (
+    val expiration = classifyXtreamExpiration(epochSeconds, now)
+) {
+    XtreamExpiration.Missing -> stringResource(R.string.xtream_profile_no_expiration)
+    XtreamExpiration.Expired -> stringResource(R.string.xtream_profile_expired)
+    XtreamExpiration.LessThanMinute -> stringResource(R.string.xtream_profile_expires_less_than_minute)
+    is XtreamExpiration.Days -> pluralStringResource(
+        R.plurals.xtream_profile_expiration_days,
+        expiration.count.toIntCount(),
+        expiration.count,
+    )
+    is XtreamExpiration.HoursAndMinutes -> stringResource(
+        R.string.xtream_profile_expiration_hours_minutes,
+        pluralStringResource(
+            R.plurals.xtream_profile_expiration_hours,
+            expiration.hours.toIntCount(),
+            expiration.hours,
+        ),
+        pluralStringResource(
+            R.plurals.xtream_profile_expiration_minutes,
+            expiration.minutes.toIntCount(),
+            expiration.minutes,
+        ),
+    )
 }
+
+private fun Long.toIntCount(): Int = coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+
+private const val XTREAM_EXPIRATION_REFRESH_INTERVAL_MILLIS = 60_000L

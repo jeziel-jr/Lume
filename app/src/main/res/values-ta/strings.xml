@@ -333,7 +333,7 @@
     <!-- AboutScreen -->
     <string name="about_title">பற்றி</string>
     <string name="about_subtitle">செயலி தகவல், புதுப்பிப்புகள் மற்றும் சட்ட இணைப்புகள்</string>
-    <string name="about_made_with_love">❤️ உடன் டாப்ஃப்ரேம் மற்றும் நண்பர்களால் உருவாக்கப்பட்டது</string>
+    <string name="about_made_with_love">❤️ உடன் Mendax உருவாக்கப்பட்டது</string>
     <string name="about_version">பதிப்பு %1$s</string>
     <string name="about_check_updates">புதுப்பிப்புகளை சரிபார்</string>
     <string name="about_check_updates_subtitle">சமீபத்திய வெளியீட்டை பதிவிறக்கு</string>
@@ -341,29 +341,6 @@
     <string name="about_privacy_policy_subtitle">எங்கள் தனியுரிமைக் கொள்கையை காண்க</string>
     <string name="about_supporters_contributors">ஆதரவாளர்கள் &amp; பங்களிப்பாளர்கள்</string>
     <string name="about_supporters_contributors_subtitle">திறந்த அங்கீகாரம் மற்றும் திட்ட நன்றிகள்</string>
-    <string name="about_licenses_attributions">உரிமங்கள் &amp; நன்றிக்குறிப்புகள்</string>
-    <string name="about_licenses_attributions_subtitle">தரவு மூலங்கள், நன்றிகள் மற்றும் ஆண்ட்ராய்டு உரிமங்கள்</string>
-    <string name="licenses_attributions_title">உரிமங்கள் &amp; நன்றிக்குறிப்புகள்</string>
-    <string name="licenses_attributions_subtitle">நுவியோ டிவி பயன்படுத்தும் தரவு வழங்குநர்கள், சேவை நன்றிகள் மற்றும் ஆண்ட்ராய்டு இயக்க உரிமங்கள்.</string>
-    <string name="licenses_attributions_section_app">செயலி உரிமம்</string>
-    <string name="licenses_attributions_section_data">தரவு &amp; சேவைகள்</string>
-    <string name="licenses_attributions_section_playback">ஆண்ட்ராய்டு இயக்க உரிமங்கள்</string>
-    <string name="licenses_attributions_nuvio_title">நுவியோ டிவி</string>
-    <string name="licenses_attributions_nuvio_body">மூலக் குறியீடு மற்றும் உரிம நிபந்தனைகள் திட்ட களஞ்சியத்தில் கிடைக்கின்றன. GNU பொது உரிமம் v3.0 கீழ் வழங்கப்படுகிறது.</string>
-    <string name="licenses_attributions_tmdb_title">தி மூவி டேட்டாபேஸ் (TMDB)</string>
-    <string name="licenses_attributions_tmdb_body">நுவியோ திரைப்படம் மற்றும் டிவி தகவல்கள், கலைப்படங்கள், முன்னோட்டங்கள், நடிகர்கள், தயாரிப்பு விவரங்கள், தொகுப்புகள் மற்றும் பரிந்துரைகளுக்காக TMDB API-ஐ பயன்படுத்துகிறது. இந்த தயாரிப்பு TMDB API-ஐ பயன்படுத்தினாலும் TMDB ஆதரவு அல்லது சான்றளிப்பு பெறவில்லை.</string>
-    <string name="licenses_attributions_trakt_title">ட்ராக்ட்</string>
-    <string name="licenses_attributions_trakt_body">நுவியோ கணக்கு உள்நுழைவு, பார்த்த வரலாறு, முன்னேற்ற ஒத்திசைவு, நூலகத் தரவு, மதிப்பீடுகள், பட்டியல்கள் மற்றும் கருத்துகளுக்காக ட்ராக்டுடன் இணைகிறது. நுவியோ ட்ராக்டுடன் தொடர்புடையதல்ல.</string>
-    <string name="licenses_attributions_mdblist_title">எம்டிபிலிஸ்ட்</string>
-    <string name="licenses_attributions_mdblist_body">நுவியோ மதிப்பீடுகள் மற்றும் வெளிப்புற மதிப்பெண் தரவுகளுக்காக MDBList-ஐ பயன்படுத்துகிறது. நுவியோ MDBList உடன் தொடர்புடையதல்ல.</string>
-    <string name="licenses_attributions_introdb_title">இன்ட்ரோடிபி</string>
-    <string name="licenses_attributions_introdb_body">நுவியோ தொடக்க பகுதி, சுருக்கம், கிரெடிட்ஸ் மற்றும் முன்காட்சி நேரங்களுக்காக IntroDB API-ஐ பயன்படுத்துகிறது.</string>
-    <string name="licenses_attributions_imdb_title">IMDb வணிகமற்ற தரவுத்தொகுப்புகள்</string>
-    <string name="licenses_attributions_imdb_body">நுவியோ IMDb மதிப்பீடுகள் மற்றும் வாக்கு எண்ணிக்கைகளுக்காக IMDb தரவுத்தொகுப்புகளை பயன்படுத்துகிறது.</string>
-    <string name="licenses_attributions_exoplayer_title">ஆண்ட்ராய்ட்எக்ஸ் மீடியா3 எக்ஸோபிளேயர் 1.8.0</string>
-    <string name="licenses_attributions_exoplayer_body">ஆண்ட்ராய்டு இயக்க இயந்திரமாக பயன்படுத்தப்படுகிறது. அபாச்சி உரிமம் 2.0 கீழ் வழங்கப்படுகிறது.</string>
-    <string name="licenses_attributions_libmpv_title">லிப்எம்பிவி / லிப்எம்பிவி-ஆண்ட்ராய்டு</string>
-    <string name="licenses_attributions_libmpv_body">ஆண்ட்ராய்டு இயக்க இயந்திரமாக பயன்படுத்தப்படுகிறது.</string>
 
     <!-- SettingsScreen categories -->
     <string name="settings_experience">பயன்பாட்டு முறை</string>

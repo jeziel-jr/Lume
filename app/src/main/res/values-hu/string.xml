@@ -326,7 +326,7 @@
 
     <string name="about_title">Névjegy</string>
     <string name="about_subtitle">Információk, frissítések és jogi nyilatkozatok</string>
-    <string name="about_made_with_love">Szeretettel (❤️) készítette a Tapframe és barátai</string>
+    <string name="about_made_with_love">Szeretettel (❤️) készítette a Mendax</string>
     <string name="about_version">Verzió: %1$s</string>
     <string name="about_check_updates">Frissítések keresése</string>
     <string name="about_check_updates_subtitle">A legújabb verzió letöltése</string>
@@ -334,29 +334,6 @@
     <string name="about_privacy_policy_subtitle">Adatvédelmi irányelvek megtekintése</string>
     <string name="about_supporters_contributors">Támogatók és közreműködők</string>
     <string name="about_supporters_contributors_subtitle">A projekt támogatóinak és közreműködőinek listája</string>
-    <string name="about_licenses_attributions">Licencek és forrásmegjelölések</string>
-    <string name="about_licenses_attributions_subtitle">Adatforrások, köszönetnyilvánítások és Android licencek</string>
-    <string name="licenses_attributions_title">Licencek és forrásmegjelölések</string>
-    <string name="licenses_attributions_subtitle">A Nuvio TV által használt adatszolgáltatók, szolgáltatási köszönetnyilvánítások és Android lejátszási licencek.</string>
-    <string name="licenses_attributions_section_app">ALKALMAZÁS LICENC</string>
-    <string name="licenses_attributions_section_data">ADATOK ÉS SZOLGÁLTATÁSOK</string>
-    <string name="licenses_attributions_section_playback">ANDROID LEJÁTSZÁSI LICENCEK</string>
-    <string name="licenses_attributions_nuvio_title">Nuvio TV</string>
-    <string name="licenses_attributions_nuvio_body">A forráskód és a licencfeltételek elérhetők a projekt tárolójában. Licenc: GNU General Public License v3.0.</string>
-    <string name="licenses_attributions_tmdb_title">The Movie Database (TMDB)</string>
-    <string name="licenses_attributions_tmdb_body">A Nuvio a TMDB API-t használja a filmek és tévéműsorok metaadataihoz, borítóképekhez, előzetesekhez, stáblistákhoz, gyártási adatokhoz, gyűjteményekhez és ajánlásokhoz. Ez a termék a TMDB API-t használja, de a TMDB nem támogatja és nem hagyta jóvá.</string>
-    <string name="licenses_attributions_trakt_title">Trakt</string>
-    <string name="licenses_attributions_trakt_body">A Nuvio a Trakt-hoz csatlakozik a fiók hitelesítéséhez, a megtekintési előzményekhez, a folyamat szinkronizálásához, a könyvtári adatokhoz, az értékelésekhez, a listákhoz és a véleményekhez. A Nuvio nem áll kapcsolatban a Trakt-tal, és az nem hagyta jóvá.</string>
-    <string name="licenses_attributions_mdblist_title">MDBList</string>
-    <string name="licenses_attributions_mdblist_body">A Nuvio az MDBList-et használja az értékelésekhez és a külső pontszám-szolgáltatói adatokhoz. A Nuvio nem áll kapcsolatban az MDBList-tel, és az nem hagyta jóvá.</string>
-    <string name="licenses_attributions_introdb_title">IntroDB</string>
-    <string name="licenses_attributions_introdb_body">A Nuvio az IntroDB API-t használja a közösség által biztosított intro, összefoglaló, stáblista és előzetes időbélyegekhez, amelyeket az átugrási vezérlők használnak. A Nuvio nem áll kapcsolatban az IntroDB-vel, és az nem hagyta jóvá.</string>
-    <string name="licenses_attributions_imdb_title">IMDb nem kereskedelmi adatkészletek</string>
-    <string name="licenses_attributions_imdb_body">A Nuvio az IMDb nem kereskedelmi adatkészleteit, beleértve a title.ratings.tsv.gz fájlt, az IMDb értékelésekhez és szavazatszámokhoz használja. Az információk az IMDb (https://www.imdb.com) jóvoltából származnak. Engedéllyel felhasználva. Az IMDb adatai személyes és nem kereskedelmi célokra használhatók az IMDb feltételei alapján.</string>
-    <string name="licenses_attributions_exoplayer_title">AndroidX Media3 ExoPlayer 1.8.0</string>
-    <string name="licenses_attributions_exoplayer_body">Android lejátszó motorként használva. Licenc: Apache License, 2.0-s verzió.</string>
-    <string name="licenses_attributions_libmpv_title">libmpv / libmpv-android</string>
-    <string name="licenses_attributions_libmpv_body">Android lejátszó motorként használva. A libmpv-android burkoló MIT licenc alatt áll; az mpv/libmpv és a mellékelt natív összetevők megtartják saját upstream licencfeltételeiket.</string>
 
     <!-- SettingsScreen categories -->
     <string name="settings_experience">Felhasználói élmény</string>

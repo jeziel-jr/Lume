@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -46,7 +45,6 @@ import com.nuvio.tv.updater.UpdateViewModel
 @Composable
 fun AboutScreen(
     onNavigateToSupportersContributors: () -> Unit = {},
-    onNavigateToLicensesAttributions: () -> Unit = {},
     onBackPress: () -> Unit = {}
 ) {
     BackHandler { onBackPress() }
@@ -56,8 +54,7 @@ fun AboutScreen(
         subtitle = stringResource(R.string.about_subtitle)
     ) {
         AboutSettingsContent(
-            onNavigateToSupportersContributors = onNavigateToSupportersContributors,
-            onNavigateToLicensesAttributions = onNavigateToLicensesAttributions
+            onNavigateToSupportersContributors = onNavigateToSupportersContributors
         )
     }
 }
@@ -65,7 +62,6 @@ fun AboutScreen(
 @Composable
 fun AboutSettingsContent(
     onNavigateToSupportersContributors: () -> Unit = {},
-    onNavigateToLicensesAttributions: () -> Unit = {},
     initialFocusRequester: FocusRequester? = null
 ) {
     val context = LocalContext.current
@@ -138,12 +134,6 @@ fun AboutSettingsContent(
                     )
                 }
 
-                SettingsActionRow(
-                    title = stringResource(R.string.about_licenses_attributions),
-                    subtitle = stringResource(R.string.about_licenses_attributions_subtitle),
-                    trailingIcon = Icons.Default.ChevronRight,
-                    onClick = onNavigateToLicensesAttributions
-                )
             }
             SettingsVerticalScrollIndicators(state = aboutScrollState)
             }

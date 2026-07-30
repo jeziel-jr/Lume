@@ -339,7 +339,7 @@
     <!-- AboutScreen -->
     <string name="about_title">O aplikácii</string>
     <string name="about_subtitle">Informácie o aplikácii, aktualizácie a právne odkazy</string>
-    <string name="about_made_with_love">Vytvorené s ❤️ tímom Tapframe a priateľmi</string>
+    <string name="about_made_with_love">Vytvorené s ❤️ tímom Mendax</string>
     <string name="about_version">Verzia %1$s</string>
     <string name="about_check_updates">Skontrolovať aktualizácie</string>
     <string name="about_check_updates_subtitle">Stiahnuť najnovšiu verziu</string>
@@ -347,29 +347,6 @@
     <string name="about_privacy_policy_subtitle">Zobraziť zásady ochrany osobných údajov</string>
     <string name="about_supporters_contributors">Podporovatelia &amp; Prispievatelia</string>
     <string name="about_supporters_contributors_subtitle">Verejné uznanie a kredity projektu</string>
-    <string name="about_licenses_attributions">Licencie a atribúcie</string>
-    <string name="about_licenses_attributions_subtitle">Zdroje dát, poďakovania a Android licencie</string>
-    <string name="licenses_attributions_title">Licencie a atribúcie</string>
-    <string name="licenses_attributions_subtitle">Poskytovatelia dát, servisné kredity a Android licencie prehrávania používané Nuvio TV.</string>
-    <string name="licenses_attributions_section_app">LICENCIA APLIKÁCIE</string>
-    <string name="licenses_attributions_section_data">DÁT A SLUŽBY</string>
-    <string name="licenses_attributions_section_playback">ANDROID LICENCIE PREHRÁVANIA</string>
-    <string name="licenses_attributions_nuvio_title">Nuvio TV</string>
-    <string name="licenses_attributions_nuvio_body">Zdrojový kód a licenčné podmienky sú dostupné v repozitári projektu. Licencované pod GNU General Public License v3.0.</string>
-    <string name="licenses_attributions_tmdb_title">The Movie Database (TMDB)</string>
-    <string name="licenses_attributions_tmdb_body">Nuvio používa TMDB API pre metadáta filmov a TV, grafiku, trailery, obsadenie, produkčné detaily, kolekcie a odporúčania. Tento produkt používa TMDB API, ale nie je schválený ani certifikovaný TMDB.</string>
-    <string name="licenses_attributions_trakt_title">Trakt</string>
-    <string name="licenses_attributions_trakt_body">Nuvio sa pripája k Trakt pre autentifikáciu účtu, históriu sledovania, synchronizáciu postupu, dáta knižnice, hodnotenia, zoznamy a komentáre. Nuvio nie je pridružený k Trakt ani ním schválený.</string>
-    <string name="licenses_attributions_mdblist_title">MDBList</string>
-    <string name="licenses_attributions_mdblist_body">Nuvio používa MDBList pre hodnotenia a dáta externých poskytovateľov skóre. Nuvio nie je pridružený k MDBList ani ním schválený.</string>
-    <string name="licenses_attributions_introdb_title">IntroDB</string>
-    <string name="licenses_attributions_introdb_body">Nuvio používa IntroDB API pre komunitou poskytované časové značky intra, rekapitulácie, kreditov a náhľadov používané ovládacími prvkami preskočenia. Nuvio nie je pridružený k IntroDB ani ním schválený.</string>
-    <string name="licenses_attributions_imdb_title">IMDb nekomerčné datasety</string>
-    <string name="licenses_attributions_imdb_body">Nuvio používa IMDb nekomerčné datasety, vrátane title.ratings.tsv.gz, pre hodnotenia IMDb a počty hlasov. Informácie s láskavým dovolením IMDb (https://www.imdb.com). Použité s povolením. Dáta IMDb sú určené pre osobné a nekomerčné použitie podľa podmienok IMDb.</string>
-    <string name="licenses_attributions_exoplayer_title">AndroidX Media3 ExoPlayer 1.8.0</string>
-    <string name="licenses_attributions_exoplayer_body">Používaný ako Android engine prehrávania. Licencovaný pod Apache License, Version 2.0.</string>
-    <string name="licenses_attributions_libmpv_title">libmpv / libmpv-android</string>
-    <string name="licenses_attributions_libmpv_body">Používaný ako Android engine prehrávania. Wrapper libmpv-android je licencovaný pod MIT licenciou; mpv/libmpv a pribalené natívne komponenty si zachovávajú svoje upstream licenčné podmienky.</string>
 
     <!-- SettingsScreen categories -->
     <string name="settings_experience">Skúsenosť</string>

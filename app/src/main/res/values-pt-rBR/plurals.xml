@@ -1,0 +1,14 @@
+<resources>
+    <plurals name="xtream_profile_expiration_days">
+        <item quantity="one">%1$d dia restante</item>
+        <item quantity="other">%1$d dias restantes</item>
+    </plurals>
+    <plurals name="xtream_profile_expiration_hours">
+        <item quantity="one">%1$d hora</item>
+        <item quantity="other">%1$d horas</item>
+    </plurals>
+    <plurals name="xtream_profile_expiration_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+</resources>

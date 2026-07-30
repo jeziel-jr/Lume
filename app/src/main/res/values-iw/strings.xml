@@ -328,7 +328,7 @@
 
     <string name="about_title">אודות</string>
     <string name="about_subtitle">מידע על האפליקציה, עדכונים וקישורים משפטיים</string>
-    <string name="about_made_with_love">נוצר באהבה ❤️ על ידי Tapframe וחברים</string>
+    <string name="about_made_with_love">נוצר באהבה ❤️ על ידי Mendax</string>
     <string name="about_version">גרסה %1$s</string>
     <string name="about_check_updates">בדיקת עדכונים</string>
     <string name="about_check_updates_subtitle">הורד את הגרסה האחרונה</string>
@@ -336,23 +336,6 @@
     <string name="about_privacy_policy_subtitle">צפה במדיניות הפרטיות שלנו</string>
     <string name="about_supporters_contributors">תומכים ותורמים</string>
     <string name="about_supporters_contributors_subtitle">הכרה ציבורית וקרדיטים לפרויקט</string>
-    <string name="about_licenses_attributions">רישיונות וקרדיטים</string>
-    <string name="about_licenses_attributions_subtitle">מקורות מידע, תודות ורישיונות Android</string>
-    <string name="licenses_attributions_title">רישיונות וקרדיטים</string>
-    <string name="licenses_attributions_subtitle">ספקי מידע, קרדיטים לשירותים ורישיונות הפעלת Android שבהם משתמשת Nuvio TV.</string>
-    <string name="licenses_attributions_section_app">רישיון האפליקציה</string>
-    <string name="licenses_attributions_section_data">מידע ושירותים</string>
-    <string name="licenses_attributions_section_playback">רישיונות הפעלת Android</string>
-    <string name="licenses_attributions_nuvio_body">קוד המקור ותנאי הרישיון זמינים במאגר הפרויקט. מורשה תחת רישיון GNU General Public License v3.0.</string>
-    <string name="licenses_attributions_tmdb_body">Nuvio משתמשת ב-API של TMDB עבור מטה-דאטה של סרטים וסדרות, תמונות, טריילרים, שחקנים, פרטי הפקה, אוספים והמלצות. מוצר זה משתמש ב-API של TMDB אך אינו מאושר או מאומת על ידי TMDB.</string>
-    <string name="licenses_attributions_trakt_body">Nuvio מתחברת ל-Trakt לצורך אימות חשבון, היסטוריית צפייה, סנכרון התקדמות, נתוני ספרייה, דירוגים, רשימות ותגובות. Nuvio אינה קשורה או מאושרת על ידי Trakt.</string>
-    <string name="licenses_attributions_premiumize_body">Nuvio מתחברת ל-Premiumize לצורך אימות חשבון, גישה לספריית ענן, בדיקות מטמון ותכונות הפעלה בענן. Nuvio אינה קשורה או מאושרת על ידי Premiumize.</string>
-    <string name="licenses_attributions_torbox_body">Nuvio מתחברת ל-TorBox לצורך אימות חשבון, גישה לספריית ענן, בדיקות מטמון ותכונות הפעלה בענן. Nuvio אינה קשורה או מאושרת על ידי TorBox.</string>
-    <string name="licenses_attributions_mdblist_body">Nuvio משתמשת ב-MDBList עבור דירוגים ונתוני ספקי ציון חיצוניים. Nuvio אינה קשורה או מאושרת על ידי MDBList.</string>
-    <string name="licenses_attributions_introdb_body">Nuvio משתמשת ב-API של IntroDB עבור חותמות זמן של פתיח, תקציר, קרדיטים ותצוגה מקדימה שסופקו על ידי הקהילה, המשמשות לפקדי הדילוג. Nuvio אינה קשורה או מאושרת על ידי IntroDB.</string>
-    <string name="licenses_attributions_imdb_body">Nuvio משתמשת ב-IMDb Non-Commerical Datasets של IMDb, כולל title.ratings.tsv.gz, עבור דירוגי וקולות IMDb. מידע באדיבות IMDb (https://www.imdb.com). בשימוש באישור. נתוני IMDb מיועדים לשימוש אישי ולא-מסחרי בכפוף לתנאי IMDb.</string>
-    <string name="licenses_attributions_exoplayer_body">משמש כמנוע הפעלה באנדרואיד. מורשה תחת רישיון Apache, גרסה 2.0.</string>
-    <string name="licenses_attributions_libmpv_body">משמש כמנוע הפעלה באנדרואיד. עטיפת libmpv-android מורשית תחת רישיון MIT; mpv/libmpv ורכיבים טבעיים מצורפים שומרים על תנאי הרישיון המקוריים שלהם.</string>
 
     <!-- SettingsScreen categories -->
     <string name="settings_experience">חווית שימוש</string>
