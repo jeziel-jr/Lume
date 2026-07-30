@@ -18,7 +18,16 @@ object StreamAutoPlayPolicy {
             ?.substringAfter(':')
             ?.substringBefore(':')
             ?.toIntOrNull()
-            ?: return fallback
+        return canonicalTmdbVideoId(tmdbId, fallback, season, episode)
+    }
+
+    fun canonicalTmdbVideoId(
+        tmdbId: Int?,
+        fallback: String,
+        season: Int? = null,
+        episode: Int? = null,
+    ): String {
+        tmdbId ?: return fallback
         return if (season != null && episode != null) {
             "tmdb:$tmdbId:$season:$episode"
         } else {

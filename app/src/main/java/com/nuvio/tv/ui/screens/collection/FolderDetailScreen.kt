@@ -73,6 +73,8 @@ import com.nuvio.tv.ui.screens.home.HeroBackdropState
 import com.nuvio.tv.ui.screens.home.HomeScreenFocusState
 import com.nuvio.tv.ui.screens.home.key
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
+import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 import com.nuvio.tv.ui.screens.home.ModernHomeContent
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -88,6 +90,7 @@ fun FolderDetailScreen(
     val rowsFocusState by viewModel.rowsFocusState.collectAsStateWithLifecycle()
     val followLayoutFocusState by viewModel.followLayoutFocusState.collectAsStateWithLifecycle()
     val tabFocusStates by viewModel.tabFocusStates.collectAsStateWithLifecycle()
+    val catalogAvailability by viewModel.catalogAvailability.collectAsStateWithLifecycle()
     val folder = uiState.folder
 
     if (uiState.isLoading) {
@@ -118,6 +121,7 @@ fun FolderDetailScreen(
     if (uiState.viewMode == FolderViewMode.FOLLOW_LAYOUT) {
         FollowLayoutContent(
             uiState = uiState,
+            catalogAvailability = catalogAvailability,
             focusState = followLayoutFocusState,
             enrichingItemId = enrichingItemId,
             enrichedPreviews = enrichedPreviews,
@@ -147,6 +151,7 @@ fun FolderDetailScreen(
             when (uiState.viewMode) {
                 FolderViewMode.TABBED_GRID -> TabbedGridContent(
                     uiState = uiState,
+                    catalogAvailability = catalogAvailability,
                     folder = folder,
                     tabFocusState = tabFocusStates[uiState.selectedTabIndex] ?: FolderDetailGridFocusState(),
                     onSelectTab = viewModel::selectTab,
@@ -169,6 +174,7 @@ fun FolderDetailScreen(
                     FolderHeader(folder = folder)
                     RowsContent(
                         uiState = uiState,
+                        catalogAvailability = catalogAvailability,
                         focusState = rowsFocusState,
                         onNavigateToDetail = onNavigateToDetail,
                         isItemWatched = isItemWatched,
@@ -243,6 +249,7 @@ private fun FolderHeader(folder: com.nuvio.tv.domain.model.CollectionFolder) {
 @Composable
 private fun TabbedGridContent(
     uiState: FolderDetailUiState,
+    catalogAvailability: Map<String, CatalogPlaybackAvailability>,
     folder: com.nuvio.tv.domain.model.CollectionFolder,
     tabFocusState: FolderDetailGridFocusState,
     onSelectTab: (Int) -> Unit,
@@ -446,6 +453,7 @@ private fun TabbedGridContent(
                     val focusReq = itemFocusRequesters.getOrPut(itemKey) { FocusRequester() }
                     ContentCard(
                         item = item,
+                        catalogAvailability = catalogAvailability[item.catalogAvailabilityKey()],
                         posterCardStyle = posterCardStyle,
                         focusRequester = focusReq,
                         isWatched = isItemWatched(item),
@@ -487,6 +495,7 @@ private fun TabbedGridContent(
 @Composable
 private fun RowsContent(
     uiState: FolderDetailUiState,
+    catalogAvailability: Map<String, CatalogPlaybackAvailability>,
     focusState: HomeScreenFocusState,
     onNavigateToDetail: (String, String, String) -> Unit,
     onLoadMoreCatalog: (String, String, String) -> Unit = { _, _, _ -> },
@@ -686,6 +695,9 @@ private fun RowsContent(
                         val rowFocusRequester = rowFocusRequesters.getOrPut(rowKey) { FocusRequester() }
                         CatalogRowSection(
                             catalogRow = catalogRow,
+                            itemAvailability = { item ->
+                                catalogAvailability[item.catalogAvailabilityKey()]
+                            },
                             onItemClick = onNavigateToDetail,
                             onItemLongPress = onItemLongPress,
                             onSeeAll = {
@@ -730,6 +742,7 @@ private fun RowsContent(
 @Composable
 private fun FollowLayoutContent(
     uiState: FolderDetailUiState,
+    catalogAvailability: Map<String, CatalogPlaybackAvailability>,
     focusState: HomeScreenFocusState,
     enrichingItemId: String? = null,
     enrichedPreviews: Map<String, MetaPreview> = emptyMap(),
@@ -783,6 +796,7 @@ private fun FollowLayoutContent(
             onNavigateToFolderDetail = noOpFolderDetail,
             onRemoveContinueWatching = noOpRemoveCw,
             isCatalogItemWatched = isItemWatched,
+            itemAvailability = { item -> catalogAvailability[item.catalogAvailabilityKey()] },
             catalogSeeAllLabel = loadMoreLabel,
             onRequestTrailerPreview = { item ->
                 onRequestTrailerPreview(item.id, item.name, item.releaseInfo, item.apiType)
@@ -799,6 +813,7 @@ private fun FollowLayoutContent(
             onNavigateToFolderDetail = noOpFolderDetail,
             onRemoveContinueWatching = noOpRemoveCw,
             isCatalogItemWatched = isItemWatched,
+            itemAvailability = { item -> catalogAvailability[item.catalogAvailabilityKey()] },
             catalogSeeAllLabel = loadMoreLabel,
             posterCardStyle = posterCardStyle,
             onSaveGridFocusState = onSaveGridFocusState
@@ -817,6 +832,7 @@ private fun FollowLayoutContent(
             onLoadMoreCatalog = onLoadMoreCatalog,
             onRemoveContinueWatching = noOpRemoveCw,
             isCatalogItemWatched = isItemWatched,
+            itemAvailability = { item -> catalogAvailability[item.catalogAvailabilityKey()] },
             onCatalogItemLongPress = onCatalogItemLongPress,
             onNavigateToFolderDetail = noOpFolderDetail,
             onItemFocus = onItemFocus,

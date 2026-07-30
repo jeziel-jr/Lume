@@ -95,6 +95,7 @@ fun DiscoverScreen(
                 posterCardStyle = posterCardStyle,
                 watchedMovieIds = watchedMovieIds,
                 watchedSeriesIds = watchedSeriesIds,
+                catalogAvailability = uiState.catalogAvailability,
                 focusResults = false,
                 showBuiltInHeader = showBuiltInHeader,
                 firstItemFocusRequester = discoverFirstItemFocusRequester,

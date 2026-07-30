@@ -6,12 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbCatalogService
-import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
+import com.nuvio.tv.core.tmdb.TmdbService
+import com.nuvio.tv.data.xtream.CatalogAvailabilityTracker
 import com.nuvio.tv.data.xtream.XtreamCatalogAvailabilityService
-import com.nuvio.tv.data.xtream.XtreamCatalogState
-import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.SearchHistoryDataStore
+import com.nuvio.tv.data.local.TmdbSettingsDataStore
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
@@ -34,6 +34,9 @@ import com.nuvio.tv.domain.repository.CatalogRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +44,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -56,6 +60,8 @@ class SearchViewModel @Inject constructor(
     private val watchedSeriesStateHolder: com.nuvio.tv.data.local.WatchedSeriesStateHolder,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
     private val tmdbCatalogService: TmdbCatalogService,
+    private val tmdbService: TmdbService,
+    private val tmdbSettingsDataStore: TmdbSettingsDataStore,
     private val xtreamCatalogAvailabilityService: XtreamCatalogAvailabilityService,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -80,15 +86,18 @@ class SearchViewModel @Inject constructor(
     private var discoverJob: Job? = null
     private var catalogRowsUpdateJob: Job? = null
     private var suggestionJob: Job? = null
-    private var availabilityJob: Job? = null
+    private val availabilityTracker = CatalogAvailabilityTracker(
+        scope = viewModelScope,
+        service = xtreamCatalogAvailabilityService,
+    )
     private var hasRenderedFirstCatalog = false
     private var pendingCatalogResponses = 0
     private var revealBatchAfterNextDiscoverFetch = false
     private var hideUnreleasedContent = false
 
     private companion object {
-        const val DISCOVER_INITIAL_LIMIT = 100
-        const val DISCOVER_SHOW_MORE_BATCH = 50
+        const val DISCOVER_INITIAL_LIMIT = 30
+        const val DISCOVER_SHOW_MORE_BATCH = 30
         const val SUGGESTION_DEBOUNCE_MS = 150L
         const val MAX_SUGGESTIONS = 8
         const val MAX_RECENT_SEARCHES = 8
@@ -164,15 +173,18 @@ class SearchViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            xtreamCatalogAvailabilityService.catalogState.collectLatest { state ->
-                when (state) {
-                    is XtreamCatalogState.Ready -> classifySearchRows(
-                        query = _uiState.value.submittedQuery.trim(),
-                        rows = _uiState.value.catalogRows,
-                    )
-                    XtreamCatalogState.Loading -> markSearchRowsChecking(_uiState.value.catalogRows)
-                    is XtreamCatalogState.Error -> _uiState.update { it.copy(catalogAvailability = emptyMap()) }
+            uiState
+                .map { state ->
+                    state.catalogRows.flatMap(CatalogRow::items) +
+                        state.discoverResults +
+                        state.pendingDiscoverResults
                 }
+                .distinctUntilChanged()
+                .collectLatest(availabilityTracker::submit)
+        }
+        viewModelScope.launch {
+            availabilityTracker.availability.collectLatest { availability ->
+                _uiState.update { it.copy(catalogAvailability = availability) }
             }
         }
     }
@@ -289,7 +301,6 @@ class SearchViewModel @Inject constructor(
         activeSearchJobs.forEach { it.cancel() }
         activeSearchJobs = emptyList()
         catalogRowsUpdateJob?.cancel()
-        availabilityJob?.cancel()
 
         catalogsMap.clear()
         catalogOrder.clear()
@@ -344,32 +355,17 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun classifySearchRows(query: String, rows: List<CatalogRow>) {
-        availabilityJob?.cancel()
         if (query.isBlank() || rows.isEmpty()) {
-            _uiState.update { it.copy(catalogAvailability = emptyMap()) }
+            availabilityTracker.submit(
+                _uiState.value.discoverResults + _uiState.value.pendingDiscoverResults
+            )
             return
         }
-        when (xtreamCatalogAvailabilityService.catalogState.value) {
-            XtreamCatalogState.Loading -> markSearchRowsChecking(rows)
-            is XtreamCatalogState.Error -> {
-                _uiState.update { it.copy(catalogAvailability = emptyMap()) }
-                return
-            }
-            is XtreamCatalogState.Ready -> Unit
-        }
-        availabilityJob = viewModelScope.launch {
-            val availability = xtreamCatalogAvailabilityService.classify(rows.flatMap { it.items })
-            if (_uiState.value.submittedQuery.trim() == query) {
-                _uiState.update { it.copy(catalogAvailability = availability) }
-            }
-        }
-    }
-
-    private fun markSearchRowsChecking(rows: List<CatalogRow>) {
-        val checking = rows.flatMap { it.items }.associate { item ->
-            item.catalogAvailabilityKey() to CatalogPlaybackAvailability.UNKNOWN
-        }
-        _uiState.update { it.copy(catalogAvailability = checking) }
+        availabilityTracker.submit(
+            rows.flatMap(CatalogRow::items) +
+                _uiState.value.discoverResults +
+                _uiState.value.pendingDiscoverResults
+        )
     }
 
     private suspend fun loadCatalog(addon: Addon, catalog: CatalogDescriptor, query: String) {
@@ -646,15 +642,22 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun showMoreDiscoverResults() {
-        val pending = _uiState.value.pendingDiscoverResults
+        val state = _uiState.value
+        val pending = state.pendingDiscoverResults
         if (pending.isEmpty()) return
-        val nextBatch = pending.take(DISCOVER_SHOW_MORE_BATCH)
-        val remaining = pending.drop(DISCOVER_SHOW_MORE_BATCH)
-        _uiState.update {
-            it.copy(
-                discoverResults = it.discoverResults + nextBatch,
-                pendingDiscoverResults = remaining
-            )
+        if (state.discoverLoadingMore) return
+        discoverJob?.cancel()
+        discoverJob = viewModelScope.launch {
+            _uiState.update { it.copy(discoverLoadingMore = true) }
+            val nextBatch = localizeDiscoverItems(pending.take(DISCOVER_SHOW_MORE_BATCH))
+            val remaining = pending.drop(DISCOVER_SHOW_MORE_BATCH)
+            _uiState.update {
+                it.copy(
+                    discoverResults = it.discoverResults + nextBatch,
+                    pendingDiscoverResults = remaining,
+                    discoverLoadingMore = false,
+                )
+            }
         }
     }
 
@@ -717,13 +720,13 @@ class SearchViewModel @Inject constructor(
                             _uiState.value.discoverResults + _uiState.value.pendingDiscoverResults
                         }
                         val existingKeys = existing.asSequence()
-                            .map { "${it.apiType}:${it.id}" }
+                            .map(MetaPreview::discoverIdentityKey)
                             .toSet()
                         val hasNewUniqueIncoming = incoming.any { item ->
-                            "${item.apiType}:${item.id}" !in existingKeys
+                            item.discoverIdentityKey() !in existingKeys
                         }
                         val merged = if (reset) incoming else (existing + incoming)
-                        val rawDeduped = merged.distinctBy { "${it.apiType}:${it.id}" }
+                        val rawDeduped = merged.distinctBy(MetaPreview::discoverIdentityKey)
                         val deduped = if (hideUnreleasedContent) {
                             val today = LocalDate.now()
                             rawDeduped.filterNot { it.isUnreleased(today) }
@@ -739,7 +742,7 @@ class SearchViewModel @Inject constructor(
                         } else {
                             visibleCountBeforeRequest.coerceAtLeast(DISCOVER_INITIAL_LIMIT)
                         }
-                        val visible = deduped.take(visibleLimit)
+                        val visible = localizeDiscoverItems(deduped.take(visibleLimit))
                         val pending = deduped.drop(visibleLimit)
                         val shouldStopPagination = !reset && !hasNewUniqueIncoming
                         _uiState.update {
@@ -769,6 +772,22 @@ class SearchViewModel @Inject constructor(
             }
         }
     }
+
+    private suspend fun localizeDiscoverItems(items: List<MetaPreview>): List<MetaPreview> =
+        coroutineScope {
+            val language = tmdbSettingsDataStore.settings.first().language.ifBlank { "pt-BR" }
+            items.map { item ->
+                async {
+                    if (!item.id.startsWith("tt", ignoreCase = true)) return@async item
+                    val preview = tmdbService.resolveLocalizedPreview(
+                        videoId = item.id,
+                        mediaType = item.apiType,
+                        language = language,
+                    ) ?: return@async item
+                    item.withLocalizedTmdbPreview(preview)
+                }
+            }.awaitAll()
+        }
 
     private fun pickDiscoverCatalog(
         catalogs: List<DiscoverCatalog>,

@@ -11,12 +11,17 @@ import com.nuvio.tv.core.tmdb.TmdbEntityRailType
 import com.nuvio.tv.core.tmdb.TmdbEntityMediaType
 import com.nuvio.tv.core.tmdb.TmdbMetadataService
 import com.nuvio.tv.data.local.TmdbSettingsDataStore
+import com.nuvio.tv.data.xtream.CatalogAvailabilityTracker
+import com.nuvio.tv.data.xtream.XtreamCatalogAvailabilityService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
 import javax.inject.Inject
@@ -26,9 +31,16 @@ class TmdbEntityBrowseViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val tmdbMetadataService: TmdbMetadataService,
     private val tmdbSettingsDataStore: TmdbSettingsDataStore,
+    xtreamCatalogAvailabilityService: XtreamCatalogAvailabilityService,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val availabilityTracker = CatalogAvailabilityTracker(
+        scope = viewModelScope,
+        service = xtreamCatalogAvailabilityService,
+    )
+    val catalogAvailability = availabilityTracker.availability
 
     private val inFlightRailLoads = mutableSetOf<String>()
 
@@ -46,6 +58,18 @@ class TmdbEntityBrowseViewModel @Inject constructor(
 
     init {
         posterOptions.bind(viewModelScope)
+        viewModelScope.launch {
+            uiState
+                .map { state ->
+                    (state as? TmdbEntityBrowseUiState.Success)
+                        ?.data
+                        ?.rails
+                        ?.flatMap { it.items }
+                        .orEmpty()
+                }
+                .distinctUntilChanged()
+                .collectLatest(availabilityTracker::submit)
+        }
         load()
     }
 

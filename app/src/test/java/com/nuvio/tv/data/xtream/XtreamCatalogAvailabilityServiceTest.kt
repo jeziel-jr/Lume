@@ -100,6 +100,28 @@ class XtreamCatalogAvailabilityServiceTest {
         )
     }
 
+    @Test
+    fun `imdb item uses conservative local candidate without tmdb lookup`() = runTest {
+        val service = service(index(vod = listOf(XtreamVodItem(1, name = "O Drama", year = "2026"))))
+        val item = preview(id = "tt31015278", name = "O Drama", year = "2026")
+
+        assertEquals(
+            CatalogPlaybackAvailability.LIKELY_AVAILABLE,
+            service.classify(listOf(item))[item.catalogAvailabilityKey()],
+        )
+    }
+
+    @Test
+    fun `imdb item without local candidate is unavailable`() = runTest {
+        val service = service(index(vod = listOf(XtreamVodItem(1, name = "Outro Filme", year = "2026"))))
+        val item = preview(id = "tt31015278", name = "O Drama", year = "2026")
+
+        assertEquals(
+            CatalogPlaybackAvailability.UNAVAILABLE,
+            service.classify(listOf(item))[item.catalogAvailabilityKey()],
+        )
+    }
+
     private fun service(
         index: XtreamCatalogIndex?,
         cachedMovies: Map<Int, Boolean> = emptyMap(),
@@ -111,6 +133,7 @@ class XtreamCatalogAvailabilityServiceTest {
             if (index == null) XtreamCatalogState.Loading else XtreamCatalogState.Ready(),
         )
         every { repository.currentIndexOrNull() } returns index
+        every { store.revision } returns MutableStateFlow(0L)
         coEvery { store.catalogAvailability(any(), any(), any()) } returns CachedCatalogAvailability(
             movies = cachedMovies,
             series = cachedSeries,

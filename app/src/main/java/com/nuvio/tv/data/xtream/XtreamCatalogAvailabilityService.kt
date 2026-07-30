@@ -21,6 +21,7 @@ class XtreamCatalogAvailabilityService @Inject constructor(
     private val availabilityStore: XtreamAvailabilityStore,
 ) {
     val catalogState: StateFlow<XtreamCatalogState> = catalogRepository.state
+    val availabilityRevision: StateFlow<Long> = availabilityStore.revision
 
     suspend fun classify(items: List<MetaPreview>): Map<String, CatalogPlaybackAvailability> {
         if (items.isEmpty()) return emptyMap()
@@ -44,11 +45,10 @@ class XtreamCatalogAvailabilityService @Inject constructor(
 
         return identities.associate { (item, tmdbId) ->
             val availability = when {
-                tmdbId == null -> CatalogPlaybackAvailability.UNKNOWN
-                item.isSeries() && cached.series[tmdbId] == true -> CatalogPlaybackAvailability.AVAILABLE
-                item.isSeries() && cached.series[tmdbId] == false -> CatalogPlaybackAvailability.UNAVAILABLE
-                !item.isSeries() && cached.movies[tmdbId] == true -> CatalogPlaybackAvailability.AVAILABLE
-                !item.isSeries() && cached.movies[tmdbId] == false -> CatalogPlaybackAvailability.UNAVAILABLE
+                tmdbId != null && item.isSeries() && cached.series[tmdbId] == true -> CatalogPlaybackAvailability.AVAILABLE
+                tmdbId != null && item.isSeries() && cached.series[tmdbId] == false -> CatalogPlaybackAvailability.UNAVAILABLE
+                tmdbId != null && !item.isSeries() && cached.movies[tmdbId] == true -> CatalogPlaybackAvailability.AVAILABLE
+                tmdbId != null && !item.isSeries() && cached.movies[tmdbId] == false -> CatalogPlaybackAvailability.UNAVAILABLE
                 item.hasConservativeLocalCandidate(index) -> CatalogPlaybackAvailability.LIKELY_AVAILABLE
                 else -> CatalogPlaybackAvailability.UNAVAILABLE
             }

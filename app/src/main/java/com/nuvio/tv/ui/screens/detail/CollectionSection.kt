@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
+import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 import com.nuvio.tv.ui.components.GridContentCard
 import com.nuvio.tv.ui.components.PosterCardStyle
 
@@ -30,6 +32,7 @@ import com.nuvio.tv.ui.components.PosterCardStyle
 @Composable
 fun CollectionSection(
     items: List<MetaPreview>,
+    catalogAvailability: Map<String, CatalogPlaybackAvailability> = emptyMap(),
     title: String? = null,
     upFocusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
@@ -105,6 +108,7 @@ fun CollectionSection(
                 Column {
                     GridContentCard(
                         item = item,
+                        catalogAvailability = catalogAvailability[item.catalogAvailabilityKey()],
                         onClick = { onItemClick(item) },
                         onLongPress = { onItemLongPress(item) },
                         posterCardStyle = landscapeStyle,

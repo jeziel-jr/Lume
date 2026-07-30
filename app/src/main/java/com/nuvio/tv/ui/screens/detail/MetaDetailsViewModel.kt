@@ -63,6 +63,9 @@ import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.R
 import com.nuvio.tv.data.xtream.XtreamAvailability
 import com.nuvio.tv.data.xtream.XtreamPlaybackService
+import com.nuvio.tv.data.xtream.CatalogAvailabilityTracker
+import com.nuvio.tv.data.xtream.XtreamCatalogAvailabilityService
+import com.nuvio.tv.data.xtream.resolveTmdbPlaybackId
 import com.nuvio.tv.core.build.AppFeaturePolicy
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
@@ -91,6 +94,7 @@ class MetaDetailsViewModel @Inject constructor(
     private val layoutPreferenceDataStore: LayoutPreferenceDataStore,
     private val playerSettingsDataStore: PlayerSettingsDataStore,
     private val xtreamPlaybackService: XtreamPlaybackService,
+    xtreamCatalogAvailabilityService: XtreamCatalogAvailabilityService,
     private val watchedSeriesStateHolder: com.nuvio.tv.data.local.WatchedSeriesStateHolder,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
     savedStateHandle: SavedStateHandle
@@ -101,6 +105,11 @@ class MetaDetailsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(MetaDetailsUiState())
     val uiState: StateFlow<MetaDetailsUiState> = _uiState.asStateFlow()
+    private val availabilityTracker = CatalogAvailabilityTracker(
+        scope = viewModelScope,
+        service = xtreamCatalogAvailabilityService,
+    )
+    val catalogAvailability = availabilityTracker.availability
 
     private val localizedContext: Context
         get() {
@@ -114,10 +123,21 @@ class MetaDetailsViewModel @Inject constructor(
     val effectiveAutoplayEnabled = playerSettingsDataStore.playerSettings
         .map(StreamAutoPlayPolicy::isEffectivelyEnabled)
         .distinctUntilChanged()
-    val isTmdbPlayback: Boolean = itemId.startsWith("tmdb:", ignoreCase = true)
+    private var resolvedPlaybackTmdbId: Int? = itemId
+        .takeIf { it.startsWith("tmdb:", ignoreCase = true) }
+        ?.substringAfter(':')
+        ?.substringBefore(':')
+        ?.toIntOrNull()
+    val isTmdbPlayback: Boolean
+        get() = resolvedPlaybackTmdbId != null || itemId.startsWith("tt", ignoreCase = true)
 
     fun playbackVideoId(fallback: String, season: Int? = null, episode: Int? = null): String {
-        return StreamAutoPlayPolicy.canonicalTmdbVideoId(itemId, fallback, season, episode)
+        return StreamAutoPlayPolicy.canonicalTmdbVideoId(
+            resolvedPlaybackTmdbId,
+            fallback,
+            season,
+            episode,
+        )
     }
 
     private var idleTimerJob: Job? = null
@@ -151,6 +171,12 @@ class MetaDetailsViewModel @Inject constructor(
 
     init {
         posterOptions.bind(viewModelScope)
+        viewModelScope.launch {
+            uiState
+                .map { state -> state.moreLikeThis + state.collection }
+                .distinctUntilChanged()
+                .collectLatest(availabilityTracker::submit)
+        }
         observeMetaViewSettings()
         observeTrailerAutoplaySettings()
         observeTraktCommentsAvailability()
@@ -833,26 +859,6 @@ class MetaDetailsViewModel @Inject constructor(
 
     private fun loadPlaybackAvailability(meta: Meta) {
         playbackAvailabilityJob?.cancel()
-        val tmdbId = itemId
-            .takeIf { it.startsWith("tmdb:", ignoreCase = true) }
-            ?.substringAfter(':')
-            ?.substringBefore(':')
-            ?.toIntOrNull()
-        if (tmdbId == null) {
-            _uiState.update { state ->
-                state.copy(
-                    moviePlaybackAvailability = PlaybackAvailabilityState.AVAILABLE,
-                    episodePlaybackAvailability = meta.videos.mapNotNull { video ->
-                        val season = video.season
-                        val episode = video.episode
-                        if (season == null || episode == null) null
-                        else (season to episode) to PlaybackAvailabilityState.AVAILABLE
-                    }.toMap()
-                )
-            }
-            return
-        }
-
         val isSeries = meta.type == ContentType.SERIES || meta.type == ContentType.TV
         _uiState.update { state ->
             state.copy(
@@ -871,6 +877,35 @@ class MetaDetailsViewModel @Inject constructor(
         }
 
         playbackAvailabilityJob = viewModelScope.launch {
+            val lookupType = resolveTmdbContentType(meta).toApiString()
+            val tmdbId = resolvedPlaybackTmdbId ?: resolveTmdbPlaybackId(
+                candidates = listOf(meta.id, itemId),
+                mediaType = lookupType,
+                lookup = tmdbService::ensureTmdbId,
+            )
+            if (tmdbId == null) {
+                _uiState.update { state ->
+                    if (state.meta?.id != meta.id) {
+                        state
+                    } else {
+                        state.copy(
+                            moviePlaybackAvailability = PlaybackAvailabilityState.ERROR,
+                            episodePlaybackAvailability = if (isSeries) {
+                                meta.videos.mapNotNull { video ->
+                                    val season = video.season
+                                    val episode = video.episode
+                                    if (season == null || episode == null) null
+                                    else (season to episode) to PlaybackAvailabilityState.ERROR
+                                }.toMap()
+                            } else {
+                                emptyMap()
+                            },
+                        )
+                    }
+                }
+                return@launch
+            }
+            resolvedPlaybackTmdbId = tmdbId
             if (isSeries) {
                 val result = xtreamPlaybackService.seriesAvailability(tmdbId)
                 val availability = meta.videos.mapNotNull { video ->

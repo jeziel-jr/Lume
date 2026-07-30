@@ -495,40 +495,12 @@ fun ContentCard(
                     }
                 }
 
-                if (catalogAvailability == CatalogPlaybackAvailability.UNAVAILABLE ||
-                    catalogAvailability == CatalogPlaybackAvailability.UNKNOWN
-                ) {
-                    val availabilityLabel = if (catalogAvailability == CatalogPlaybackAvailability.UNAVAILABLE) {
-                        stringResource(R.string.catalog_availability_unavailable)
-                    } else {
-                        stringResource(R.string.catalog_availability_checking)
-                    }
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = NuvioTheme.spacing.sm, bottom = NuvioTheme.spacing.sm)
-                            .zIndex(3f)
-                            .height(20.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(NuvioTheme.colors.BackgroundCard.copy(alpha = 0.92f))
-                            .padding(horizontal = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .width(2.dp)
-                                .height(12.dp)
-                                .background(NuvioTheme.colors.Warning, RoundedCornerShape(1.dp)),
-                        )
-                        Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            text = availabilityLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = NuvioTheme.colors.TextPrimary,
-                            maxLines = 1,
-                        )
-                    }
-                }
+                CatalogAvailabilityBadge(
+                    availability = catalogAvailability,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = NuvioTheme.spacing.sm, bottom = NuvioTheme.spacing.sm),
+                )
 
                 if (isWatched) {
                     Box(

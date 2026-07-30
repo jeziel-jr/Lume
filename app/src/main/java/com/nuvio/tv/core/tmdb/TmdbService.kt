@@ -3,6 +3,7 @@ package com.nuvio.tv.core.tmdb
 import android.util.Log
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.data.remote.api.TmdbApi
+import com.nuvio.tv.data.remote.api.TmdbFindResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +33,9 @@ class TmdbService @Inject constructor(
 
     private val imdbToTmdbInFlight = ConcurrentHashMap<String, CompletableDeferred<Int?>>()
     private val tmdbToImdbInFlight = ConcurrentHashMap<String, CompletableDeferred<String?>>()
+    private val localizedPreviewCache = ConcurrentHashMap<String, TmdbLocalizedPreview>()
+    private val localizedPreviewInFlight =
+        ConcurrentHashMap<String, CompletableDeferred<TmdbLocalizedPreview?>>()
     
     // Mutex for thread-safe cache operations
     private val cacheMutex = Mutex()
@@ -231,6 +235,72 @@ class TmdbService @Inject constructor(
         Log.w(TAG, "Unknown video ID format: $videoId")
         return null
     }
+
+    /**
+     * Resolves an IMDb catalog preview to its localized TMDB identity in one request.
+     * The TMDB find response already carries localized title, artwork and basic metadata,
+     * so Discover does not need a second details request per poster.
+     */
+    suspend fun resolveLocalizedPreview(
+        videoId: String,
+        mediaType: String,
+        language: String,
+    ): TmdbLocalizedPreview? = withContext(Dispatchers.IO) {
+        val imdbId = videoId
+            .substringBefore(':')
+            .substringBefore('/')
+            .trim()
+            .takeIf { it.startsWith("tt", ignoreCase = true) }
+            ?: return@withContext null
+        val normalizedType = normalizeMediaType(mediaType)
+        val normalizedLanguage = language.trim().ifBlank { "pt-BR" }
+        val cacheKey = "$imdbId:$normalizedType:$normalizedLanguage"
+        localizedPreviewCache[cacheKey]?.let { return@withContext it }
+
+        val requestDeferred = CompletableDeferred<TmdbLocalizedPreview?>()
+        localizedPreviewInFlight.putIfAbsent(cacheKey, requestDeferred)?.let { existing ->
+            return@withContext existing.await()
+        }
+
+        try {
+            val response = tmdbApi.findByExternalId(
+                externalId = imdbId,
+                apiKey = TMDB_API_KEY,
+                externalSource = "imdb_id",
+                language = normalizedLanguage,
+            )
+            if (!response.isSuccessful) {
+                requestDeferred.complete(null)
+                return@withContext null
+            }
+            val body = response.body()
+            val result = when (normalizedType) {
+                "movie" -> body?.movieResults?.firstOrNull()
+                "tv", "series" -> body?.tvResults?.firstOrNull()
+                else -> body?.movieResults?.firstOrNull() ?: body?.tvResults?.firstOrNull()
+            } ?: run {
+                requestDeferred.complete(null)
+                return@withContext null
+            }
+            val localized = result.toLocalizedPreview(imdbId, normalizedType)
+            cacheMutex.withLock {
+                imdbToTmdbCache[imdbId] = result.id
+                tmdbToImdbCache[tmdbToImdbCacheKey(result.id, normalizedType)] = imdbId
+                localizedPreviewCache[cacheKey] = localized
+            }
+            requestDeferred.complete(localized)
+            localized
+        } catch (e: CancellationException) {
+            requestDeferred.cancel(e)
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Error resolving localized preview for $imdbId: ${e.message}", e)
+            requestDeferred.complete(null)
+            null
+        } finally {
+            localizedPreviewInFlight.remove(cacheKey, requestDeferred)
+        }
+    }
     
     /**
      * Normalize media type to consistent format
@@ -254,6 +324,8 @@ class TmdbService @Inject constructor(
         tmdbToImdbCache.clear()
         imdbToTmdbInFlight.clear()
         tmdbToImdbInFlight.clear()
+        localizedPreviewCache.clear()
+        localizedPreviewInFlight.clear()
         Log.d(TAG, "Cache cleared")
     }
     
@@ -295,5 +367,37 @@ class TmdbService @Inject constructor(
             }.getOrNull()
         }
 }
+
+private fun TmdbFindResult.toLocalizedPreview(
+    imdbId: String,
+    normalizedType: String,
+): TmdbLocalizedPreview {
+    val date = if (normalizedType == "tv") firstAirDate else releaseDate
+    return TmdbLocalizedPreview(
+        tmdbId = id,
+        imdbId = imdbId,
+        localizedTitle = (title ?: name)?.trim()?.takeIf(String::isNotBlank),
+        originalTitle = (originalTitle ?: originalName)?.trim()?.takeIf(String::isNotBlank),
+        posterUrl = posterPath?.let { "https://image.tmdb.org/t/p/w500$it" },
+        backdropUrl = backdropPath?.let { "https://image.tmdb.org/t/p/w1280$it" },
+        description = overview?.trim()?.takeIf(String::isNotBlank),
+        releaseDate = date?.trim()?.takeIf(String::isNotBlank),
+        rating = voteAverage?.toFloat(),
+        voteCount = voteCount,
+    )
+}
+
+data class TmdbLocalizedPreview(
+    val tmdbId: Int,
+    val imdbId: String,
+    val localizedTitle: String?,
+    val originalTitle: String?,
+    val posterUrl: String?,
+    val backdropUrl: String?,
+    val description: String?,
+    val releaseDate: String?,
+    val rating: Float?,
+    val voteCount: Int?,
+)
 
 data class TmdbImages(val backdropUrl: String?, val posterUrl: String?, val runtimeMinutes: Int? = null)

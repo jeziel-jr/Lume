@@ -88,6 +88,7 @@ import com.nuvio.tv.ui.util.localizedGenreLabel
 import kotlinx.coroutines.delay
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
+import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 
 private const val KEY_REPEAT_THROTTLE_MS = 80L
 
@@ -120,6 +121,7 @@ fun LibraryScreen(
     onCloudPlaybackResolved: (CloudLibraryPlaybackInfo) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val catalogAvailability by viewModel.catalogAvailability.collectAsState()
     val watchedMovieIds by viewModel.watchedMovieIds.collectAsState()
     val watchedSeriesIds by viewModel.watchedSeriesIds.collectAsState()
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -371,6 +373,7 @@ fun LibraryScreen(
                 }
                 GridContentCard(
                     item = previewForLongPress,
+                    catalogAvailability = catalogAvailability[previewForLongPress.catalogAvailabilityKey()],
                     posterCardStyle = posterCardStyle,
                     isWatched = if (isSeries) item.id in watchedSeriesIds else item.id in watchedMovieIds,
                     focusRequester = posterFocusRequesters[focusKey],

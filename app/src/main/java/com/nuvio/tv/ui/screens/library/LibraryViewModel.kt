@@ -23,6 +23,8 @@ import com.nuvio.tv.domain.model.LibraryEntry
 import com.nuvio.tv.domain.model.LibraryListTab
 import com.nuvio.tv.domain.model.LibrarySourceMode
 import com.nuvio.tv.domain.model.TraktListPrivacy
+import com.nuvio.tv.data.xtream.CatalogAvailabilityTracker
+import com.nuvio.tv.data.xtream.XtreamCatalogAvailabilityService
 import com.nuvio.tv.domain.repository.LibraryRepository
 import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -136,12 +138,18 @@ class LibraryViewModel @Inject constructor(
     private val traktAuthDataStore: TraktAuthDataStore,
     private val watchProgressRepository: com.nuvio.tv.domain.repository.WatchProgressRepository,
     private val watchedSeriesStateHolder: com.nuvio.tv.data.local.WatchedSeriesStateHolder,
+    xtreamCatalogAvailabilityService: XtreamCatalogAvailabilityService,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
+    private val availabilityTracker = CatalogAvailabilityTracker(
+        scope = viewModelScope,
+        service = xtreamCatalogAvailabilityService,
+    )
+    val catalogAvailability = availabilityTracker.availability
 
     private val _watchedMovieIds = MutableStateFlow<Set<String>>(emptySet())
     val watchedMovieIds: StateFlow<Set<String>> = _watchedMovieIds.asStateFlow()
@@ -155,6 +163,12 @@ class LibraryViewModel @Inject constructor(
         observeLayoutPreferences()
         observeLibraryData()
         observeCloudLibrarySettings()
+        viewModelScope.launch {
+            uiState
+                .map { state -> state.visibleItems.map(LibraryEntry::toMetaPreview) }
+                .distinctUntilChanged()
+                .collectLatest(availabilityTracker::submit)
+        }
         viewModelScope.launch {
             watchProgressRepository.observeWatchedMovieIds()
                 .collect { ids -> _watchedMovieIds.value = ids }

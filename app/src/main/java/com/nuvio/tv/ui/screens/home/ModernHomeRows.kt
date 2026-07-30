@@ -105,6 +105,8 @@ import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.CardDepthSurface
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
+import com.nuvio.tv.ui.components.CatalogAvailabilityBadge
 import com.nuvio.tv.ui.components.ContinueWatchingCard
 import com.nuvio.tv.ui.components.LocalCardDepthStyle
 import com.nuvio.tv.ui.components.MonochromePosterPlaceholder
@@ -226,6 +228,7 @@ private fun ModernCatalogRowItem(
     expandedTrailerPreviewUrl: () -> String?,
     expandedTrailerPreviewAudioUrl: () -> String?,
     isCatalogItemWatched: (MetaPreview) -> Boolean,
+    itemAvailability: (MetaPreview) -> CatalogPlaybackAvailability?,
     isFocusTarget: Boolean = false,
     onFocused: () -> Unit,
     onItemFocus: (MetaPreview) -> Unit,
@@ -247,6 +250,7 @@ private fun ModernCatalogRowItem(
 
     val metaPreview = item.metaPreview
     val isWatched = metaPreview?.let { isCatalogItemWatched(it) } ?: false
+    val catalogAvailability = metaPreview?.let(itemAvailability)
     val enrichedMeta by remember {
         derivedStateOf { (payload as? ModernPayload.Catalog)?.itemId?.let { enrichedPreviews.value.map[it] } }
     }
@@ -368,6 +372,7 @@ private fun ModernCatalogRowItem(
         trailerPreviewUrl = trailerPreviewUrl,
         trailerPreviewAudioUrl = trailerPreviewAudioUrl,
         isWatched = isWatched,
+        catalogAvailability = catalogAvailability,
         enrichedLogoUrl = enrichedLogoUrl,
         enrichedBackdropUrl = enrichedBackdropUrl,
         focusRequester = requester,
@@ -442,6 +447,7 @@ internal fun ModernRowSection(
     onContinueWatchingClick: (ContinueWatchingItem) -> Unit,
     onContinueWatchingOptions: (ContinueWatchingItem) -> Unit,
     isCatalogItemWatched: (MetaPreview) -> Boolean,
+    itemAvailability: (MetaPreview) -> CatalogPlaybackAvailability?,
     onCatalogItemLongPress: (MetaPreview, String) -> Unit,
     onItemFocus: (MetaPreview) -> Unit,
     onPreloadAdjacentItem: (MetaPreview) -> Unit,
@@ -939,6 +945,7 @@ internal fun ModernRowSection(
                                 landscapeCatalogCardWidth = landscapeCatalogCardWidth,
                                 landscapeCatalogCardHeight = landscapeCatalogCardHeight,
                                 isCatalogItemWatched = isCatalogItemWatched,
+                                itemAvailability = itemAvailability,
                                 onFocused = onFocused,
                                 onItemFocus = onItemFocus,
                                 onPreloadAdjacentItem = remember(nextCatalogItem, prevCatalogItem, onPreloadAdjacentItem) {
@@ -981,6 +988,7 @@ private fun ModernCarouselCard(
     trailerPreviewUrl: String?,
     trailerPreviewAudioUrl: String?,
     isWatched: Boolean,
+    catalogAvailability: CatalogPlaybackAvailability?,
     enrichedLogoUrl: String? = null,
     enrichedBackdropUrl: String? = null,
     focusRequester: FocusRequester,
@@ -1388,6 +1396,13 @@ private fun ModernCarouselCard(
                         )
                     }
                 }
+
+                CatalogAvailabilityBadge(
+                    availability = catalogAvailability,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = NuvioTheme.spacing.sm, bottom = NuvioTheme.spacing.sm),
+                )
             }
         }
 

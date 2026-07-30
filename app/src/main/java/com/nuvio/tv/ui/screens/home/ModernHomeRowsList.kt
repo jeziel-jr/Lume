@@ -51,6 +51,7 @@ import coil3.memory.MemoryCache
 import coil3.request.ImageRequest
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 import com.nuvio.tv.ui.util.StableList
 import com.nuvio.tv.ui.util.StableMap
 import com.nuvio.tv.ui.util.StableRef
@@ -97,6 +98,7 @@ internal fun ModernHomeRowsList(
     onBackdropInteraction: () -> Unit,
     onExpandedCatalogFocusKeyChange: (String?) -> Unit,
     isCatalogItemWatched: (MetaPreview) -> Boolean,
+    itemAvailability: (MetaPreview) -> CatalogPlaybackAvailability?,
     onCatalogItemLongPress: (MetaPreview, String) -> Unit,
     onItemFocus: (MetaPreview) -> Unit,
     onPreloadAdjacentItem: (MetaPreview) -> Unit,
@@ -451,6 +453,7 @@ internal fun ModernHomeRowsList(
                     onContinueWatchingClick = onContinueWatchingClick,
                     onContinueWatchingOptions = stableOnContinueWatchingOptions,
                     isCatalogItemWatched = isCatalogItemWatched,
+                    itemAvailability = itemAvailability,
                     onCatalogItemLongPress = onCatalogItemLongPress,
                     onItemFocus = onItemFocus,
                     onPreloadAdjacentItem = onPreloadAdjacentItem,

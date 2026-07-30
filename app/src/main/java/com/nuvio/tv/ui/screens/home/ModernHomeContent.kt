@@ -73,6 +73,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.components.ContinueWatchingOptionsDialog
 import com.nuvio.tv.LocalSidebarExpanded
@@ -107,6 +108,7 @@ fun ModernHomeContent(
     onLoadMoreCatalog: (String, String, String) -> Unit,
     onRemoveContinueWatching: (String, Int?, Int?, Boolean) -> Unit,
     isCatalogItemWatched: (MetaPreview) -> Boolean = { false },
+    itemAvailability: (MetaPreview) -> CatalogPlaybackAvailability? = { null },
     onCatalogItemLongPress: (MetaPreview, String) -> Unit = { _, _ -> },
     onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
     onItemFocus: (MetaPreview) -> Unit = {},
@@ -1033,6 +1035,7 @@ fun ModernHomeContent(
                 onPreloadAdjacentItem = stableOnPreloadAdjacentItem,
                 onExpandedCatalogFocusKeyChange = onExpandedCatalogFocusKeyChangeLambda,
                 isCatalogItemWatched = isCatalogItemWatched,
+                itemAvailability = itemAvailability,
                 onCatalogItemLongPress = onCatalogItemLongPress,
                 enrichedPreviews = stableEnrichedPreviews,
                 trailerPreviewUrls = stableTrailerPreviewUrls,

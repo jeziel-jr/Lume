@@ -82,6 +82,8 @@ import java.util.Date
 import java.util.Locale
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
+import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -91,6 +93,7 @@ fun CastDetailScreen(
     onNavigateToDetail: (itemId: String, itemType: String, addonBaseUrl: String?) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val catalogAvailability by viewModel.catalogAvailability.collectAsState()
 
     BackHandler { onBackPress() }
 
@@ -115,6 +118,7 @@ fun CastDetailScreen(
                 is CastDetailUiState.Success -> {
                     CastDetailContent(
                         person = state.personDetail,
+                        catalogAvailability = catalogAvailability,
                         onNavigateToDetail = onNavigateToDetail,
                         posterOptions = viewModel.posterOptions
                     )
@@ -137,6 +141,7 @@ fun CastDetailScreen(
 @Composable
 private fun CastDetailContent(
     person: PersonDetail,
+    catalogAvailability: Map<String, CatalogPlaybackAvailability>,
     onNavigateToDetail: (itemId: String, itemType: String, addonBaseUrl: String?) -> Unit,
     posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController
 ) {
@@ -213,6 +218,7 @@ private fun CastDetailContent(
                     )
                     FilmographyRow(
                         credits = allCredits,
+                        catalogAvailability = catalogAvailability,
                         posterCardStyle = filmographyPosterStyle,
                         firstItemFocusRequester = firstPosterFocusRequester,
                         restoreItemId = pendingRestoreItemId,
@@ -419,6 +425,7 @@ private fun SectionHeader(title: String, count: Int) {
 @Composable
 private fun FilmographyRow(
     credits: List<MetaPreview>,
+    catalogAvailability: Map<String, CatalogPlaybackAvailability>,
     posterCardStyle: PosterCardStyle,
     firstItemFocusRequester: FocusRequester,
     restoreItemId: String? = null,
@@ -468,6 +475,7 @@ private fun FilmographyRow(
 
             GridContentCard(
                 item = item,
+                catalogAvailability = catalogAvailability[item.catalogAvailabilityKey()],
                 onClick = { onItemClick(item) },
                 onLongPress = { onItemLongPress(item) },
                 modifier = if (isFirstItem) {

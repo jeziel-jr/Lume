@@ -28,4 +28,16 @@ class StreamAutoPlayPolicyDirectTmdbTest {
             StreamAutoPlayPolicy.canonicalTmdbVideoId("tmdb:95396", "tt11280740:2:4", 2, 4)
         )
     }
+
+    @Test
+    fun `resolved imdb detail canonicalizes movie and episode ids`() {
+        assertEquals(
+            "tmdb:1396",
+            StreamAutoPlayPolicy.canonicalTmdbVideoId(1396, "tt0903747")
+        )
+        assertEquals(
+            "tmdb:1396:1:1",
+            StreamAutoPlayPolicy.canonicalTmdbVideoId(1396, "tt0903747:1:1", 1, 1)
+        )
+    }
 }

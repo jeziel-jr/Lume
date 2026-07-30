@@ -14,6 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -65,6 +68,8 @@ class XtreamAvailabilityStore @Inject constructor(
     private var series = emptyMap<Int, CachedSeriesAvailability>()
     private var writeJob: Job? = null
     private var loadedSourceFingerprint: String? = null
+    private val _revision = MutableStateFlow(0L)
+    internal val revision: StateFlow<Long> = _revision.asStateFlow()
 
     internal suspend fun movie(tmdbId: Int, catalogFetchedAtMillis: Long): CachedMovieAvailability? =
         mutex.withLock {
@@ -101,12 +106,14 @@ class XtreamAvailabilityStore @Inject constructor(
     internal suspend fun putMovie(entry: CachedMovieAvailability) = mutex.withLock {
         loadLocked()
         movies = movies + (entry.tmdbId to entry)
+        _revision.value += 1L
         scheduleWriteLocked()
     }
 
     internal suspend fun putSeries(entry: CachedSeriesAvailability) = mutex.withLock {
         loadLocked()
         series = series + (entry.tmdbId to entry)
+        _revision.value += 1L
         scheduleWriteLocked()
     }
 
@@ -164,6 +171,7 @@ class XtreamAvailabilityStore @Inject constructor(
         series = emptyMap()
         loaded = true
         loadedSourceFingerprint = currentSourceFingerprint()
+        _revision.value += 1L
         withContext(Dispatchers.IO) { file.delete() }
     }
 

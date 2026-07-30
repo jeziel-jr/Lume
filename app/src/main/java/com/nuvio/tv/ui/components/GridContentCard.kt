@@ -60,6 +60,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.nuvio.tv.ui.theme.ThemeColors
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -72,6 +73,7 @@ fun GridContentCard(
     showLogo: Boolean = false,
     imageCrossfade: Boolean = true,
     isWatched: Boolean = false,
+    catalogAvailability: CatalogPlaybackAvailability? = null,
     focusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
@@ -233,6 +235,13 @@ fun GridContentCard(
                             .padding(horizontal = NuvioTheme.spacing.lg, vertical = 14.dp)
                     )
                 }
+
+                CatalogAvailabilityBadge(
+                    availability = catalogAvailability,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = NuvioTheme.spacing.sm, bottom = NuvioTheme.spacing.sm),
+                )
 
                 if (isWatched) {
                     Box(

@@ -59,6 +59,7 @@ import com.nuvio.tv.domain.model.legacyKey
 import com.nuvio.tv.domain.model.stableItemKey
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.roundToInt
+import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 
 @Composable
 fun CatalogSeeAllScreen(
@@ -234,6 +235,11 @@ fun CatalogSeeAllScreen(
                             posterCardStyle = posterCardStyle,
                             showLabel = uiState.posterLabelsEnabled,
                             isWatched = isWatched,
+                            catalogAvailability = if (isSearchMode) {
+                                searchUiState?.value?.catalogAvailability?.get(item.catalogAvailabilityKey())
+                            } else {
+                                null
+                            },
                             focusRequester = if (index == focusedItemIndex) restoreFocusRequester else null,
                             onFocused = { focusedItemIndex = index },
                             onClick = {

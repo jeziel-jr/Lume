@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.tmdb.TmdbMetadataService
 import com.nuvio.tv.data.local.TmdbSettingsDataStore
+import com.nuvio.tv.data.xtream.CatalogAvailabilityTracker
+import com.nuvio.tv.data.xtream.XtreamCatalogAvailabilityService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,9 +23,16 @@ class CastDetailViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val tmdbMetadataService: TmdbMetadataService,
     private val tmdbSettingsDataStore: TmdbSettingsDataStore,
+    xtreamCatalogAvailabilityService: XtreamCatalogAvailabilityService,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val availabilityTracker = CatalogAvailabilityTracker(
+        scope = viewModelScope,
+        service = xtreamCatalogAvailabilityService,
+    )
+    val catalogAvailability = availabilityTracker.availability
 
     val personId: Int = savedStateHandle.get<String>("personId")?.toIntOrNull() ?: 0
     val personName: String = (savedStateHandle.get<String>("personName") ?: "").let { raw ->
@@ -53,6 +62,7 @@ class CastDetailViewModel @Inject constructor(
                     language = tmdbSettingsDataStore.settings.first().language
                 )
                 if (detail != null) {
+                    availabilityTracker.submit(detail.movieCredits + detail.tvCredits)
                     _uiState.value = CastDetailUiState.Success(detail)
                 } else {
                     _uiState.value = CastDetailUiState.Error(

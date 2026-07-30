@@ -71,6 +71,8 @@ import com.nuvio.tv.ui.util.dpadVerticalFastScroll
 import com.nuvio.tv.ui.util.formatAddonTypeLabel
 import com.nuvio.tv.ui.util.localizedContentType
 import com.nuvio.tv.ui.util.localizedGenreLabel
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
+import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -79,6 +81,7 @@ internal fun DiscoverSection(
     posterCardStyle: PosterCardStyle,
     watchedMovieIds: Set<String> = emptySet(),
     watchedSeriesIds: Set<String> = emptySet(),
+    catalogAvailability: Map<String, CatalogPlaybackAvailability> = emptyMap(),
     focusResults: Boolean,
     showBuiltInHeader: Boolean = true,
     firstItemFocusRequester: FocusRequester,
@@ -227,6 +230,7 @@ internal fun DiscoverSection(
                     posterCardStyle = posterCardStyle,
                     watchedMovieIds = watchedMovieIds,
                     watchedSeriesIds = watchedSeriesIds,
+                    catalogAvailability = catalogAvailability,
                     focusResults = focusResults,
                     firstItemFocusRequester = firstItemFocusRequester,
                     focusedItemIndex = focusedItemIndex,
@@ -430,6 +434,7 @@ internal fun DiscoverGrid(
     posterCardStyle: PosterCardStyle,
     watchedMovieIds: Set<String> = emptySet(),
     watchedSeriesIds: Set<String> = emptySet(),
+    catalogAvailability: Map<String, CatalogPlaybackAvailability> = emptyMap(),
     focusResults: Boolean,
     firstItemFocusRequester: FocusRequester,
     focusedItemIndex: Int,
@@ -617,6 +622,7 @@ internal fun DiscoverGrid(
                     val isSeries = item.apiType.equals("series", ignoreCase = true) || item.apiType.equals("tv", ignoreCase = true)
                     if (isSeries) item.id in watchedSeriesIds else item.id in watchedMovieIds
                 },
+                catalogAvailability = catalogAvailability[item.catalogAvailabilityKey()],
                 modifier = Modifier
                     .padding(top = 3.dp)
                     .width(adaptiveStyle.width),

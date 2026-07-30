@@ -13,6 +13,7 @@ import com.nuvio.tv.data.mapper.toDomain
 import com.nuvio.tv.data.remote.api.AddonApi
 import com.nuvio.tv.data.xtream.XtreamPlaybackService
 import com.nuvio.tv.data.xtream.XtreamResolution
+import com.nuvio.tv.data.xtream.resolveTmdbPlaybackId
 import com.nuvio.tv.domain.model.ContentType
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.AddonStreams
@@ -69,15 +70,15 @@ class StreamRepositoryImpl @Inject constructor(
         emit(NetworkResult.Loading)
 
         try {
-            val directTmdbId = videoId
-                .takeIf { it.startsWith("tmdb:", ignoreCase = true) }
-                ?.substringAfter(':')
-                ?.substringBefore(':')
-                ?.toIntOrNull()
-            if (directTmdbId != null) {
+            val xtreamTmdbId = resolveTmdbPlaybackId(
+                candidates = listOf(videoId),
+                mediaType = type,
+                lookup = tmdbService::ensureTmdbId,
+            )
+            if (xtreamTmdbId != null) {
                 val contentType = ContentType.fromString(type)
                 val resolution = xtreamPlaybackService.resolve(
-                    tmdbId = directTmdbId,
+                    tmdbId = xtreamTmdbId,
                     contentType = contentType,
                     season = season,
                     episode = episode

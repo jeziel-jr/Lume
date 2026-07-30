@@ -82,6 +82,7 @@ import com.nuvio.tv.ui.components.PosterCardStyle
 import com.nuvio.tv.ui.components.collectionFolderCardImageUrl
 import com.nuvio.tv.ui.components.nuvioCardDepth
 import com.nuvio.tv.ui.components.rememberArtworkBackedCardGlow
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 
 @OptIn(ExperimentalTvMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -97,6 +98,7 @@ fun GridHomeContent(
     onNavigateToFolderDetail: (String, String) -> Unit = { _, _ -> },
     onRemoveContinueWatching: (String, Int?, Int?, Boolean) -> Unit,
     isCatalogItemWatched: (MetaPreview) -> Boolean = { false },
+    itemAvailability: (MetaPreview) -> CatalogPlaybackAvailability? = { null },
     onCatalogItemLongPress: (MetaPreview, String) -> Unit = { _, _ -> },
     posterCardStyle: PosterCardStyle = PosterCardDefaults.Style,
     onItemFocus: (com.nuvio.tv.domain.model.MetaPreview) -> Unit = {},
@@ -462,6 +464,7 @@ fun GridHomeContent(
                         }
                         GridContentCard(
                             item = gridItem.item,
+                            catalogAvailability = itemAvailability(gridItem.item),
                             focusRequester = focusRequester ?: focusRequesters.getOrPut(itemKey) { FocusRequester() },
                             posterCardStyle = posterCardStyle,
                             showLabel = uiState.posterLabelsEnabled,

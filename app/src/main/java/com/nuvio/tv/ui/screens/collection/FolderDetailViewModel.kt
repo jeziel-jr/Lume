@@ -15,6 +15,8 @@ import com.nuvio.tv.data.local.CollectionsDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.domain.model.AddonCatalogCollectionSource
 import com.nuvio.tv.domain.model.CatalogRow
+import com.nuvio.tv.data.xtream.CatalogAvailabilityTracker
+import com.nuvio.tv.data.xtream.XtreamCatalogAvailabilityService
 import com.nuvio.tv.domain.model.CollectionSource
 import com.nuvio.tv.domain.model.CollectionFolder
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
@@ -118,6 +120,7 @@ class FolderDetailViewModel @Inject constructor(
     private val trailerService: TrailerService,
     private val tmdbCollectionSourceResolver: TmdbCollectionSourceResolver,
     private val traktPublicListSourceResolver: TraktPublicListSourceResolver,
+    xtreamCatalogAvailabilityService: XtreamCatalogAvailabilityService,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController
 ) : ViewModel() {
 
@@ -126,6 +129,11 @@ class FolderDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(FolderDetailUiState())
     val uiState: StateFlow<FolderDetailUiState> = _uiState.asStateFlow()
+    private val availabilityTracker = CatalogAvailabilityTracker(
+        scope = viewModelScope,
+        service = xtreamCatalogAvailabilityService,
+    )
+    val catalogAvailability = availabilityTracker.availability
 
     private var movieWatchedJob: Job? = null
     private var enrichFocusJob: Job? = null
@@ -167,6 +175,15 @@ class FolderDetailViewModel @Inject constructor(
 
     init {
         posterOptions.bind(viewModelScope)
+        viewModelScope.launch {
+            uiState
+                .map { state ->
+                    state.tabs.flatMap { it.catalogRow?.items.orEmpty() } +
+                        state.followLayoutHomeState?.catalogRows?.flatMap(CatalogRow::items).orEmpty()
+                }
+                .distinctUntilChanged()
+                .collectLatest(availabilityTracker::submit)
+        }
         loadFolder()
         // Observe watched status immediately so badges are ready when catalogs load.
         observeWatchedStatusCombined()

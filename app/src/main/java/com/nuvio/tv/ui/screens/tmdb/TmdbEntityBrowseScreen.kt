@@ -77,6 +77,8 @@ import com.nuvio.tv.core.tmdb.TmdbEntityMediaType
 import com.nuvio.tv.core.tmdb.TmdbEntityRail
 import com.nuvio.tv.core.tmdb.TmdbEntityRailType
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
+import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 import com.nuvio.tv.ui.components.EmptyScreenState
 import com.nuvio.tv.ui.components.ErrorState
 import com.nuvio.tv.ui.components.GridContentCard
@@ -92,6 +94,7 @@ fun TmdbEntityBrowseScreen(
     onNavigateToDetail: (itemId: String, itemType: String, addonBaseUrl: String?) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val catalogAvailability by viewModel.catalogAvailability.collectAsStateWithLifecycle()
     val screenMode = when (uiState) {
         TmdbEntityBrowseUiState.Loading -> 0
         is TmdbEntityBrowseUiState.Error -> 1
@@ -128,6 +131,7 @@ fun TmdbEntityBrowseScreen(
                     val successState = uiState as? TmdbEntityBrowseUiState.Success ?: return@Crossfade
                     TmdbEntityBrowseContent(
                         data = successState.data,
+                        catalogAvailability = catalogAvailability,
                         sourceType = viewModel.sourceType,
                         onNavigateToDetail = onNavigateToDetail,
                         onItemLongPress = { item ->
@@ -156,6 +160,7 @@ fun TmdbEntityBrowseScreen(
 @OptIn(ExperimentalFoundationApi::class)
 private fun TmdbEntityBrowseContent(
     data: TmdbEntityBrowseData,
+    catalogAvailability: Map<String, CatalogPlaybackAvailability>,
     sourceType: String,
     onNavigateToDetail: (itemId: String, itemType: String, addonBaseUrl: String?) -> Unit,
     onItemLongPress: (MetaPreview) -> Unit = {},
@@ -255,6 +260,7 @@ private fun TmdbEntityBrowseContent(
                             val rememberedFocusedIndex = focusedItemIndexByRail[railKey] ?: 0
                             EntityRailRow(
                                 rail = rail,
+                                catalogAvailability = catalogAvailability,
                                 initialFocusRequester = if (railIndex == 0) firstCardFocusRequester else null,
                                 shouldRequestInitialFocus = railIndex == 0 && !initialFocusRequested && pendingRestoreItemId == null,
                                 rememberedFocusedIndex = rememberedFocusedIndex,
@@ -421,6 +427,7 @@ private fun TmdbEntityHero(
 @Composable
 private fun EntityRailRow(
     rail: TmdbEntityRail,
+    catalogAvailability: Map<String, CatalogPlaybackAvailability>,
     initialFocusRequester: FocusRequester?,
     shouldRequestInitialFocus: Boolean,
     rememberedFocusedIndex: Int,
@@ -541,6 +548,7 @@ private fun EntityRailRow(
                 }
                 GridContentCard(
                     item = item,
+                    catalogAvailability = catalogAvailability[item.catalogAvailabilityKey()],
                     onClick = { onItemClick(item) },
                     onLongPress = { onItemLongPress(item) },
                     posterCardStyle = posterCardStyle,
