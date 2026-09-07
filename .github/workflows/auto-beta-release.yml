@@ -106,7 +106,12 @@ jobs:
           echo "next-version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build and publish beta release
-        run: python3 scripts/release_beta.py "${{ env.NEXT_VERSION }}" --publish
+        run: |
+          args=(python3 scripts/release_beta.py "${{ env.NEXT_VERSION }}" --publish)
+          if [ -f "changelogs/${{ env.NEXT_VERSION }}.md" ]; then
+            args+=(--custom-notes-file "changelogs/${{ env.NEXT_VERSION }}.md")
+          fi
+          "${args[@]}"
 
       - name: Summarize failures
         if: failure()
