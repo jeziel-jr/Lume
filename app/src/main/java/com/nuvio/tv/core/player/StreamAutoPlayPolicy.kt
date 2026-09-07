@@ -7,6 +7,21 @@ object StreamAutoPlayPolicy {
     fun shouldForceDirectTmdbPlayback(videoId: String, manualSelection: Boolean): Boolean =
         !manualSelection && videoId.startsWith("tmdb:", ignoreCase = true)
 
+    /**
+     * A fresh (non-manual) Watch press reveals the manual picker whenever
+     * several playable streams exist, so the user chooses the variant.
+     * A single playable stream keeps playing directly, and an auto-next
+     * continuation is never forced through the picker: it relies on the
+     * remembered binge group (with first-playable fallback) so an ongoing
+     * marathon is not interrupted between episodes.
+     */
+    fun shouldRequirePickerForDirectPlay(
+        forceDirectPlayback: Boolean,
+        playableStreamCount: Int,
+        isAutoNext: Boolean
+    ): Boolean =
+        forceDirectPlayback && !isAutoNext && playableStreamCount > 1
+
     fun canonicalTmdbVideoId(
         itemId: String,
         fallback: String,

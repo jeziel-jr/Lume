@@ -118,8 +118,8 @@ android {
         applicationId = "com.jeziel.lume"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1057
-        versionName = "0.7.32-beta"
+        versionCode = 1059
+        versionName = "0.7.34-beta"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", buildConfigString(localProperties.getProperty("INTRODB_API_URL", "https://api.introdb.app/")))

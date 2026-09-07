@@ -135,6 +135,11 @@ class StreamScreenViewModel @Inject constructor(
     private val manualSelection: Boolean = savedStateHandle.get<String>("manualSelection")
         ?.toBooleanStrictOrNull()
         ?: false
+    // True when this Stream screen was reached by the player's own
+    // auto-next continuation rather than a fresh Watch press.
+    private val autoNext: Boolean = savedStateHandle.get<String>("autoNext")
+        ?.toBooleanStrictOrNull()
+        ?: false
     private val forceDirectTmdbPlayback: Boolean =
         StreamAutoPlayPolicy.shouldForceDirectTmdbPlayback(videoId, manualSelection)
     private val streamCacheKey: String = "${contentType.lowercase()}|$videoId"
@@ -494,6 +499,25 @@ class StreamScreenViewModel @Inject constructor(
 
                 val allStreams = mergedAddonStreams.flatMap { it.streams }
                 val availableAddons = mergedAddonStreams.map { it.addonName }
+                // Fresh Watch with several playable streams reveals the manual
+                // picker instead of auto-playing; auto-next continuations keep
+                // their remembered-variant/first-playable direct flow.
+                val requiresPickerForDirectPlay =
+                    !autoPlayHandledForSession &&
+                        StreamAutoPlayPolicy.shouldRequirePickerForDirectPlay(
+                            forceDirectPlayback = forceDirectTmdbPlayback,
+                            playableStreamCount = allStreams.size,
+                            isAutoNext = autoNext
+                        )
+                if (requiresPickerForDirectPlay) {
+                    Log.d(
+                        TAG,
+                        "Direct watch has ${allStreams.size} playable streams and no " +
+                            "auto-next context -> revealing manual picker"
+                    )
+                    autoPlayHandledForSession = true
+                    directAutoPlayFlowEnabledForSession = false
+                }
                 // Auto-select only after all addons have responded or the
                 // configured timeout has elapsed. This gives slower addons a
                 // chance to return higher-quality streams before the selector
@@ -543,6 +567,7 @@ class StreamScreenViewModel @Inject constructor(
                         // Compose observes it.
                         autoPlayStream = selectedAutoPlayStream ?: it.autoPlayStream,
                         error = null,
+                        isDirectAutoPlayFlow = if (requiresPickerForDirectPlay) false else it.isDirectAutoPlayFlow,
                         showDirectAutoPlayOverlay = if (directAutoPlayFlowEnabledForSession || it.autoPlayPlaybackInfo != null) {
                             true
                         } else {

@@ -1,5 +1,9 @@
 package com.nuvio.tv.data.xtream
 
+import com.nuvio.tv.data.remote.api.XtreamEpgResponse
+import com.nuvio.tv.data.remote.api.XtreamCategory
+import com.nuvio.tv.data.remote.api.XtreamLiveCategory
+import com.nuvio.tv.data.remote.api.XtreamLiveStream
 import com.nuvio.tv.data.remote.api.XtreamSeriesInfoResponse
 import com.nuvio.tv.data.remote.api.XtreamSeriesItem
 import com.nuvio.tv.data.remote.api.XtreamVodInfoResponse
@@ -240,5 +244,10 @@ class XtreamCatalogRepositoryTest {
 
         override suspend fun getVodInfo(id: Int): XtreamVodInfoResponse = error("not used")
         override suspend fun getSeriesInfo(id: Int): XtreamSeriesInfoResponse = error("not used")
+        override suspend fun getVodCategories(): List<XtreamCategory> = emptyList()
+        override suspend fun getSeriesCategories(): List<XtreamCategory> = emptyList()
+        override suspend fun getLiveCategories(): List<XtreamLiveCategory> = error("not used")
+        override suspend fun getLiveStreams(categoryId: Int?): List<XtreamLiveStream> = error("not used")
+        override suspend fun getShortEpg(streamId: Int, limit: Int): XtreamEpgResponse = error("not used")
     }
 }

@@ -28,6 +28,7 @@ internal data class SubtitleFetchRequest(
 internal fun PlayerRuntimeController.buildSubtitleFetchRequest(): SubtitleFetchRequest? {
     val id = contentId ?: return null
     val type = contentType ?: return null
+    if (type.lowercase() == "channel") return null
     return SubtitleFetchRequest(
         type = type.lowercase(),
         id = id,
@@ -514,6 +515,7 @@ internal suspend fun PlayerRuntimeController.loadSavedProgressSuspend(season: In
 }
 
 internal fun PlayerRuntimeController.fetchSkipIntervals(id: String?, season: Int?, episode: Int?) {
+    if (isLivePlayback) return
     if (!skipIntroEnabled) return
     if (id.isNullOrBlank()) return
 

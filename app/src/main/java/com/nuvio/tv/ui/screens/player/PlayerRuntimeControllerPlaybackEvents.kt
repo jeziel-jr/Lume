@@ -543,6 +543,7 @@ private fun String.reportSafeHost(): String {
 }
 
 internal fun PlayerRuntimeController.saveWatchProgressIfNeeded() {
+    if (isLivePlayback) return
     if (!hasRenderedFirstFrame) return
     val currentPosition = currentPlaybackPositionMs() ?: return
     val duration = getEffectiveDuration(currentPosition)
@@ -558,6 +559,7 @@ internal fun PlayerRuntimeController.saveWatchProgressIfNeeded() {
 }
 
 internal fun PlayerRuntimeController.saveWatchProgress() {
+    if (isLivePlayback) return
     if (!hasRenderedFirstFrame) return
     val currentPosition = currentPlaybackPositionMs() ?: return
     val duration = getEffectiveDuration(currentPosition)
@@ -588,6 +590,7 @@ private fun PlayerRuntimeController.isShortPlaceholderStream(): Boolean {
 }
 
 internal fun PlayerRuntimeController.saveWatchProgressInternal(position: Long, duration: Long, syncRemote: Boolean = true) {
+    if (isLivePlayback) return
     if (contentId.isNullOrEmpty() || contentType.isNullOrEmpty()) return
 
     if (position < 1000) return
@@ -642,6 +645,7 @@ internal fun PlayerRuntimeController.currentPlaybackProgressPercent(): Float {
 }
 
 internal fun PlayerRuntimeController.refreshScrobbleItem() {
+    if (isLivePlayback) return
     currentScrobbleItem = buildScrobbleItem()
     hasSentScrobbleStartForCurrentItem = false
     hasRequestedScrobbleStartForCurrentItem = false

@@ -214,10 +214,18 @@ private fun ManualSetupContent(
             modifier = Modifier.padding(top = 18.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Button(onClick = onBackToQr, enabled = !validating) {
+            Button(
+                onClick = onBackToQr,
+                enabled = !validating,
+                shape = ButtonDefaults.shape(RoundedCornerShape(50)),
+            ) {
                 Text(stringResource(R.string.xtream_setup_back_to_qr))
             }
-            Button(onClick = onSubmit, enabled = !validating) {
+            Button(
+                onClick = onSubmit,
+                enabled = !validating,
+                shape = ButtonDefaults.shape(RoundedCornerShape(50)),
+            ) {
                 Text(stringResource(R.string.action_confirm))
             }
         }
@@ -242,7 +250,11 @@ private fun ManualField(
     }
 
     Column(modifier = Modifier.padding(top = 8.dp)) {
-        Text(label, color = NuvioTheme.colors.TextSecondary)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            color = NuvioTheme.colors.TextSecondary,
+        )
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -263,7 +275,21 @@ private fun ManualField(
             ),
             textStyle = MaterialTheme.typography.titleMedium.copy(color = NuvioTheme.colors.TextPrimary),
             cursorBrush = SolidColor(NuvioTheme.colors.Primary),
-            visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+            visualTransformation = if (password) {
+                PasswordVisualTransformation()
+            } else {
+                androidx.compose.ui.text.input.VisualTransformation.None
+            },
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    innerTextField()
+                }
+            },
             modifier = Modifier
                 .padding(top = 6.dp)
                 .fillMaxWidth()
@@ -290,8 +316,7 @@ private fun ManualField(
                     } else {
                         false
                     }
-                }
-                .padding(horizontal = 18.dp, vertical = 16.dp),
+                },
         )
     }
 }

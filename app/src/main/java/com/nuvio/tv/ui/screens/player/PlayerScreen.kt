@@ -121,10 +121,13 @@ import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.LibassRenderType
 import com.nuvio.tv.data.local.SubtitleStyleSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
+import com.nuvio.tv.domain.model.EpgProgram
 import com.nuvio.tv.domain.model.Subtitle
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.ui.components.LoadingIndicator
+import com.nuvio.tv.ui.theme.NuvioPrimitives
 import android.text.format.DateFormat
+import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -132,6 +135,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.lazy.rememberLazyListState
 import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.media3.exoplayer.ExoPlayer
 import io.github.peerless2012.ass.media.widget.AssSubtitleView
@@ -145,6 +149,7 @@ fun PlayerScreen(
     onPlaybackEnded: ((nextVideoId: String?, nextSeason: Int?, nextEpisode: Int?, exitReason: PlayerExitReason?) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val liveEpg by viewModel.liveEpg.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
     val containerFocusRequester = remember { FocusRequester() }
@@ -207,6 +212,12 @@ fun PlayerScreen(
                     true
                 )
             }
+        }
+    }
+
+    LaunchedEffect(uiState.contentType, viewModel.currentVideoId) {
+        if (uiState.contentType?.trim()?.lowercase() == "channel") {
+            viewModel.currentVideoId?.toIntOrNull()?.let { viewModel.loadLiveEpg(it) }
         }
     }
 
@@ -917,7 +928,8 @@ fun PlayerScreen(
         ) {
             PlayerClockOverlayHost(
                 viewModel = viewModel,
-                playbackSpeed = uiState.playbackSpeed
+                playbackSpeed = uiState.playbackSpeed,
+                showEndTime = uiState.contentType?.trim()?.lowercase() != "channel"
             )
         }
 
@@ -945,6 +957,8 @@ fun PlayerScreen(
                 progressBarFocusRequester = progressBarFocusRequester,
                 streamInfoFocusRequester = streamInfoFocusRequester,
                 reportCodeVisible = reportCodeVisible,
+                isLive = uiState.contentType?.trim()?.lowercase() == "channel",
+                liveEpg = liveEpg,
                 progressBarUpFocusRequester = when {
                     skipButtonActuallyVisible -> skipIntroFocusRequester
                     uiState.postPlayMode is PostPlayMode.AutoPlay -> nextEpisodeFocusRequester
@@ -1595,6 +1609,10 @@ private fun PlayerControlsOverlay(
     progressBarFocusRequester: FocusRequester,
     streamInfoFocusRequester: FocusRequester,
     progressBarUpFocusRequester: FocusRequester? = null,
+    reportCodeVisible: Boolean,
+    skipButtonVisible: Boolean = false,
+    isLive: Boolean = false,
+    liveEpg: List<EpgProgram> = emptyList(),
     onPlayPause: () -> Unit,
     onPlayNextEpisode: () -> Unit,
     onSeekForward: () -> Unit,
@@ -1613,9 +1631,7 @@ private fun PlayerControlsOverlay(
     onShowStreamInfo: () -> Unit,
     onResetHideTimer: () -> Unit,
     onHideControls: () -> Unit,
-    onBack: () -> Unit,
-    reportCodeVisible: Boolean,
-    skipButtonVisible: Boolean = false
+    onBack: () -> Unit
 ) {
     val customPlayPainter = rememberRawSvgPainter(R.raw.ic_player_play)
     val customPausePainter = rememberRawSvgPainter(R.raw.ic_player_pause)
@@ -1741,16 +1757,20 @@ private fun PlayerControlsOverlay(
 
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.md))
 
-            // Progress bar — always LTR regardless of locale
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                PlayerControlsProgressBarHost(
-                    viewModel = viewModel,
-                    focusRequester = progressBarFocusRequester,
-                    upFocusRequester = progressBarUpFocusRequester,
-                    downFocusRequester = playPauseFocusRequester,
-                    onUpKey = onHideControls,
-                    onFocused = onResetHideTimer
-                )
+            if (isLive) {
+                LiveBadge()
+            } else {
+                // Progress bar — always LTR regardless of locale
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    PlayerControlsProgressBarHost(
+                        viewModel = viewModel,
+                        focusRequester = progressBarFocusRequester,
+                        upFocusRequester = progressBarUpFocusRequester,
+                        downFocusRequester = playPauseFocusRequester,
+                        onUpKey = onHideControls,
+                        onFocused = onResetHideTimer
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
@@ -1866,16 +1886,18 @@ private fun PlayerControlsOverlay(
                             horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xs),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            ControlButton(
-                                icon = Icons.Default.Speed,
-                                contentDescription = stringResource(R.string.cd_playback_speed),
-                                onClick = {
-                                    onShowSpeedDialog()
-                                },
-                                upFocusRequester = progressBarFocusRequester,
-                                onDownKey = onHideControls,
-                                onFocused = onResetHideTimer
-                            )
+                            if (!isLive) {
+                                ControlButton(
+                                    icon = Icons.Default.Speed,
+                                    contentDescription = stringResource(R.string.cd_playback_speed),
+                                    onClick = {
+                                        onShowSpeedDialog()
+                                    },
+                                    upFocusRequester = progressBarFocusRequester,
+                                    onDownKey = onHideControls,
+                                    onFocused = onResetHideTimer
+                                )
+                            }
                             ControlButton(
                                 icon = Icons.Default.AspectRatio,
                                 iconPainter = customAspectPainter,
@@ -1937,9 +1959,16 @@ private fun PlayerControlsOverlay(
                     )
                 }
 
-                // Right side - Time display only
-                PlayerControlsTimeTextHost(viewModel = viewModel)
+                // Right side - Time display only (hidden for live channels)
+                if (!isLive) {
+                    PlayerControlsTimeTextHost(viewModel = viewModel)
+                }
             }
+            }
+
+            if (isLive && liveEpg.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(NuvioTheme.spacing.md))
+                LiveEpgBlock(programs = liveEpg)
             }
         }
     }
@@ -2298,7 +2327,8 @@ private fun SeekOverlayHost(viewModel: PlayerViewModel) {
 private fun PlayerClockOverlay(
     currentPosition: Long,
     duration: Long,
-    playbackSpeed: Float
+    playbackSpeed: Float,
+    showEndTime: Boolean = true
 ) {
     var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
     val context = LocalContext.current
@@ -2335,22 +2365,25 @@ private fun PlayerClockOverlay(
             ),
             color = Color.White.copy(alpha = 0.96f)
         )
-        Text(
-            text = stringResource(R.string.player_ends_at, endTimeText),
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 10.sp),
-            color = Color.White.copy(alpha = 0.78f)
-        )
+        if (showEndTime) {
+            Text(
+                text = stringResource(R.string.player_ends_at, endTimeText),
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 10.sp),
+                color = Color.White.copy(alpha = 0.78f)
+            )
+        }
     }
 }
 
 @Composable
-private fun PlayerClockOverlayHost(viewModel: PlayerViewModel, playbackSpeed: Float) {
+private fun PlayerClockOverlayHost(viewModel: PlayerViewModel, playbackSpeed: Float, showEndTime: Boolean = true) {
     val playbackTimeline by viewModel.playbackTimeline.collectAsState()
 
     PlayerClockOverlay(
         currentPosition = playbackTimeline.currentPosition,
         duration = playbackTimeline.duration,
-        playbackSpeed = playbackSpeed
+        playbackSpeed = playbackSpeed,
+        showEndTime = showEndTime
     )
 }
 
@@ -3069,4 +3102,82 @@ private fun PlayerBufferingIndicator(
             LoadingIndicator()
         }
     }
+}
+
+@Composable
+private fun LiveBadge() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(NuvioPrimitives.red500, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(NuvioTheme.spacing.sm))
+        Text(
+            text = stringResource(R.string.live_badge),
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.5.sp
+        )
+    }
+}
+
+@Composable
+private fun LiveEpgBlock(programs: List<EpgProgram>) {
+    val now = programs.firstOrNull()
+    val next = programs.getOrNull(1)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (now != null) {
+            val nowText = buildString {
+                append(stringResource(R.string.live_epg_now))
+                append(": ")
+                append(now.title)
+                now.startEpoch?.let {
+                    append(" · ")
+                    append(formatEpgTime(it))
+                }
+                now.endEpoch?.let {
+                    append("–")
+                    append(formatEpgTime(it))
+                }
+            }
+            Text(
+                text = nowText,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (next != null) {
+            val nextText = buildString {
+                append(stringResource(R.string.live_epg_next))
+                append(": ")
+                append(next.title)
+                next.startEpoch?.let {
+                    append(" · ")
+                    append(formatEpgTime(it))
+                }
+            }
+            Text(
+                text = nextText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.72f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+private fun formatEpgTime(epochSeconds: Long): String {
+    return runCatching {
+        SimpleDateFormat("HH:mm", Locale.US).format(Date(epochSeconds * 1000L))
+    }.getOrDefault("")
 }

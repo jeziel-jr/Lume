@@ -19,7 +19,9 @@ import com.nuvio.tv.data.repository.ParentalGuideRepository
 import com.nuvio.tv.data.repository.SkipIntroRepository
 import com.nuvio.tv.data.repository.TraktEpisodeMappingService
 import com.nuvio.tv.data.repository.TraktScrobbleService
+import com.nuvio.tv.domain.model.EpgProgram
 import com.nuvio.tv.domain.repository.AddonRepository
+import com.nuvio.tv.domain.repository.LiveTvRepository
 import com.nuvio.tv.domain.repository.MetaRepository
 import com.nuvio.tv.domain.repository.StreamRepository
 import com.nuvio.tv.domain.repository.WatchProgressRepository
@@ -29,7 +31,9 @@ import com.nuvio.tv.data.local.TmdbSettingsDataStore
 import com.nuvio.tv.data.xtream.XtreamServerHealthMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -50,6 +54,7 @@ class PlayerViewModel @Inject constructor(
     private val deviceLocalPlayerPreferences: DeviceLocalPlayerPreferences,
     private val streamLinkCacheDataStore: StreamLinkCacheDataStore,
     private val streamBadgeSettingsDataStore: StreamBadgeSettingsDataStore,
+    private val liveTvRepository: LiveTvRepository,
     private val bingeGroupCacheDataStore: com.nuvio.tv.data.local.BingeGroupCacheDataStore,
     private val layoutPreferenceDataStore: com.nuvio.tv.data.local.LayoutPreferenceDataStore,
     private val watchedItemsPreferences: com.nuvio.tv.data.local.WatchedItemsPreferences,
@@ -117,6 +122,19 @@ class PlayerViewModel @Inject constructor(
 
     val playbackTimeline: StateFlow<PlaybackTimelineState>
         get() = controller.playbackTimeline
+
+    val currentVideoId: String?
+        get() = controller.currentVideoId
+
+    private val _liveEpg = MutableStateFlow<List<EpgProgram>>(emptyList())
+    val liveEpg: StateFlow<List<EpgProgram>> = _liveEpg.asStateFlow()
+
+    fun loadLiveEpg(streamId: Int) {
+        viewModelScope.launch {
+            _liveEpg.value = runCatching { liveTvRepository.epg(streamId) }
+                .getOrDefault(emptyList())
+        }
+    }
 
     val exoPlayer: ExoPlayer?
         get() = controller.exoPlayer

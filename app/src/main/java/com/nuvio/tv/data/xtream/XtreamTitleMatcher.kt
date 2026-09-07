@@ -55,4 +55,53 @@ object XtreamTitleMatcher {
         }
         return language + qualityValue(raw).coerceAtLeast(0)
     }
+
+    const val AUDIO_BINGE_GROUP_DUB = "audio:dub"
+    const val AUDIO_BINGE_GROUP_LEG = "audio:leg"
+
+    /**
+     * Maps a provider title to the audio-variant binge group used so
+     * next-episode auto-play keeps the variant the user last watched.
+     * Catalog convention: dublado entries carry no marker (or explicit
+     * "Dublado"/"dual"/"nacional" tags), legendado entries carry
+     * "Legendado" or the "[L]" abbreviation.
+     */
+    fun audioBingeGroup(raw: String): String {
+        val lower = raw.lowercase()
+        val isLegendado = "legendado" in lower || "[l]" in lower || "(l)" in lower
+        return if (isLegendado) AUDIO_BINGE_GROUP_LEG else AUDIO_BINGE_GROUP_DUB
+    }
+
+    /** Provider-defined stream tags derived from the section categories the
+     *  entry lives in (e.g. "Filmes • 4K", "Filmes • Legendado"). */
+    enum class XtreamStreamTag(val label: String) {
+        LEGENDADO("Legendado"),
+        DUBLADO("Dublado"),
+        ULTRA_4K("4K"),
+        CINEMA("CINEMA"),
+    }
+
+    fun tagFromCategoryName(name: String?): XtreamStreamTag? {
+        if (name.isNullOrBlank()) return null
+        val lower = name.lowercase()
+        return when {
+            "legendado" in lower -> XtreamStreamTag.LEGENDADO
+            "dublado" in lower -> XtreamStreamTag.DUBLADO
+            "4k" in lower || "2160" in lower || "uhd" in lower -> XtreamStreamTag.ULTRA_4K
+            "cinema" in lower -> XtreamStreamTag.CINEMA
+            else -> null
+        }
+    }
+
+    /** True when the row text already communicates the tag (name markers
+     *  such as "[L]", quality words, ...), so no suffix needs to be added. */
+    fun titleShowsTag(title: String, tag: XtreamStreamTag): Boolean {
+        val lower = title.lowercase()
+        return when (tag) {
+            XtreamStreamTag.LEGENDADO -> "legendado" in lower || "[l]" in lower || "(l)" in lower
+            XtreamStreamTag.DUBLADO -> "dublado" in lower || "dual" in lower || "nacional" in lower
+            XtreamStreamTag.ULTRA_4K -> "4k" in lower || "uhd" in lower || "2160" in lower
+            XtreamStreamTag.CINEMA -> "cinema" in lower
+        }
+    }
 }

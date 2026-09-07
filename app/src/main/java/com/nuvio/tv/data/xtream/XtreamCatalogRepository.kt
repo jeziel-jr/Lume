@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.SystemClock
 import android.os.Process
 import android.util.Log
+import com.nuvio.tv.data.remote.api.XtreamCategory
 import com.nuvio.tv.data.remote.api.XtreamSeriesItem
 import com.nuvio.tv.data.remote.api.XtreamVodItem
 import com.squareup.moshi.JsonClass
@@ -30,7 +31,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.asCoroutineDispatcher
 
-private const val CATALOG_SCHEMA_VERSION = 2
+private const val CATALOG_SCHEMA_VERSION = 3
 private const val CATALOG_TTL_MILLIS = 6L * 60L * 60L * 1_000L
 
 sealed interface XtreamCatalogState {
@@ -45,7 +46,9 @@ internal data class XtreamCatalogSnapshot(
     val sourceFingerprint: String = "",
     val fetchedAtMillis: Long,
     val vod: List<XtreamVodItem>,
-    val series: List<XtreamSeriesItem>
+    val series: List<XtreamSeriesItem>,
+    val vodCategories: List<XtreamCategory> = emptyList(),
+    val seriesCategories: List<XtreamCategory> = emptyList()
 )
 
 internal interface XtreamCatalogStorage {
@@ -99,6 +102,8 @@ internal data class XtreamCatalogIndex(
     val itemCount: Int,
     private val vodByTitle: Map<String, List<XtreamVodItem>>,
     private val seriesByTitle: Map<String, List<XtreamSeriesItem>>,
+    private val vodCategoryNames: Map<String, String>,
+    private val seriesCategoryNames: Map<String, String>,
     private val healthVodCandidates: List<XtreamVodItem>,
     private val healthSeriesCandidates: List<XtreamSeriesItem>,
 ) {
@@ -107,6 +112,12 @@ internal data class XtreamCatalogIndex(
 
     fun findSeries(normalizedTitles: Collection<String>, year: Int?): List<XtreamSeriesItem> =
         findCandidates(normalizedTitles, year, seriesByTitle) { it.releaseYear }
+
+    fun vodCategoryNames(ids: List<Int>?): List<String> =
+        ids.orEmpty().mapNotNull { vodCategoryNames[it.toString()] }
+
+    fun seriesCategoryNames(ids: List<Int>?): List<String> =
+        ids.orEmpty().mapNotNull { seriesCategoryNames[it.toString()] }
 
     fun healthProbeCandidates(): XtreamHealthProbeCandidates = XtreamHealthProbeCandidates(
         vod = healthVodCandidates,
@@ -149,6 +160,8 @@ internal data class XtreamCatalogIndex(
                 itemCount = snapshot.vod.size + snapshot.series.size,
                 vodByTitle = vodByTitle,
                 seriesByTitle = seriesByTitle,
+                vodCategoryNames = snapshot.vodCategories.associate { it.categoryId to it.categoryName },
+                seriesCategoryNames = snapshot.seriesCategories.associate { it.categoryId to it.categoryName },
                 healthVodCandidates = snapshot.vod.take(2),
                 healthSeriesCandidates = snapshot.series.take(3),
             )
@@ -304,11 +317,15 @@ class XtreamCatalogRepository internal constructor(
             coroutineScope {
                 val vod = async { timedCatalogFetch("vod") { dataSource.getVodStreams() } }
                 val series = async { timedCatalogFetch("series") { dataSource.getSeries() } }
+                val vodCategories = async { timedCatalogFetch("vod_categories") { dataSource.getVodCategories() } }
+                val seriesCategories = async { timedCatalogFetch("series_categories") { dataSource.getSeriesCategories() } }
                 XtreamCatalogSnapshot(
                     sourceFingerprint = sourceFingerprint,
                     fetchedAtMillis = nowMillis(),
                     vod = vod.await(),
-                    series = series.await()
+                    series = series.await(),
+                    vodCategories = vodCategories.await(),
+                    seriesCategories = seriesCategories.await()
                 ).also { snapshot ->
                     check(isPlausible(snapshot, index?.itemCount)) { "Xtream returned an implausible catalog" }
                     val writeStartedAt = SystemClock.elapsedRealtime()

@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -94,6 +95,7 @@ internal enum class SettingsCategory {
     EXPERIENCE,
     ACCOUNT,
     PROFILES,
+    PARENTAL,
     XTREAM_PROFILE,
     APPEARANCE,
     LAYOUT,
@@ -169,6 +171,13 @@ private fun rememberSettingsSectionSpecs() = listOf(
         destination = SettingsSectionDestination.Inline
     ),
     SettingsSectionSpec(
+        category = SettingsCategory.PARENTAL,
+        title = stringResource(R.string.parental_title),
+        icon = Icons.Default.Lock,
+        subtitle = stringResource(R.string.parental_subtitle),
+        destination = SettingsSectionDestination.Inline
+    ),
+    SettingsSectionSpec(
         category = SettingsCategory.APPEARANCE,
         title = stringResource(R.string.appearance_title),
         icon = Icons.Default.Palette,
@@ -234,6 +243,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
 ).filter {
     it.category in setOf(
         SettingsCategory.XTREAM_PROFILE,
+        SettingsCategory.PARENTAL,
         SettingsCategory.APPEARANCE,
         SettingsCategory.LAYOUT,
         SettingsCategory.PLAYBACK,
@@ -282,6 +292,7 @@ fun SettingsScreen(
                 SettingsCategory.EXPERIENCE -> false
                 SettingsCategory.DEBUG -> BuildConfig.IS_DEBUG_BUILD && !isEssentialMode
                 SettingsCategory.PROFILES -> isPrimaryProfileActive
+                SettingsCategory.PARENTAL -> true
                 SettingsCategory.ACCOUNT -> isPrimaryProfileActive
                 SettingsCategory.XTREAM_PROFILE -> true
                 SettingsCategory.LAYOUT -> true
@@ -308,6 +319,7 @@ fun SettingsScreen(
             SettingsCategory.APPEARANCE to FocusRequester(),
             SettingsCategory.EXPERIENCE to FocusRequester(),
             SettingsCategory.PROFILES to FocusRequester(),
+            SettingsCategory.PARENTAL to FocusRequester(),
             SettingsCategory.LAYOUT to FocusRequester(),
             SettingsCategory.CONTENT_DISCOVERY to FocusRequester(),
             SettingsCategory.INTEGRATION to FocusRequester(),
@@ -749,6 +761,13 @@ private fun SettingsDetailPane(
             onManageProfiles = onNavigateToManageProfiles,
             initialFocusRequester = if (allowDetailAutofocus) {
                 contentFocusRequesters[SettingsCategory.PROFILES]
+            } else {
+                null
+            }
+        )
+        SettingsCategory.PARENTAL -> ParentalControlSettingsContent(
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.PARENTAL]
             } else {
                 null
             }

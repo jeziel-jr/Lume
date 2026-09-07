@@ -24,6 +24,25 @@ class XtreamRemoteDataSource @Inject constructor(
         api.getSeriesInfo(credentials.username, credentials.password, id)
     }
 
+    override suspend fun getVodCategories() = withApi { api, credentials ->
+        api.getVodCategories(credentials.username, credentials.password)
+    }
+
+    override suspend fun getSeriesCategories() = withApi { api, credentials ->
+        api.getSeriesCategories(credentials.username, credentials.password)
+    }
+    override suspend fun getLiveCategories() = withApi { api, credentials ->
+        api.getLiveCategories(credentials.username, credentials.password)
+    }
+
+    override suspend fun getLiveStreams(categoryId: Int?) = withApi { api, credentials ->
+        api.getLiveStreams(credentials.username, credentials.password, categoryId = categoryId)
+    }
+
+    override suspend fun getShortEpg(streamId: Int, limit: Int) = withApi { api, credentials ->
+        api.getShortEpg(credentials.username, credentials.password, streamId, limit)
+    }
+
     private suspend fun <T> withApi(
         block: suspend (com.nuvio.tv.data.remote.api.XtreamApi, XtreamCredentials) -> T,
     ): T {

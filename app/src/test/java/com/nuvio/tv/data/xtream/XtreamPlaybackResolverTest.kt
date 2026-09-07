@@ -1,8 +1,12 @@
 package com.nuvio.tv.data.xtream
 
+import com.nuvio.tv.data.remote.api.XtreamCategory
 import com.nuvio.tv.data.remote.api.XtreamEpisode
 import com.nuvio.tv.data.remote.api.XtreamMovieData
 import com.nuvio.tv.data.remote.api.XtreamSeriesInfoResponse
+import com.nuvio.tv.data.remote.api.XtreamEpgResponse
+import com.nuvio.tv.data.remote.api.XtreamLiveCategory
+import com.nuvio.tv.data.remote.api.XtreamLiveStream
 import com.nuvio.tv.data.remote.api.XtreamSeriesItem
 import com.nuvio.tv.data.remote.api.XtreamVodInfo
 import com.nuvio.tv.data.remote.api.XtreamVodInfoResponse
@@ -10,6 +14,7 @@ import com.nuvio.tv.data.remote.api.XtreamVodItem
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.delay
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -382,6 +387,220 @@ class XtreamPlaybackResolverTest {
         assertTrue(result is XtreamResolution.Failure)
     }
 
+    @Test
+    fun `audio binge group maps legendado markers to leg and plain titles to dub`() {
+        assertEquals(
+            XtreamTitleMatcher.AUDIO_BINGE_GROUP_LEG,
+            XtreamTitleMatcher.audioBingeGroup("Minha Serie [L] (2000)")
+        )
+        assertEquals(
+            XtreamTitleMatcher.AUDIO_BINGE_GROUP_LEG,
+            XtreamTitleMatcher.audioBingeGroup("Repay It in Blood LEGENDADO (2026)")
+        )
+        assertEquals(
+            XtreamTitleMatcher.AUDIO_BINGE_GROUP_DUB,
+            XtreamTitleMatcher.audioBingeGroup("Minha Serie (2000)")
+        )
+        assertEquals(
+            XtreamTitleMatcher.AUDIO_BINGE_GROUP_DUB,
+            XtreamTitleMatcher.audioBingeGroup("Duna (2021) [4K Dublado]")
+        )
+    }
+
+    @Test
+    fun `title L marker is stripped and rendered as canonical Legendado suffix`() = runTest {
+        val source = FakeSource(
+            vod = listOf(
+                XtreamVodItem(1, name = "O Último Nascer do Sol [L] (2026)", year = "2026")
+            ),
+            vodInfo = mapOf(
+                1 to XtreamVodInfoResponse(XtreamVodInfo("438631"), XtreamMovieData(1, "mp4"))
+            )
+        )
+
+        val result = resolver(source).resolveMovie(438631, listOf("O Último Nascer do Sol"), 2026)
+            as XtreamResolution.Available
+
+        val stream = result.source.streams.single()
+        assertEquals("O Último Nascer do Sol (2026) • Legendado", stream.title)
+        assertFalse(stream.title.orEmpty().contains("[L]", ignoreCase = true))
+        assertEquals(XtreamTitleMatcher.AUDIO_BINGE_GROUP_LEG, stream.behaviorHints?.bingeGroup)
+    }
+
+    @Test
+    fun `plain Legendado word is normalized to canonical suffix`() = runTest {
+        val source = FakeSource(
+            vod = listOf(
+                XtreamVodItem(1, name = "Repay It in Blood LEGENDADO (2026)", year = "2026")
+            ),
+            vodInfo = mapOf(
+                1 to XtreamVodInfoResponse(XtreamVodInfo("438631"), XtreamMovieData(1, "mp4"))
+            )
+        )
+
+        val result = resolver(source).resolveMovie(438631, listOf("Repay It in Blood"), 2026)
+            as XtreamResolution.Available
+
+        val stream = result.source.streams.single()
+        assertEquals("Repay It in Blood (2026) • Legendado", stream.title)
+        assertFalse(stream.title.orEmpty().contains("LEGENDADO"))
+        assertEquals(XtreamTitleMatcher.AUDIO_BINGE_GROUP_LEG, stream.behaviorHints?.bingeGroup)
+    }
+
+    @Test
+    fun `duplicate series entries carry distinct audio variant binge groups`() = runTest {
+        val source = FakeSource(
+            series = listOf(
+                XtreamSeriesItem(20, name = "Ruptura (2022)"),
+                XtreamSeriesItem(21, name = "Ruptura [L] (2022)")
+            ),
+            seriesInfo = mapOf(
+                20 to XtreamSeriesInfoResponse(mapOf("1" to listOf(XtreamEpisode("55", 1, 1, "mkv")))),
+                21 to XtreamSeriesInfoResponse(mapOf("1" to listOf(XtreamEpisode("56", 1, 1, "mkv"))))
+            )
+        )
+
+        val result = resolver(source).resolveEpisode(listOf("Ruptura"), 2022, 1, 1)
+            as XtreamResolution.Available
+
+        val groups = result.source.streams.mapNotNull { it.behaviorHints?.bingeGroup }.sorted()
+        assertEquals(
+            listOf(XtreamTitleMatcher.AUDIO_BINGE_GROUP_DUB, XtreamTitleMatcher.AUDIO_BINGE_GROUP_LEG),
+            groups
+        )
+        assertEquals(2, result.source.streams.size)
+    }
+
+    @Test
+    fun `duplicate movie entries carry distinct audio variant binge groups`() = runTest {
+        val source = FakeSource(
+            vod = listOf(
+                XtreamVodItem(1, name = "Duna (2021)"),
+                XtreamVodItem(2, name = "Duna [L] (2021)")
+            ),
+            vodInfo = mapOf(
+                1 to XtreamVodInfoResponse(XtreamVodInfo("438631"), XtreamMovieData(1, "mp4")),
+                2 to XtreamVodInfoResponse(XtreamVodInfo("438631"), XtreamMovieData(2, "mp4"))
+            )
+        )
+
+        val result = resolver(source).resolveMovie(438631, listOf("Duna"), 2021)
+            as XtreamResolution.Available
+
+        val groups = result.source.streams.mapNotNull { it.behaviorHints?.bingeGroup }.sorted()
+        assertEquals(
+            listOf(XtreamTitleMatcher.AUDIO_BINGE_GROUP_DUB, XtreamTitleMatcher.AUDIO_BINGE_GROUP_LEG),
+            groups
+        )
+    }
+
+    @Test
+    fun `legendado category entry and untagged genre copy are labelled and grouped`() = runTest {
+        val source = FakeSource(
+            vod = listOf(
+                XtreamVodItem(1, name = "Duna (2021)", year = "2021", categoryIds = listOf(133)),
+                XtreamVodItem(2, name = "Duna (2021)", year = "2021", categoryIds = listOf(135))
+            ),
+            vodInfo = mapOf(
+                1 to XtreamVodInfoResponse(XtreamVodInfo("438631"), XtreamMovieData(1, "mp4")),
+                2 to XtreamVodInfoResponse(XtreamVodInfo("438631"), XtreamMovieData(2, "mp4"))
+            ),
+            vodCategories = listOf(
+                XtreamCategory("133", "Filmes • Animação"),
+                XtreamCategory("135", "Filmes • Legendado")
+            )
+        )
+
+        val result = resolver(source).resolveMovie(438631, listOf("Duna"), 2021)
+            as XtreamResolution.Available
+
+        val titles = result.source.streams.map { it.title.orEmpty() }.sorted()
+        assertEquals(listOf("Duna (2021) • Dublado", "Duna (2021) • Legendado"), titles)
+        val groups = result.source.streams.mapNotNull { it.behaviorHints?.bingeGroup }.sorted()
+        assertEquals(
+            listOf(XtreamTitleMatcher.AUDIO_BINGE_GROUP_DUB, XtreamTitleMatcher.AUDIO_BINGE_GROUP_LEG),
+            groups
+        )
+    }
+
+    @Test
+    fun `4k category entry gets a 4K tag and quality`() = runTest {
+        val source = FakeSource(
+            vod = listOf(
+                XtreamVodItem(1, name = "Duna (2021)", year = "2021", categoryIds = listOf(136)),
+                XtreamVodItem(2, name = "Duna (2021)", year = "2021", categoryIds = listOf(135))
+            ),
+            vodInfo = mapOf(
+                1 to XtreamVodInfoResponse(XtreamVodInfo("438631"), XtreamMovieData(1, "mp4")),
+                2 to XtreamVodInfoResponse(XtreamVodInfo("438631"), XtreamMovieData(2, "mp4"))
+            ),
+            vodCategories = listOf(
+                XtreamCategory("136", "Filmes • 4K"),
+                XtreamCategory("135", "Filmes • Legendado")
+            )
+        )
+
+        val result = resolver(source).resolveMovie(438631, listOf("Duna"), 2021)
+            as XtreamResolution.Available
+
+        val fourK = result.source.streams.first { it.title.orEmpty().contains("4K") }
+        assertEquals("Duna (2021) • 4K", fourK.title)
+        assertEquals("2160p", fourK.quality)
+    }
+
+    @Test
+    fun `series legendado category tags the pair without name markers`() = runTest {
+        val source = FakeSource(
+            series = listOf(
+                XtreamSeriesItem(20, name = "Serie X (2022)", year = "2022", categoryIds = listOf(9)),
+                XtreamSeriesItem(21, name = "Serie X (2022)", year = "2022", categoryIds = listOf(160))
+            ),
+            seriesInfo = mapOf(
+                20 to XtreamSeriesInfoResponse(mapOf("1" to listOf(XtreamEpisode("55", 1, 1, "mkv")))),
+                21 to XtreamSeriesInfoResponse(mapOf("1" to listOf(XtreamEpisode("56", 1, 1, "mkv"))))
+            ),
+            seriesCategories = listOf(
+                XtreamCategory("9", "Séries"),
+                XtreamCategory("160", "Series - Legendado")
+            )
+        )
+
+        val result = resolver(source).resolveEpisode(listOf("Serie X"), 2022, 1, 1)
+            as XtreamResolution.Available
+
+        val titles = result.source.streams.map { it.title.orEmpty() }.sorted()
+        assertEquals(listOf("Serie X (2022) • Dublado", "Serie X (2022) • Legendado"), titles)
+    }
+
+    @Test
+    fun `dublado word and bracket markers are canonicalized while mixed tags stay`() = runTest {
+        val source = FakeSource(
+            vod = listOf(
+                XtreamVodItem(1, name = "A Grande Jornada Dublado 1080p (2024)", year = "2024"),
+                XtreamVodItem(2, name = "A Grande Jornada [Dublado] (2024)", year = "2024"),
+                XtreamVodItem(3, name = "Rambo [4K Dublado] (2024)", year = "2024")
+            ),
+            vodInfo = mapOf(
+                1 to XtreamVodInfoResponse(XtreamVodInfo("111"), XtreamMovieData(1, "mp4")),
+                2 to XtreamVodInfoResponse(XtreamVodInfo("111"), XtreamMovieData(2, "mp4")),
+                3 to XtreamVodInfoResponse(XtreamVodInfo("222"), XtreamMovieData(3, "mp4"))
+            )
+        )
+
+        val resolver = resolver(source)
+        val jornada = resolver.resolveMovie(111, listOf("A Grande Jornada"), 2024)
+            as XtreamResolution.Available
+        val titles = jornada.source.streams.map { it.title.orEmpty() }.sorted()
+        assertEquals(
+            listOf("A Grande Jornada (2024) • Dublado", "A Grande Jornada 1080p (2024) • Dublado"),
+            titles
+        )
+        assertTrue(jornada.source.streams.all { it.behaviorHints?.bingeGroup == XtreamTitleMatcher.AUDIO_BINGE_GROUP_DUB })
+
+        val rambo = resolver.resolveMovie(222, listOf("Rambo"), 2024) as XtreamResolution.Available
+        assertEquals("Rambo [4K Dublado] (2024)", rambo.source.streams.single().title)
+    }
+
     private fun resolver(source: XtreamDataSource) =
         XtreamPlaybackResolver(
             "http://example.com",
@@ -408,6 +627,8 @@ class XtreamPlaybackResolverTest {
         private val vodInfo: Map<Int, XtreamVodInfoResponse> = emptyMap(),
         private val series: List<XtreamSeriesItem> = emptyList(),
         private val seriesInfo: Map<Int, XtreamSeriesInfoResponse> = emptyMap(),
+        private val vodCategories: List<XtreamCategory> = emptyList(),
+        private val seriesCategories: List<XtreamCategory> = emptyList(),
         private val vodDetailFailures: Set<Int> = emptySet(),
         private val vodDetailDelayMillis: Long = 0L,
         private val error: Throwable? = null
@@ -440,5 +661,10 @@ class XtreamPlaybackResolverTest {
             requestedSeriesDetails += id
             return error?.let { throw it } ?: seriesInfo.getValue(id)
         }
+        override suspend fun getVodCategories(): List<XtreamCategory> = error?.let { throw it } ?: vodCategories
+        override suspend fun getSeriesCategories(): List<XtreamCategory> = error?.let { throw it } ?: seriesCategories
+        override suspend fun getLiveCategories(): List<XtreamLiveCategory> = error("not used")
+        override suspend fun getLiveStreams(categoryId: Int?): List<XtreamLiveStream> = error("not used")
+        override suspend fun getShortEpg(streamId: Int, limit: Int): XtreamEpgResponse = error("not used")
     }
 }

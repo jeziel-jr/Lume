@@ -9,10 +9,12 @@ import com.nuvio.tv.data.repository.SubtitleRepositoryImpl
 import com.nuvio.tv.data.repository.SyncRepositoryImpl
 import com.nuvio.tv.data.repository.WatchProgressRepositoryImpl
 import com.nuvio.tv.data.xtream.XtreamDataSource
+import com.nuvio.tv.data.xtream.XtreamLiveRepository
 import com.nuvio.tv.data.xtream.XtreamRemoteDataSource
 import com.nuvio.tv.domain.repository.AddonRepository
 import com.nuvio.tv.domain.repository.CatalogRepository
 import com.nuvio.tv.domain.repository.LibraryRepository
+import com.nuvio.tv.domain.repository.LiveTvRepository
 import com.nuvio.tv.domain.repository.MetaRepository
 import com.nuvio.tv.domain.repository.StreamRepository
 import com.nuvio.tv.domain.repository.SubtitleRepository
@@ -31,6 +33,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindXtreamDataSource(impl: XtreamRemoteDataSource): XtreamDataSource
+    @Binds
+    @Singleton
+    abstract fun bindLiveTvRepository(impl: XtreamLiveRepository): LiveTvRepository
 
     @Binds
     @Singleton

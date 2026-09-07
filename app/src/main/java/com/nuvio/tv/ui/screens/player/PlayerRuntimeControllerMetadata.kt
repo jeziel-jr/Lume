@@ -54,6 +54,7 @@ internal fun shouldPublishTmdbSeriesVideos(
     tmdbVideos.isNotEmpty()
 
 internal fun PlayerRuntimeController.fetchMetaDetails(id: String?, type: String?) {
+    if (isLivePlayback) return
     if (id.isNullOrBlank() || type.isNullOrBlank()) return
 
     val requestKey = metadataRequestKey(id = id, type = type)
@@ -211,6 +212,7 @@ internal fun PlayerRuntimeController.updateEpisodeDescription() {
 }
 
 private suspend fun PlayerRuntimeController.enrichDescriptionFromTmdb(id: String?, type: String?) {
+    if (isLivePlayback) return
     if (id.isNullOrBlank() || type.isNullOrBlank()) return
     val settings = tmdbSettingsDataStore.settings.first()
     if (!settings.enabled || !settings.useBasicInfo) return
@@ -534,6 +536,7 @@ internal fun PlayerRuntimeController.tryShowParentalGuide() {
 }
 
 internal fun PlayerRuntimeController.fetchParentalGuide(id: String?, type: String?, season: Int?, episode: Int?) {
+    if (isLivePlayback) return
     if (!parentalGuideEnabled) return
     if (id.isNullOrBlank()) return
 

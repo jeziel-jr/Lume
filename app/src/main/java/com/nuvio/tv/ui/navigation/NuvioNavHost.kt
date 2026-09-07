@@ -27,6 +27,7 @@ import com.nuvio.tv.ui.screens.home.HomeScreen
 import com.nuvio.tv.ui.screens.addon.AddonManagerScreen
 import com.nuvio.tv.ui.screens.addon.CatalogOrderScreen
 import com.nuvio.tv.ui.screens.library.LibraryScreen
+import com.nuvio.tv.ui.screens.live.LiveChannelsScreen
 import com.nuvio.tv.ui.screens.player.PlayerExitReason
 import com.nuvio.tv.ui.screens.player.PlayerScreen
 import com.nuvio.tv.ui.screens.plugin.PluginScreen
@@ -460,6 +461,11 @@ fun NuvioNavHost(
                     nullable = true
                     defaultValue = "false"
                 },
+                navArgument("autoNext") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "false"
+                },
                 navArgument("contentLanguage") {
                     type = NavType.StringType
                     nullable = true
@@ -857,6 +863,7 @@ fun NuvioNavHost(
                             contentId = contentId.takeIf { it.isNotBlank() },
                             contentName = args?.getString("contentName"),
                             runtime = null,
+                            autoNext = true,
                             returnToDetailOnBack = returnToDetailOnBack,
                             returnToHomeOnBack = returnToHomeOnBack
                         )
@@ -1032,7 +1039,13 @@ fun NuvioNavHost(
             LibraryScreen(
                 showBuiltInHeader = !hideBuiltInHeaders,
                 onNavigateToDetail = { itemId, itemType, addonBaseUrl ->
-                    navController.navigate(Screen.Detail.createRoute(itemId, itemType, addonBaseUrl))
+                    navController.navigate(
+                        Screen.Detail.createRoute(
+                            itemId = itemId,
+                            itemType = itemType,
+                            addonBaseUrl = addonBaseUrl
+                        )
+                    )
                 },
                 onCloudPlaybackResolved = { info ->
                     val filename = info.filename ?: info.file.name
@@ -1048,6 +1061,26 @@ fun NuvioNavHost(
                             videoSize = info.videoSizeBytes,
                             addonName = info.item.providerName,
                             streamDescription = info.item.name
+                        )
+                    )
+                }
+            )
+        }
+
+        composable(Screen.Live.route) {
+            LiveChannelsScreen(
+                onPlayChannel = { channel, streamUrl ->
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            streamUrl = streamUrl,
+                            title = channel.name,
+                            contentType = "channel",
+                            contentId = "live:${channel.streamId}",
+                            contentName = channel.name,
+                            videoId = channel.streamId.toString(),
+                            poster = channel.iconUrl,
+                            backdrop = channel.iconUrl,
+                            logo = channel.iconUrl
                         )
                     )
                 }
