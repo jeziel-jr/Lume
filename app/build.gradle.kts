@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -118,8 +118,8 @@ android {
         applicationId = "com.jeziel.lume"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1059
-        versionName = "0.7.34-beta"
+        versionCode = 1060
+        versionName = "0.7.35-beta"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", buildConfigString(localProperties.getProperty("INTRODB_API_URL", "https://api.introdb.app/")))
