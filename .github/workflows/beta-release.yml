@@ -55,7 +55,7 @@ concurrency:
 
 jobs:
   beta-release:
-    runs-on: ubuntu-latest
+    runs-on: lume-release
 
     steps:
       - name: Checkout
