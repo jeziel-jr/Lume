@@ -19,6 +19,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
+/** Minimum spacing between automatic (non-forced) update checks. */
+private const val AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L
+
 data class UpdateUiState(
     val isChecking: Boolean = false,
     val update: AppUpdate? = null,
@@ -79,6 +82,19 @@ class UpdateViewModel @Inject constructor(
                         )
                     }
                 }
+        }
+    }
+
+    /**
+     * Background check used on app start: runs [checkForUpdates] at most once per day and
+     * never surfaces failure feedback, so a failed or absent channel cannot interrupt the user.
+     */
+    fun checkForUpdatesIfStale() {
+        viewModelScope.launch {
+            val lastCheckAt = updatePreferences.lastCheckAtMs.first()
+            if (System.currentTimeMillis() - lastCheckAt >= AUTO_UPDATE_CHECK_INTERVAL_MS) {
+                checkForUpdates(force = false, showNoUpdateFeedback = false)
+            }
         }
     }
 

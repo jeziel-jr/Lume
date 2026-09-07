@@ -791,6 +791,12 @@ class MainActivity : ComponentActivity() {
                             onIgnore = { updateViewModel.ignoreThisVersion() },
                             onOpenUnknownSources = { updateViewModel.openUnknownSourcesSettings() }
                         )
+
+                        // Automatic background update check: at most once per day on release
+                        // builds, without failure feedback (manual check stays in About).
+                        LaunchedEffect(Unit) {
+                            updateViewModel.checkForUpdatesIfStale()
+                        }
                     }
 
                     // Loader shown while an external episode auto-advances. Drawn last (on top

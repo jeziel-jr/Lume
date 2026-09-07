@@ -1,0 +1,114 @@
+name: Auto Beta Release
+
+# Every push to main builds, signs, and publishes a new beta GitHub Release.
+# The in-app updater (full flavor) checks `releases/latest` at most once per day
+# and offers the update directly on the TV.
+#
+# The version bump commit and tag are pushed with the GITHUB_TOKEN, which by
+# GitHub security policy does NOT re-trigger this workflow (no loop).
+#
+# Required repository secrets:
+#   LOCAL_PROPERTIES_BASE64        - base64 of local.properties (TMDB_API_KEY,
+#                                    XTREAM_BASE_URL and any other build fields)
+#   NUVIO_RELEASE_KEYSTORE_BASE64  - base64 of the signing keystore that matches
+#                                    what devices have installed (see below)
+# The alias/password default to the standard Android debug keystore
+# (androiddebugkey / android). If the keystore uses different credentials, set
+# the NUVIO_RELEASE_KEY_ALIAS / NUVIO_RELEASE_KEY_PASSWORD /
+# NUVIO_RELEASE_STORE_PASSWORD secrets instead.
+#
+# Signature continuity: in-app updates only install over an APK signed with the
+# SAME certificate. Devices were installed with the developer debug keystore
+# (~/.android/debug.keystore), so that file must be the published keystore:
+#   base64 -i ~/.android/debug.keystore   (set as NUVIO_RELEASE_KEYSTORE_BASE64)
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-beta-release-main
+  cancel-in-progress: false
+
+jobs:
+  auto-beta-release:
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NUVIO_RELEASE_KEY_ALIAS: ${{ secrets.NUVIO_RELEASE_KEY_ALIAS || 'androiddebugkey' }}
+      NUVIO_RELEASE_KEY_PASSWORD: ${{ secrets.NUVIO_RELEASE_KEY_PASSWORD || 'android' }}
+      NUVIO_RELEASE_STORE_PASSWORD: ${{ secrets.NUVIO_RELEASE_STORE_PASSWORD || 'android' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Prepare local properties
+        env:
+          LOCAL_PROPERTIES_BASE64: ${{ secrets.LOCAL_PROPERTIES_BASE64 }}
+          LOCAL_DEV_PROPERTIES_BASE64: ${{ secrets.LOCAL_DEV_PROPERTIES_BASE64 }}
+        run: |
+          if [ -n "$LOCAL_PROPERTIES_BASE64" ]; then
+            printf '%s' "$LOCAL_PROPERTIES_BASE64" | base64 --decode > local.properties
+          else
+            echo "::error::Missing secret LOCAL_PROPERTIES_BASE64 (base64 of local.properties with TMDB_API_KEY and XTREAM_BASE_URL)." >&2
+            exit 1
+          fi
+          if [ -n "$LOCAL_DEV_PROPERTIES_BASE64" ]; then
+            printf '%s' "$LOCAL_DEV_PROPERTIES_BASE64" | base64 --decode > local.dev.properties
+          fi
+
+      - name: Prepare release signing config
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/lume-release.jks"
+            echo "NUVIO_RELEASE_STORE_FILE=$RUNNER_TEMP/lume-release.jks" >> "$GITHUB_ENV"
+          else
+            echo "::error::Missing secret NUVIO_RELEASE_KEYSTORE_BASE64 (base64 of the keystore devices are signed with)." >&2
+            exit 1
+          fi
+
+      - name: Derive next version
+        id: version
+        run: |
+          NEXT_VERSION=$(python3 - <<'PY'
+          import re
+          contents = open("app/build.gradle.kts", encoding="utf-8-sig").read()
+          current = re.search(r'versionName\s*=\s*"([^"]+)"', contents).group(1)
+          match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(-.+)?", current)
+          if not match:
+              raise SystemExit(f"Unexpected versionName format: {current}")
+          major, minor, patch, suffix = match.groups()
+          print(f"{major}.{minor}.{int(patch) + 1}{suffix or ''}")
+          PY
+          )
+          echo "NEXT_VERSION=$NEXT_VERSION" >> "$GITHUB_ENV"
+          echo "next-version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build and publish beta release
+        run: python3 scripts/release_beta.py "${{ env.NEXT_VERSION }}" --publish
+
+      - name: Summarize failures
+        if: failure()
+        run: |
+          echo "::error::Auto beta release failed. Fix the issue and push again (or use the manual beta-release.yml workflow)." >&2

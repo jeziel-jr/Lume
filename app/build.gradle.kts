@@ -161,8 +161,8 @@ android {
         buildConfigField("String", "SENTRY_DSN", buildConfigString(sentryDsn))
 
         // In-app updater (GitHub Releases)
-        buildConfigField("String", "GITHUB_OWNER", "\"tapframe\"")
-        buildConfigField("String", "GITHUB_REPO", "\"NuvioTV\"")
+        buildConfigField("String", "GITHUB_OWNER", "\"jeziel-jr\"")
+        buildConfigField("String", "GITHUB_REPO", "\"Lume\"")
     }
 
     flavorDimensions += "distribution"
