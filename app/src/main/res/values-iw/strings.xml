@@ -965,19 +965,6 @@
     <string name="debrid_formatter_reset_title">אפס עיצוב</string>
     <string name="debrid_formatter_reset_subtitle">שחזר עיצוב מקור לברירת מחדל.</string>
     <string name="debrid_formatter_qr_instruction">סרוק קוד QR זה בטלפון שלך כדי להגדיר את הגדרות מקור ה-Debrid.</string>
-    <string name="settings_stream_badges_section">סגנון Fusion</string>
-    <string name="settings_stream_size_badges_title">תגי גודל</string>
-    <string name="settings_stream_size_badges_description">הצג תגי גודל קובץ בתוצאות Stream ובפאנלי מקור בנגן.</string>
-    <string name="settings_stream_addon_logo_title">הצגת לוגו התוסף</string>
-    <string name="settings_stream_addon_logo_description">הצג לוגו ושם תוסף לצד מקורות Stream.</string>
-    <string name="settings_stream_display_section">תצוגה</string>
-    <string name="settings_stream_badge_position_title">מיקום תג</string>
-    <string name="settings_stream_badge_position_description">בחר אם תגי Fusion וגודל יופיעו מעל או מתחת לכרטיסי ה-Stream.</string>
-    <string name="settings_stream_badge_position_dialog_title">מיקום תג</string>
-    <string name="settings_stream_badge_position_top">למעלה</string>
-    <string name="settings_stream_badge_position_bottom">למטה</string>
-    <string name="streams_size">גודל %1$s</string>
-    <string name="action_import">ייבוא</string>
     <string name="action_delete">מחק</string>
 
     <!-- Anime-Skip -->

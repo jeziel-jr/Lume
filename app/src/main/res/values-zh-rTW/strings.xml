@@ -1031,37 +1031,6 @@
     <string name="debrid_formatter_reset_title">重設格式設定</string>
     <string name="debrid_formatter_reset_subtitle">還原預設來源格式。</string>
     <string name="debrid_formatter_qr_instruction">在手機上掃描此 QR 碼以配置 Debrid 來源設定。</string>
-    <string name="settings_stream_badges_section">Fusion 樣式</string>
-    <string name="settings_stream_size_badges_title">大小標章</string>
-    <string name="settings_stream_size_badges_description">在串流結果和播放器來源面板中顯示檔案大小標章。</string>
-    <string name="settings_stream_addon_logo_title">擴充套件標誌</string>
-    <string name="settings_stream_addon_logo_description">在串流來源旁顯示擴充套件標誌和名稱。</string>
-    <string name="settings_stream_display_section">顯示</string>
-    <string name="settings_stream_badge_position_title">標章位置</string>
-    <string name="settings_stream_badge_position_description">選擇 Fusion 和大小標章顯示在串流卡片的上方或下方。</string>
-    <string name="settings_stream_badge_position_dialog_title">標章位置</string>
-    <string name="settings_stream_badge_position_dialog_description">選擇串流卡片上標章的顯示位置。</string>
-    <string name="settings_stream_badge_position_top">上方</string>
-    <string name="settings_stream_badge_position_bottom">下方</string>
-    <string name="settings_stream_badge_urls_title">Fusion 標章網址</string>
-    <string name="settings_stream_badge_urls_description">匯入最多 %1$d 個 Fusion 風格串流標章 JSON 網址。每個網址可以單獨更新或刪除。</string>
-    <string name="settings_stream_badge_urls_search_description">管理已匯入的 Fusion 風格串流標章 JSON 網址。</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d 個網址，%3$d 個啟用的 Fusion 標章</string>
-    <string name="settings_fusion_badges_empty">未匯入 Fusion 標章網址。</string>
-    <string name="settings_fusion_badge_url_label">Fusion 標章 JSON 網址</string>
-    <string name="settings_fusion_badge_urls_imported">已匯入 %1$d/%2$d 個 Fusion 網址</string>
-    <string name="settings_fusion_badge_url_active">啟用</string>
-    <string name="settings_fusion_badge_url_inactive">停用</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s，%2$d 個已啟用標章，%3$d 個群組</string>
-    <string name="settings_fusion_badge_preview_action">預覽</string>
-    <string name="settings_fusion_badge_preview_title">Fusion 標章預覽</string>
-    <string name="settings_fusion_badge_preview_count">此網址中有 %1$d 個 Fusion 風格標章</string>
-    <string name="settings_fusion_badge_preview_empty">此網址中沒有 Fusion 風格標章圖片。</string>
-    <string name="settings_fusion_badge_group_title">群組 %1$d</string>
-    <string name="settings_fusion_badge_other_group_title">其他 Fusion 標章</string>
-    <string name="stream_badge_qr_instruction">在手機上掃描此 QR 碼以管理 Fusion 標章網址。</string>
-    <string name="streams_size">大小 %1$s</string>
-    <string name="action_import">匯入</string>
     <string name="action_delete">刪除</string>
 
     <!-- Anime-Skip -->
@@ -2626,14 +2595,6 @@
     <string name="web_status_could_not_save">無法儲存</string>
 
     <!-- 網頁配置頁面：串流標章匯入狀態 -->
-    <string name="web_stream_badge_importing">匯入中…</string>
-    <string name="web_stream_badge_imported">已匯入標章網址。</string>
-    <string name="web_stream_badge_import_error">標章匯入失敗。</string>
-    <string name="web_stream_badge_deleted">已刪除標章網址。</string>
-    <string name="web_stream_badge_load_error">無法載入串流標章設定</string>
-    <string name="web_stream_badge_error_url_required">請輸入標章 JSON 網址。</string>
-    <string name="web_stream_badge_error_url_scheme">標章網址必須以 http:// 或 https:// 開頭。</string>
-    <string name="web_stream_badge_error_import_limit">您最多可以匯入 %1$d 個標章網址。</string>
 
     <!-- 播放 — 緩衝與網路設定 -->
     <string name="playback_section_buffer_network">緩衝與網路</string>

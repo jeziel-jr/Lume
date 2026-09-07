@@ -1031,37 +1031,6 @@
     <string name="debrid_formatter_reset_title">重置格式设置</string>
     <string name="debrid_formatter_reset_subtitle">还原默认来源格式。</string>
     <string name="debrid_formatter_qr_instruction">在手机上扫描此 QR 码以配置 Debrid 来源设置。</string>
-    <string name="settings_stream_badges_section">Fusion 样式</string>
-    <string name="settings_stream_size_badges_title">大小徽章</string>
-    <string name="settings_stream_size_badges_description">在流结果和播放器来源面板中显示文件大小徽章。</string>
-    <string name="settings_stream_addon_logo_title">扩展标志</string>
-    <string name="settings_stream_addon_logo_description">在流来源旁显示扩展标志和名称。</string>
-    <string name="settings_stream_display_section">显示</string>
-    <string name="settings_stream_badge_position_title">徽章位置</string>
-    <string name="settings_stream_badge_position_description">选择 Fusion 和大小徽章显示在流卡片的上方或下方。</string>
-    <string name="settings_stream_badge_position_dialog_title">徽章位置</string>
-    <string name="settings_stream_badge_position_dialog_description">选择流卡片上徽章的显示位置。</string>
-    <string name="settings_stream_badge_position_top">上方</string>
-    <string name="settings_stream_badge_position_bottom">下方</string>
-    <string name="settings_stream_badge_urls_title">Fusion 徽章网址</string>
-    <string name="settings_stream_badge_urls_description">导入最多 %1$d 个 Fusion 风格流徽章 JSON 网址。每个网址可以单独更新或删除。</string>
-    <string name="settings_stream_badge_urls_search_description">管理已导入的 Fusion 风格流徽章 JSON 网址。</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d 个网址，%3$d 个启用的 Fusion 徽章</string>
-    <string name="settings_fusion_badges_empty">未导入 Fusion 徽章网址。</string>
-    <string name="settings_fusion_badge_url_label">Fusion 徽章 JSON 网址</string>
-    <string name="settings_fusion_badge_urls_imported">已导入 %1$d/%2$d 个 Fusion 网址</string>
-    <string name="settings_fusion_badge_url_active">启用</string>
-    <string name="settings_fusion_badge_url_inactive">禁用</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s，%2$d 个已启用徽章，%3$d 个组</string>
-    <string name="settings_fusion_badge_preview_action">预览</string>
-    <string name="settings_fusion_badge_preview_title">Fusion 徽章预览</string>
-    <string name="settings_fusion_badge_preview_count">此网址中有 %1$d 个 Fusion 风格徽章</string>
-    <string name="settings_fusion_badge_preview_empty">此网址中没有 Fusion 风格徽章图片。</string>
-    <string name="settings_fusion_badge_group_title">组 %1$d</string>
-    <string name="settings_fusion_badge_other_group_title">其他 Fusion 徽章</string>
-    <string name="stream_badge_qr_instruction">在手机上扫描此 QR 码以管理 Fusion 徽章网址。</string>
-    <string name="streams_size">大小 %1$s</string>
-    <string name="action_import">导入</string>
     <string name="action_delete">删除</string>
 
     <!-- Anime-Skip -->
@@ -2626,14 +2595,6 @@
     <string name="web_status_could_not_save">无法保存</string>
 
     <!-- 网页配置页面：流徽章导入状态 -->
-    <string name="web_stream_badge_importing">导入中…</string>
-    <string name="web_stream_badge_imported">已导入徽章网址。</string>
-    <string name="web_stream_badge_import_error">徽章导入失败。</string>
-    <string name="web_stream_badge_deleted">已删除徽章网址。</string>
-    <string name="web_stream_badge_load_error">无法加载流徽章设置</string>
-    <string name="web_stream_badge_error_url_required">请输入徽章 JSON 网址。</string>
-    <string name="web_stream_badge_error_url_scheme">徽章网址必须以 http:// 或 https:// 开头。</string>
-    <string name="web_stream_badge_error_import_limit">您最多可以导入 %1$d 个徽章网址。</string>
 
     <!-- 播放 — 缓冲与网络设置 -->
     <string name="playback_section_buffer_network">缓冲与网络</string>

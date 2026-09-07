@@ -9,7 +9,6 @@ import com.nuvio.tv.data.local.AudioDelayRouteDataStore
 import com.nuvio.tv.data.local.PlayerSettingsDataStore
 import com.nuvio.tv.data.local.DeviceLocalPlayerPreferences
 import com.nuvio.tv.data.local.StreamLinkCacheDataStore
-import com.nuvio.tv.data.local.StreamBadgeSettingsDataStore
 import com.nuvio.tv.data.repository.SkipIntroRepository
 import com.nuvio.tv.domain.model.EpgProgram
 import com.nuvio.tv.domain.repository.LiveTvRepository
@@ -36,7 +35,6 @@ class PlayerViewModel @Inject constructor(
     private val playerSettingsDataStore: PlayerSettingsDataStore,
     private val deviceLocalPlayerPreferences: DeviceLocalPlayerPreferences,
     private val streamLinkCacheDataStore: StreamLinkCacheDataStore,
-    private val streamBadgeSettingsDataStore: StreamBadgeSettingsDataStore,
     private val liveTvRepository: LiveTvRepository,
     private val bingeGroupCacheDataStore: com.nuvio.tv.data.local.BingeGroupCacheDataStore,
     private val layoutPreferenceDataStore: com.nuvio.tv.data.local.LayoutPreferenceDataStore,
@@ -47,7 +45,6 @@ class PlayerViewModel @Inject constructor(
     private val tmdbMetadataService: TmdbMetadataService,
     private val tmdbSettingsDataStore: TmdbSettingsDataStore,
     private val trailerPlayerPool: com.nuvio.tv.core.player.TrailerPlayerPool,
-    private val streamBadgePresentation: com.nuvio.tv.core.streams.StreamBadgePresentation,
     private val xtreamServerHealthMonitor: XtreamServerHealthMonitor,
     private val externalPlaybackTracker: com.nuvio.tv.core.player.ExternalPlaybackTracker,
     savedStateHandle: SavedStateHandle
@@ -67,7 +64,6 @@ class PlayerViewModel @Inject constructor(
         playerSettingsDataStore = playerSettingsDataStore,
         deviceLocalPlayerPreferences = deviceLocalPlayerPreferences,
         streamLinkCacheDataStore = streamLinkCacheDataStore,
-        streamBadgeSettingsDataStore = streamBadgeSettingsDataStore,
         bingeGroupCacheDataStore = bingeGroupCacheDataStore,
         layoutPreferenceDataStore = layoutPreferenceDataStore,
         watchedItemsPreferences = watchedItemsPreferences,
@@ -76,7 +72,6 @@ class PlayerViewModel @Inject constructor(
         tmdbService = tmdbService,
         tmdbMetadataService = tmdbMetadataService,
         tmdbSettingsDataStore = tmdbSettingsDataStore,
-        streamBadgePresentation = streamBadgePresentation,
         xtreamServerHealthMonitor = xtreamServerHealthMonitor,
         savedStateHandle = savedStateHandle,
         scope = viewModelScope

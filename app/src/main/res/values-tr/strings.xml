@@ -1021,37 +1021,6 @@
     <string name="debrid_formatter_reset_title">Biçimlendirmeyi sıfırla</string>
     <string name="debrid_formatter_reset_subtitle">Varsayılan kaynak biçimlendirmesini geri yükleyin.</string>
     <string name="debrid_formatter_qr_instruction">Debrid kaynak ayarlarını yapılandırmak için bu QR kodu telefonunuzda taratın.</string>
-    <string name="settings_stream_badges_section">Fusion Tarzı</string>
-    <string name="settings_stream_size_badges_title">Boyut etiketleri</string>
-    <string name="settings_stream_size_badges_description">Yayın sonuçlarında ve oynatıcı kaynak panellerinde dosya boyutu etiketlerini gösterir.</string>
-    <string name="settings_stream_addon_logo_title">Eklenti logosu</string>
-    <string name="settings_stream_addon_logo_description">Yayın kaynaklarının yanında eklenti logosunu ve adını göster.</string>
-    <string name="settings_stream_display_section">Görünüm</string>
-    <string name="settings_stream_badge_position_title">Rozet konumu</string>
-    <string name="settings_stream_badge_position_description">Fusion ve boyut rozetlerinin yayın kartlarının üstünde mi yoksa altında mı görüneceğini seçin.</string>
-    <string name="settings_stream_badge_position_dialog_title">Rozet konumu</string>
-    <string name="settings_stream_badge_position_dialog_description">Rozetlerin yayın kartlarında nerede görüneceğini seçin.</string>
-    <string name="settings_stream_badge_position_top">Üst</string>
-    <string name="settings_stream_badge_position_bottom">Alt</string>
-    <string name="settings_stream_badge_urls_title">Fusion etiket URL\'leri</string>
-    <string name="settings_stream_badge_urls_description">En fazla %1$d Fusion tarzı yayın etiketi JSON URL\'si içe aktarabilirsiniz. Her URL ayrı ayrı güncellenebilir veya silinebilir.</string>
-    <string name="settings_stream_badge_urls_search_description">İçe aktarılan Fusion tarzı yayın etiketi JSON URL\'lerini yönetin.</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d URL, %3$d aktif Fusion etiketi</string>
-    <string name="settings_fusion_badges_empty">İçe aktarılan Fusion etiket URL\'si yok.</string>
-    <string name="settings_fusion_badge_url_label">Fusion etiket JSON URL\'si</string>
-    <string name="settings_fusion_badge_urls_imported">%1$d/%2$d Fusion URL\'si içe aktarıldı</string>
-    <string name="settings_fusion_badge_url_active">Aktif</string>
-    <string name="settings_fusion_badge_url_inactive">Pasif</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s, %2$d etkinleştirilmiş etiket, %3$d grup</string>
-    <string name="settings_fusion_badge_preview_action">Önizleme</string>
-    <string name="settings_fusion_badge_preview_title">Fusion etiketi önizlemesi</string>
-    <string name="settings_fusion_badge_preview_count">Bu URL\'den %1$d Fusion tarzı etiket</string>
-    <string name="settings_fusion_badge_preview_empty">Bu URL\'de Fusion tarzı etiket görseli yok.</string>
-    <string name="settings_fusion_badge_group_title">Grup %1$d</string>
-    <string name="settings_fusion_badge_other_group_title">Diğer Fusion etiketleri</string>
-    <string name="stream_badge_qr_instruction">Fusion etiket URL\'lerini yönetmek için telefonunuzdan bu QR kodu taratın.</string>
-    <string name="streams_size">BOYUT %1$s</string>
-    <string name="action_import">İçe Aktar</string>
     <string name="action_delete">Sil</string>
 
     <!-- Anime-Skip -->
@@ -1977,14 +1946,6 @@
     <string name="web_status_could_not_save">Kaydedilemedi</string>
 
     <!-- Web config page: stream badge import status -->
-    <string name="web_stream_badge_importing">İçe aktarılıyor…</string>
-    <string name="web_stream_badge_imported">Etiket URL\'si içe aktarıldı.</string>
-    <string name="web_stream_badge_import_error">Etiket içe aktarılamadı.</string>
-    <string name="web_stream_badge_deleted">Etiket URL\'si silindi.</string>
-    <string name="web_stream_badge_load_error">Yayın etiketi ayarları yüklenemedi</string>
-    <string name="web_stream_badge_error_url_required">Lütfen bir rozet JSON URL\'si girin.</string>
-    <string name="web_stream_badge_error_url_scheme">Rozet URL\'si http:// veya https:// ile başlamalıdır.</string>
-    <string name="web_stream_badge_error_import_limit">En fazla %1$d adet rozet URL\'si içe aktarabilirsiniz.</string>
 
     <!-- Playback - Buffer & Network settings -->
     <string name="playback_section_buffer_network">Arabellek ve Ağ</string>

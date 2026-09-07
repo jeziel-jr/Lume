@@ -4,11 +4,8 @@ package com.nuvio.tv.ui.screens.settings
 
 import com.nuvio.tv.ui.theme.NuvioTheme
 
-import android.graphics.Bitmap
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image as BitmapImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -34,7 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
@@ -50,13 +46,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
@@ -72,8 +64,6 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.core.build.AppFeaturePolicy
-import com.nuvio.tv.core.streams.STREAM_BADGE_IMPORT_LIMIT
-import com.nuvio.tv.core.streams.StreamBadgePlacement
 import com.nuvio.tv.domain.model.ContinueWatchingSortMode
 import com.nuvio.tv.domain.model.CardDepthStyle
 import com.nuvio.tv.domain.model.CardDepthSurface
@@ -108,7 +98,6 @@ private enum class LayoutSettingsSection {
     HOME_LAYOUT,
     HOME_CONTENT,
     DETAIL_PAGE,
-    STREAMS,
     CONTINUE_WATCHING,
     FOCUSED_POSTER,
     POSTER_CARD_STYLE
@@ -121,24 +110,19 @@ fun LayoutSettingsContent(
     essentialMode: Boolean = false
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val streamBadgeUiState by viewModel.streamBadgeUiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     var homeLayoutExpanded by rememberSaveable(essentialMode) { mutableStateOf(essentialMode) }
     var homeContentExpanded by rememberSaveable { mutableStateOf(false) }
     var detailPageExpanded by rememberSaveable { mutableStateOf(false) }
-    var streamsExpanded by rememberSaveable { mutableStateOf(false) }
     var continueWatchingExpanded by rememberSaveable { mutableStateOf(false) }
     var focusedPosterExpanded by rememberSaveable { mutableStateOf(false) }
     var posterCardStyleExpanded by rememberSaveable { mutableStateOf(false) }
     var showCardDepthFineTuneDialog by rememberSaveable { mutableStateOf(false) }
     var showCwSortModeDialog by rememberSaveable { mutableStateOf(false) }
-    var showStreamBadgePositionDialog by rememberSaveable { mutableStateOf(false) }
 
     val defaultHomeLayoutHeaderFocus = remember { FocusRequester() }
     val homeContentHeaderFocus = remember { FocusRequester() }
     val detailPageHeaderFocus = remember { FocusRequester() }
-    val streamsHeaderFocus = remember { FocusRequester() }
     val continueWatchingHeaderFocus = remember { FocusRequester() }
     val focusedPosterHeaderFocus = remember { FocusRequester() }
     val posterCardStyleHeaderFocus = remember { FocusRequester() }
@@ -162,11 +146,6 @@ fun LayoutSettingsContent(
             detailPageHeaderFocus.requestFocus()
         }
     }
-    LaunchedEffect(streamsExpanded, focusedSection) {
-        if (!streamsExpanded && focusedSection == LayoutSettingsSection.STREAMS) {
-            streamsHeaderFocus.requestFocus()
-        }
-    }
     LaunchedEffect(continueWatchingExpanded, focusedSection) {
         if (!continueWatchingExpanded && focusedSection == LayoutSettingsSection.CONTINUE_WATCHING) {
             continueWatchingHeaderFocus.requestFocus()
@@ -181,10 +160,6 @@ fun LayoutSettingsContent(
         if (!posterCardStyleExpanded && focusedSection == LayoutSettingsSection.POSTER_CARD_STYLE) {
             posterCardStyleHeaderFocus.requestFocus()
         }
-    }
-    LaunchedEffect(streamBadgeUiState.serverError) {
-        val error = streamBadgeUiState.serverError ?: return@LaunchedEffect
-        Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
     }
 
     Column(
@@ -527,60 +502,6 @@ fun LayoutSettingsContent(
                 }
             }
 
-            item(key = "streams_section") {
-                CollapsibleSectionCard(
-                    title = stringResource(R.string.layout_section_streams),
-                    description = stringResource(R.string.layout_section_streams_desc),
-                    expanded = streamsExpanded,
-                    onToggle = { streamsExpanded = !streamsExpanded },
-                    focusRequester = streamsHeaderFocus,
-                    onFocused = { focusedSection = LayoutSettingsSection.STREAMS }
-                ) {
-                    Text(
-                        text = stringResource(R.string.settings_stream_badges_section),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = NuvioTheme.colors.TextSecondary
-                    )
-                    CompactToggleRow(
-                        title = stringResource(R.string.settings_stream_size_badges_title),
-                        subtitle = stringResource(R.string.settings_stream_size_badges_description),
-                        checked = streamBadgeUiState.showFileSizeBadges,
-                        onToggle = {
-                            viewModel.setShowFileSizeBadges(!streamBadgeUiState.showFileSizeBadges)
-                        },
-                        onFocused = { focusedSection = LayoutSettingsSection.STREAMS }
-                    )
-                    NavigationSettingsItem(
-                        icon = Icons.Default.Image,
-                        title = stringResource(R.string.settings_stream_badge_position_title),
-                        subtitle = streamBadgePlacementLabel(streamBadgeUiState.badgePlacement),
-                        onClick = { showStreamBadgePositionDialog = true },
-                        onFocused = { focusedSection = LayoutSettingsSection.STREAMS }
-                    )
-                    NavigationSettingsItem(
-                        icon = Icons.Default.Image,
-                        title = stringResource(R.string.settings_stream_badge_urls_title),
-                        subtitle = streamBadgeRulesPreview(streamBadgeUiState),
-                        onClick = viewModel::startStreamBadgeQrMode,
-                        onFocused = { focusedSection = LayoutSettingsSection.STREAMS }
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_stream_display_section),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = NuvioTheme.colors.TextSecondary
-                    )
-                    CompactToggleRow(
-                        title = stringResource(R.string.settings_stream_addon_logo_title),
-                        subtitle = stringResource(R.string.settings_stream_addon_logo_description),
-                        checked = streamBadgeUiState.showAddonLogo,
-                        onToggle = {
-                            viewModel.setShowAddonLogo(!streamBadgeUiState.showAddonLogo)
-                        },
-                        onFocused = { focusedSection = LayoutSettingsSection.STREAMS }
-                    )
-                }
-            }
-
             item(key = "continue_watching_section") {
                 CollapsibleSectionCard(
                     title = stringResource(R.string.layout_section_continue_watching),
@@ -837,17 +758,6 @@ fun LayoutSettingsContent(
             )
         }
 
-        if (showStreamBadgePositionDialog) {
-            StreamBadgePositionDialog(
-                currentPlacement = streamBadgeUiState.badgePlacement,
-                onPlacementSelected = { placement ->
-                    viewModel.setStreamBadgePlacement(placement)
-                    showStreamBadgePositionDialog = false
-                },
-                onDismiss = { showStreamBadgePositionDialog = false }
-            )
-        }
-
         if (showCardDepthFineTuneDialog) {
             CardDepthFineTuneDialog(
                 style = uiState.cardDepthStyle,
@@ -874,68 +784,7 @@ fun LayoutSettingsContent(
                 onDismiss = { showCardDepthFineTuneDialog = false }
             )
         }
-
-        if (streamBadgeUiState.isQrModeActive) {
-            StreamBadgeQrOverlay(
-                qrBitmap = streamBadgeUiState.qrCodeBitmap,
-                serverUrl = streamBadgeUiState.serverUrl,
-                instruction = stringResource(R.string.stream_badge_qr_instruction),
-                onClose = viewModel::stopStreamBadgeQrMode,
-                qrSize = 168.dp
-            )
-        }
     }
-}
-
-@Composable
-private fun streamBadgePlacementLabel(placement: StreamBadgePlacement): String =
-    when (placement) {
-        StreamBadgePlacement.TOP -> stringResource(R.string.settings_stream_badge_position_top)
-        StreamBadgePlacement.BOTTOM -> stringResource(R.string.settings_stream_badge_position_bottom)
-    }
-
-@Composable
-private fun streamBadgeRulesPreview(uiState: StreamBadgeSettingsUiState): String {
-    val rules = uiState.rules.normalized()
-    return if (rules.hasImport) {
-        stringResource(
-            R.string.settings_fusion_badges_summary,
-            rules.imports.size,
-            STREAM_BADGE_IMPORT_LIMIT,
-            rules.enabledFilterCount
-        )
-    } else {
-        stringResource(R.string.settings_fusion_badges_empty)
-    }
-}
-
-@Composable
-private fun StreamBadgePositionDialog(
-    currentPlacement: StreamBadgePlacement,
-    onPlacementSelected: (StreamBadgePlacement) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val options = listOf(
-        SettingsPickerOption(
-            StreamBadgePlacement.BOTTOM,
-            stringResource(R.string.settings_stream_badge_position_bottom)
-        ),
-        SettingsPickerOption(
-            StreamBadgePlacement.TOP,
-            stringResource(R.string.settings_stream_badge_position_top)
-        )
-    )
-
-    SettingsSingleChoiceDialog(
-        title = stringResource(R.string.settings_stream_badge_position_dialog_title),
-        subtitle = stringResource(R.string.settings_stream_badge_position_dialog_description),
-        options = options,
-        selectedValue = currentPlacement,
-        onOptionSelected = onPlacementSelected,
-        onDismiss = onDismiss,
-        width = 420.dp,
-        maxHeight = 260.dp
-    )
 }
 
 @Composable
@@ -1269,55 +1118,6 @@ private fun LayoutPreviewPlaceholder() {
                         .weight(1f)
                         .height(10.dp)
                         .background(NuvioTheme.colors.Border, RoundedCornerShape(999.dp))
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StreamBadgeQrOverlay(
-    qrBitmap: Bitmap?,
-    serverUrl: String?,
-    instruction: String,
-    onClose: () -> Unit,
-    qrSize: Dp
-) {
-    NuvioDialog(
-        onDismiss = onClose,
-        title = stringResource(R.string.settings_stream_badge_urls_title),
-        subtitle = instruction,
-        width = 460.dp,
-        usePlatformDefaultWidth = false
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
-        ) {
-            val bitmap = qrBitmap
-            if (bitmap != null) {
-                BitmapImage(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = stringResource(R.string.cd_qr_code),
-                    modifier = Modifier.size(qrSize)
-                )
-            }
-            val url = serverUrl
-            if (url != null) {
-                Text(
-                    text = url,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NuvioTheme.colors.TextSecondary,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-            }
-            SettingsDialogActionRow {
-                SettingsDialogActionButton(
-                    text = stringResource(R.string.action_close),
-                    onClick = onClose,
-                    primary = true
                 )
             }
         }

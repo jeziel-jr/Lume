@@ -262,9 +262,6 @@ private fun EpisodeStreamsView(
                         stream = stream,
                         focusRequester = streamsFocusRequester,
                         requestInitialFocus = stream == uiState.episodeFilteredStreams.firstOrNull(),
-                        showFileSizeBadges = uiState.showFileSizeBadges,
-                        showAddonLogo = uiState.showAddonLogo,
-                        badgePlacement = uiState.streamBadgePlacement,
                         onClick = { onStreamSelected(stream) }
                     )
                 }

@@ -1026,37 +1026,6 @@
     <string name="debrid_formatter_reset_title">Redefinir formatação</string>
     <string name="debrid_formatter_reset_subtitle">Restaurar a formatação padrão das fontes.</string>
     <string name="debrid_formatter_qr_instruction">Escaneie este QR code com seu celular para configurar as opções das fontes Debrid.</string>
-    <string name="settings_stream_badges_section">Estilo Fusion</string>
-    <string name="settings_stream_size_badges_title">Selos de tamanho</string>
-    <string name="settings_stream_size_badges_description">Exibir selos de tamanho de arquivo nos resultados de stream e nos painéis de origem do player.</string>
-    <string name="settings_stream_addon_logo_title">Logo do addon</string>
-    <string name="settings_stream_addon_logo_description">Exibir logo e nome do addon ao lado das fontes de stream.</string>
-    <string name="settings_stream_display_section">Exibição</string>
-    <string name="settings_stream_badge_position_title">Posição do selo</string>
-    <string name="settings_stream_badge_position_description">Escolha se os selos Fusion e de tamanho aparecem acima ou abaixo dos cartões de stream.</string>
-    <string name="settings_stream_badge_position_dialog_title">Posição do selo</string>
-    <string name="settings_stream_badge_position_dialog_description">Selecione onde os selos de stream aparecem nos cartões de stream.</string>
-    <string name="settings_stream_badge_position_top">Topo</string>
-    <string name="settings_stream_badge_position_bottom">Inferior</string>
-    <string name="settings_stream_badge_urls_title">URLs de selos Fusion</string>
-    <string name="settings_stream_badge_urls_description">Importe até %1$d URLs JSON de selos de stream estilo Fusion. Cada URL pode ser atualizada ou excluída separadamente.</string>
-    <string name="settings_stream_badge_urls_search_description">Gerencie as URLs JSON de selos de stream estilo Fusion importadas.</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d URLs, %3$d selos Fusion ativos</string>
-    <string name="settings_fusion_badges_empty">Nenhuma URL de selo Fusion importada.</string>
-    <string name="settings_fusion_badge_url_label">URL JSON do selo Fusion</string>
-    <string name="settings_fusion_badge_urls_imported">%1$d/%2$d URLs Fusion importadas</string>
-    <string name="settings_fusion_badge_url_active">Ativo</string>
-    <string name="settings_fusion_badge_url_inactive">Inativo</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s, %2$d selos ativados, %3$d grupos</string>
-    <string name="settings_fusion_badge_preview_action">Visualizar</string>
-    <string name="settings_fusion_badge_preview_title">Visualização do selo Fusion</string>
-    <string name="settings_fusion_badge_preview_count">%1$d selos estilo Fusion desta URL</string>
-    <string name="settings_fusion_badge_preview_empty">Nenhuma imagem de selo estilo Fusion nesta URL.</string>
-    <string name="settings_fusion_badge_group_title">Grupo %1$d</string>
-    <string name="settings_fusion_badge_other_group_title">Outros selos Fusion</string>
-    <string name="stream_badge_qr_instruction">Escaneie este código QR no seu celular para gerenciar as URLs de selos Fusion.</string>
-    <string name="streams_size">TAMANHO %1$s</string>
-    <string name="action_import">Importar</string>
     <string name="action_delete">Excluir</string>
     
     <!-- Anime-Skip -->
@@ -2605,14 +2574,6 @@
     <string name="web_status_could_not_save">Não foi possível salvar</string>
 
     <!-- Web config page: stream badge import status -->
-    <string name="web_stream_badge_importing">Importando…</string>
-    <string name="web_stream_badge_imported">URL do selo importada.</string>
-    <string name="web_stream_badge_import_error">Falha na importação do selo.</string>
-    <string name="web_stream_badge_deleted">URL do selo excluída.</string>
-    <string name="web_stream_badge_load_error">Não foi possível carregar as configurações dos selos</string>
-    <string name="web_stream_badge_error_url_required">Insira uma URL JSON de selo.</string>
-    <string name="web_stream_badge_error_url_scheme">A URL do selo deve começar com http:// ou https://.</string>
-    <string name="web_stream_badge_error_import_limit">Você pode importar até %1$d URLs de selos.</string>
 
     <!-- Playback — Buffer & Network settings -->
     <string name="playback_section_buffer_network">Buffer e Rede</string>

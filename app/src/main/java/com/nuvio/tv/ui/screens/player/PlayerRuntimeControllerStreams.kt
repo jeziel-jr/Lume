@@ -27,29 +27,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** Hard ceiling for next-episode stream search to prevent hanging forever. */
 private const val NEXT_EPISODE_HARD_TIMEOUT_MS = 120_000L
 
-/**
- * Schedules incremental badge matching for source streams in the background.
- * Only processes addon groups not yet badged, emits UI update every 5 streams.
- */
-internal fun PlayerRuntimeController.scheduleEpisodeBadgeApplication() {
-    episodeBadgeJob?.cancel()
-    episodeBadgeJob = scope.launch(kotlinx.coroutines.Dispatchers.Default) {
-        val streams = _uiState.value.episodeAllStreams
-        if (streams.isEmpty()) return@launch
-        val group = com.nuvio.tv.domain.model.AddonStreams(addonName = "", addonLogo = null, streams = streams)
-        val badged = streamBadgePresentation.apply(listOf(group))
-        val badgedStreams = badged.flatMap { it.streams }
-        if (badgedStreams == streams) return@launch
-        _uiState.update { current ->
-            val selectedAddon = current.episodeSelectedAddonFilter
-            current.copy(
-                episodeAllStreams = badgedStreams,
-                episodeFilteredStreams = if (selectedAddon == null) badgedStreams else badgedStreams.filter { it.addonName == selectedAddon }
-            )
-        }
-    }
-}
-
 internal fun PlayerRuntimeController.showEpisodesPanel() {
     _uiState.update {
         it.copy(
@@ -388,7 +365,6 @@ internal fun PlayerRuntimeController.loadStreamsForEpisode(video: Video, forceRe
                             episodeStreamsError = null
                         )
                     }
-                    scheduleEpisodeBadgeApplication()
                 }
 
                 is NetworkResult.Error -> {

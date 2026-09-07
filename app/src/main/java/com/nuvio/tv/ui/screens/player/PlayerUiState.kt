@@ -3,7 +3,6 @@ package com.nuvio.tv.ui.screens.player
 import androidx.media3.common.C
 import androidx.media3.common.TrackGroup
 import androidx.media3.ui.AspectRatioFrameLayout
-import com.nuvio.tv.core.streams.StreamBadgePlacement
 import com.nuvio.tv.data.local.FrameRateMatchingMode
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.LibassRenderType
@@ -123,9 +122,6 @@ data class PlayerUiState(
     val episodeStreamsSeason: Int? = null,
     val episodeStreamsEpisode: Int? = null,
     val episodeStreamsTitle: String? = null,
-    val showFileSizeBadges: Boolean = true,
-    val showAddonLogo: Boolean = true,
-    val streamBadgePlacement: StreamBadgePlacement = StreamBadgePlacement.BOTTOM,
     val error: String? = null,
     val serverDiagnosisChecking: Boolean = false,
     val serverDiagnosis: XtreamComponentHealth? = null,

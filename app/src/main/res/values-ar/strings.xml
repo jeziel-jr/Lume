@@ -1010,28 +1010,6 @@
     <string name="debrid_formatter_reset_title">استعادة الإعدادات</string>
     <string name="debrid_formatter_reset_subtitle">استعادة التنسيق الافتراضي للمصدر.</string>
     <string name="debrid_formatter_qr_instruction">امسح الباركود لضبط الإعدادات.</string>
-    <string name="settings_stream_badges_section">شارات Fusion</string>
-    <string name="settings_stream_size_badges_title">شارات الحجم</string>
-    <string name="settings_stream_size_badges_description">إظهار شارات حجم الملف في نتائج البحث والمصادر داخل المشغل.</string>
-    <string name="settings_stream_badge_urls_title">روابط شارات Fusion</string>
-    <string name="settings_stream_badge_urls_description">إضافة روابط JSON لشارات النتائج بحد أقصى %1$d.</string>
-    <string name="settings_stream_badge_urls_search_description">التحكم بروابط شارات Fusion المستوردة.</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d روابط، %3$d شارات تعمل</string>
-    <string name="settings_fusion_badges_empty">لا توجد روابط شارات مضافة حالياً.</string>
-    <string name="settings_fusion_badge_url_label">رابط Fusion</string>
-    <string name="settings_fusion_badge_urls_imported">تم إضافة %1$d/%2$d روابط</string>
-    <string name="settings_fusion_badge_url_active">نشط</string>
-    <string name="settings_fusion_badge_url_inactive">غير نشط</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s، %2$d شارات مفعلة %3$d مجموعات</string>
-    <string name="settings_fusion_badge_preview_action">معاينة</string>
-    <string name="settings_fusion_badge_preview_title">تجربة شكل شارات Fusion</string>
-    <string name="settings_fusion_badge_preview_count">هذا الرابط يعرض %1$d شارات</string>
-    <string name="settings_fusion_badge_preview_empty">هذا الرابط لا يحتوي على صور.</string>
-    <string name="settings_fusion_badge_group_title">مجموعة %1$d</string>
-    <string name="settings_fusion_badge_other_group_title">شارات أخرى</string>
-    <string name="stream_badge_qr_instruction">امسح الباركود للتحكم بروابط Fusion.</string>
-    <string name="streams_size">حجم %1$s</string>
-    <string name="action_import">جلب</string>
     <string name="action_delete">حذف</string>
 
     <!-- Anime-Skip -->

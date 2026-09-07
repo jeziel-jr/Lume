@@ -1000,34 +1000,6 @@
     <string name="debrid_formatter_reset_title">Скинути форматування</string>
     <string name="debrid_formatter_reset_subtitle">Відновити форматування джерел за замовчуванням.</string>
     <string name="debrid_formatter_qr_instruction">Відскануйте цей QR-код на телефоні для налаштування джерел Debrid.</string>
-    <string name="settings_stream_badges_section">Стиль Fusion</string>
-    <string name="settings_stream_size_badges_title">Значки розміру</string>
-    <string name="settings_stream_size_badges_description">Показувати значки розміру файлу в результатах потоків та панелях джерел плеєра.</string>
-    <string name="settings_stream_badge_position_title">Позиція значків</string>
-    <string name="settings_stream_badge_position_description">Вибрати, де відображаються значки Fusion та розміру — над або під картками потоків.</string>
-    <string name="settings_stream_badge_position_dialog_title">Позиція значків</string>
-    <string name="settings_stream_badge_position_dialog_description">Вибрати, де значки відображаються на картках потоків.</string>
-    <string name="settings_stream_badge_position_top">Зверху</string>
-    <string name="settings_stream_badge_position_bottom">Знизу</string>
-    <string name="settings_stream_badge_urls_title">URL значків Fusion</string>
-    <string name="settings_stream_badge_urls_description">Імпортувати до %1$d JSON URL значків у стилі Fusion. Кожен URL можна оновити або видалити окремо.</string>
-    <string name="settings_stream_badge_urls_search_description">Керування імпортованими JSON URL значків у стилі Fusion.</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d URL, %3$d активних значків Fusion</string>
-    <string name="settings_fusion_badges_empty">Не імпортовано жодного URL значків Fusion.</string>
-    <string name="settings_fusion_badge_url_label">JSON URL значків Fusion</string>
-    <string name="settings_fusion_badge_urls_imported">%1$d/%2$d URL Fusion імпортовано</string>
-    <string name="settings_fusion_badge_url_active">Активний</string>
-    <string name="settings_fusion_badge_url_inactive">Неактивний</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s, %2$d увімкнених значків, %3$d груп</string>
-    <string name="settings_fusion_badge_preview_action">Переглянути</string>
-    <string name="settings_fusion_badge_preview_title">Попередній перегляд значків Fusion</string>
-    <string name="settings_fusion_badge_preview_count">%1$d значків у стилі Fusion з цього URL</string>
-    <string name="settings_fusion_badge_preview_empty">Немає зображень значків у стилі Fusion за цим URL.</string>
-    <string name="settings_fusion_badge_group_title">Група %1$d</string>
-    <string name="settings_fusion_badge_other_group_title">Інші значки Fusion</string>
-    <string name="stream_badge_qr_instruction">Відскануйте цей QR-код на телефоні для керування URL значків Fusion.</string>
-    <string name="streams_size">РОЗМІР %1$s</string>
-    <string name="action_import">Імпортувати</string>
     <string name="action_delete">Видалити</string>
 
     <!-- Anime-Skip -->
@@ -2562,11 +2534,6 @@
     <string name="web_status_could_not_save">Не вдалося зберегти</string>
 
     <!-- Web config page: stream badge import status -->
-    <string name="web_stream_badge_importing">Імпортування…</string>
-    <string name="web_stream_badge_imported">URL значка імпортовано.</string>
-    <string name="web_stream_badge_import_error">Імпорт значка не вдався.</string>
-    <string name="web_stream_badge_deleted">URL значка видалено.</string>
-    <string name="web_stream_badge_load_error">Не вдалося завантажити налаштування значків потоків</string>
 
     <!-- Playback — Buffer & Network settings -->
     <string name="playback_section_buffer_network">Буфер та мережа</string>
@@ -2639,9 +2606,6 @@
     <string name="audio_force_optical_passthrough_sub">Транскодує багатоканальні формати (TrueHD, DTS, AAC тощо) у Dolby Digital 5.1 в реальному часі для підключень Optical/SPDIF.</string>
     <string name="audio_strip_hdr10plus_title">Видаляти метадані HDR10+</string>
     <string name="audio_strip_hdr10plus_sub">Видаляти динамічні метадані HDR10+ з потоків. Якщо також увімкнено перетворення на DV8.1, видалення виконується після перетворення.</string>
-    <string name="settings_stream_addon_logo_title">Логотип адона</string>
-    <string name="settings_stream_addon_logo_description">Показувати логотип і назву адона поруч із джерелами потоків.</string>
-    <string name="settings_stream_display_section">Відображення</string>
     <string name="player_report_issue">Повідомити про проблему</string>
     <string name="player_report_issue_sending">Надсилання звіту про відтворення...</string>
     <string name="player_report_issue_sending_button">Надсилання...</string>
@@ -2656,9 +2620,6 @@
         <item quantity="other">Все ще завантажується після %1$d секунди</item>
     </plurals>
     <string name="web_debrid_error_templates_required">Потрібні обидва шаблони</string>
-    <string name="web_stream_badge_error_url_required">Введіть URL JSON значка.</string>
-    <string name="web_stream_badge_error_url_scheme">URL значка має починатися з http:// або https://.</string>
-    <string name="web_stream_badge_error_import_limit">Можна імпортувати до %1$d URL значків.</string>
     <string name="playback_net_device_memory_info">Пам’ять пристрою: %1$s | Рекомендований безпечний ліміт: %2$d МБ</string>
     <string name="playback_net_nuvio_performance_mode">Нативна пам’ять ExoPlayer</string>
     <string name="playback_net_nuvio_performance_mode_sub">Увімкнути нативний алокатор пам’яті поза купою та оптимізації перемотування.</string>

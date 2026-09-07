@@ -997,37 +997,6 @@
     <string name="debrid_formatter_reset_title">Възстанови форматирането</string>
     <string name="debrid_formatter_reset_subtitle">Възстанови стандартното форматиране на източниците.</string>
     <string name="debrid_formatter_qr_instruction">Сканирай този QR код на телефона си, за да конфигурираш настройките на Debrid източниците.</string>
-    <string name="settings_stream_badges_section">Fusion стил</string>
-    <string name="settings_stream_size_badges_title">Значки за размер</string>
-    <string name="settings_stream_size_badges_description">Показвай значки за размер на файла в резултатите от потоци и панелите с източници в плейъра.</string>
-    <string name="settings_stream_addon_logo_title">Лого на добавката</string>
-    <string name="settings_stream_addon_logo_description">Показвай лого и име на добавката до източниците на потоци.</string>
-    <string name="settings_stream_display_section">Показване</string>
-    <string name="settings_stream_badge_position_title">Позиция на значките</string>
-    <string name="settings_stream_badge_position_description">Избери дали Fusion и size значките да се появяват над или под картите на потоците.</string>
-    <string name="settings_stream_badge_position_dialog_title">Позиция на значките</string>
-    <string name="settings_stream_badge_position_dialog_description">Избери къде да се появяват значките на потоците върху картите.</string>
-    <string name="settings_stream_badge_position_top">Горе</string>
-    <string name="settings_stream_badge_position_bottom">Долу</string>
-    <string name="settings_stream_badge_urls_title">Fusion badge URLs</string>
-    <string name="settings_stream_badge_urls_description">Импортирай до %1$d Fusion-style stream badge JSON URL адреса. Всеки URL може да се обновява или изтрива отделно.</string>
-    <string name="settings_stream_badge_urls_search_description">Управлявай импортираните Fusion-style stream badge JSON URL адреси.</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d URL, %3$d активни Fusion значки</string>
-    <string name="settings_fusion_badges_empty">Няма импортирани Fusion badge URL адреси.</string>
-    <string name="settings_fusion_badge_url_label">Fusion badge JSON URL</string>
-    <string name="settings_fusion_badge_urls_imported">%1$d/%2$d Fusion URL адреса импортирани</string>
-    <string name="settings_fusion_badge_url_active">Активен</string>
-    <string name="settings_fusion_badge_url_inactive">Неактивен</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s, %2$d активирани значки, %3$d групи</string>
-    <string name="settings_fusion_badge_preview_action">Преглед</string>
-    <string name="settings_fusion_badge_preview_title">Преглед на Fusion значки</string>
-    <string name="settings_fusion_badge_preview_count">%1$d Fusion-style значки от този URL</string>
-    <string name="settings_fusion_badge_preview_empty">Няма Fusion-style badge изображения в този URL.</string>
-    <string name="settings_fusion_badge_group_title">Група %1$d</string>
-    <string name="settings_fusion_badge_other_group_title">Други Fusion значки</string>
-    <string name="stream_badge_qr_instruction">Сканирай този QR код на телефона си, за да управляваш Fusion badge URL адреси.</string>
-    <string name="streams_size">РАЗМЕР %1$s</string>
-    <string name="action_import">Импортирай</string>
     <string name="action_delete">Изтрий</string>
 
     <!-- Anime-Skip -->
@@ -2560,11 +2529,6 @@
     <string name="web_status_could_not_save">Не можахме да запазим</string>
 
     <!-- Web config page: stream badge import status -->
-    <string name="web_stream_badge_importing">Импортиране…</string>
-    <string name="web_stream_badge_imported">Импортиран badge URL.</string>
-    <string name="web_stream_badge_import_error">Импортирането на badge се провали.</string>
-    <string name="web_stream_badge_deleted">Изтрит badge URL.</string>
-    <string name="web_stream_badge_load_error">Не можахме да заредим настройките за stream badge</string>
 
     <!-- Playback — Buffer & Network settings -->
     <string name="playback_section_buffer_network">Буфер и мрежа</string>

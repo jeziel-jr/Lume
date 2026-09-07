@@ -975,37 +975,6 @@
     <string name="debrid_formatter_reset_title">Repor formatação</string>
     <string name="debrid_formatter_reset_subtitle">Restaurar a formatação de fontes predefinida.</string>
     <string name="debrid_formatter_qr_instruction">Escaneia este código QR no teu telemóvel para configurar as definições de fontes Debrid.</string>
-    <string name="settings_stream_badges_section">Estilo Fusion</string>
-    <string name="settings_stream_size_badges_title">Emblemas de tamanho</string>
-    <string name="settings_stream_size_badges_description">Mostra emblemas com o tamanho do ficheiro nos resultados de streams e nos painéis de fontes do leitor.</string>
-    <string name="settings_stream_addon_logo_title">Logótipo do addon</string>
-    <string name="settings_stream_addon_logo_description">Mostra o logótipo e o nome do addon junto das fontes de stream.</string>
-    <string name="settings_stream_display_section">APRESENTAÇÃO</string>
-    <string name="settings_stream_badge_position_title">Posição dos emblemas</string>
-    <string name="settings_stream_badge_position_description">Escolhe se os emblemas Fusion e de tamanho aparecem acima ou abaixo dos cartões de stream.</string>
-    <string name="settings_stream_badge_position_dialog_title">Posição dos emblemas</string>
-    <string name="settings_stream_badge_position_dialog_description">Seleciona onde os emblemas de stream aparecem nos cartões de stream.</string>
-    <string name="settings_stream_badge_position_top">Em cima</string>
-    <string name="settings_stream_badge_position_bottom">Em baixo</string>
-    <string name="settings_stream_badge_urls_title">URLs de emblemas Fusion</string>
-    <string name="settings_stream_badge_urls_description">Importa até %1$d URLs JSON de emblemas de streams ao estilo Fusion. Cada URL pode ser atualizado ou eliminado separadamente.</string>
-    <string name="settings_stream_badge_urls_search_description">Gerir os URLs JSON de emblemas de streams ao estilo Fusion importados.</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d URLs, %3$d emblemas Fusion ativos</string>
-    <string name="settings_fusion_badges_empty">Nenhum URL de emblemas Fusion importado.</string>
-    <string name="settings_fusion_badge_url_label">URL JSON de emblemas Fusion</string>
-    <string name="settings_fusion_badge_urls_imported">%1$d/%2$d URLs Fusion importados</string>
-    <string name="settings_fusion_badge_url_active">Ativo</string>
-    <string name="settings_fusion_badge_url_inactive">Inativo</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s, %2$d emblemas ativados, %3$d grupos</string>
-    <string name="settings_fusion_badge_preview_action">Pré-visualizar</string>
-    <string name="settings_fusion_badge_preview_title">Pré-visualização de emblemas Fusion</string>
-    <string name="settings_fusion_badge_preview_count">%1$d emblemas ao estilo Fusion deste URL</string>
-    <string name="settings_fusion_badge_preview_empty">Nenhuma imagem de emblema ao estilo Fusion neste URL.</string>
-    <string name="settings_fusion_badge_group_title">Grupo %1$d</string>
-    <string name="settings_fusion_badge_other_group_title">Outros emblemas Fusion</string>
-    <string name="stream_badge_qr_instruction">Lê este código QR no telemóvel para gerir os URLs de emblemas Fusion.</string>
-    <string name="streams_size">TAMANHO %1$s</string>
-    <string name="action_import">Importar</string>
     <string name="action_delete">Eliminar</string>
     <!-- Anime-Skip -->
     <string name="animeskip_title">Anime Skip</string>
@@ -2441,11 +2410,6 @@
     <string name="web_status_saved_streams">Guardado. Os novos streams utilizarão estas definições.</string>
     <string name="web_status_could_not_save">Não foi possível guardar</string>
     <!-- Web config page: stream badge import status -->
-    <string name="web_stream_badge_importing">A importar…</string>
-    <string name="web_stream_badge_imported">URL de emblemas importado.</string>
-    <string name="web_stream_badge_import_error">Falha ao importar emblemas.</string>
-    <string name="web_stream_badge_deleted">URL de emblemas eliminado.</string>
-    <string name="web_stream_badge_load_error">Não foi possível carregar as definições dos emblemas de streams</string>
     <!-- Playback — Buffer & Network settings -->
     <string name="playback_section_buffer_network">Buffer e rede</string>
     <string name="playback_section_buffer_network_desc">Quantidade de conteúdo a manter em memória e forma de obter streams.</string>

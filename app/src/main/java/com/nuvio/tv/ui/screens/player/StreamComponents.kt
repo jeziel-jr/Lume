@@ -52,12 +52,10 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import com.nuvio.tv.core.streams.StreamBadgePlacement
 import com.nuvio.tv.domain.model.Stream
 import com.nuvio.tv.ui.components.SourceChipItem
 import com.nuvio.tv.ui.components.SourceChipStatus
 import com.nuvio.tv.ui.components.SourceStatusFilterChip
-import com.nuvio.tv.ui.components.StreamBadgeChips
 import com.nuvio.tv.ui.theme.NuvioTheme
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
@@ -68,9 +66,6 @@ internal fun StreamItem(
     focusRequester: FocusRequester,
     requestInitialFocus: Boolean,
     isCurrentStream: Boolean = false,
-    showFileSizeBadges: Boolean = true,
-    showAddonLogo: Boolean = true,
-    badgePlacement: StreamBadgePlacement = StreamBadgePlacement.BOTTOM,
     onClick: () -> Unit,
     onUpKey: (() -> Unit)? = null
 ) {
@@ -79,7 +74,6 @@ internal fun StreamItem(
     val unknownStreamLabel = stringResource(R.string.stream_unknown)
     val streamName = remember(stream, unknownStreamLabel) { stream.getDisplayNameOrNull() ?: unknownStreamLabel }
     val streamDescription = remember(stream) { stream.getDisplayDescription() }
-    val hasBadges = stream.badges.isNotEmpty() || (showFileSizeBadges && stream.behaviorHints?.videoSize != null)
     // Pre-upscale: decode at 2× target pixels so the hardware compositor
     // has enough pixel data for smooth edges inside Card RenderNodes.
     val logoDecodeSize = remember(density) {
@@ -138,15 +132,6 @@ internal fun StreamItem(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xs)
             ) {
-                if (hasBadges && badgePlacement == StreamBadgePlacement.TOP) {
-                    StreamBadgeChips(
-                        badges = stream.badges,
-                        fileSizeBytes = stream.behaviorHints?.videoSize,
-                        showFileSizeBadge = showFileSizeBadges
-                    )
-                    Spacer(modifier = Modifier.height(NuvioTheme.spacing.xxs))
-                }
-
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
@@ -182,42 +167,31 @@ internal fun StreamItem(
                         )
                     }
                 }
-
-                if (hasBadges && badgePlacement == StreamBadgePlacement.BOTTOM) {
-                    StreamBadgeChips(
-                        badges = stream.badges,
-                        fileSizeBytes = stream.behaviorHints?.videoSize,
-                        showFileSizeBadge = showFileSizeBadges,
-                        modifier = Modifier.padding(top = NuvioTheme.spacing.xxs)
-                    )
-                }
             }
 
-            if (showAddonLogo) {
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
-                    if (addonLogoModel != null) {
-                        AsyncImage(
-                            model = addonLogoModel,
-                            contentDescription = stream.addonName,
-                            modifier = Modifier
-                                .size(NuvioTheme.spacing.xxl)
-                                .clip(RoundedCornerShape(NuvioTheme.radii.xs)),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
-
-                    Text(
-                        text = stream.addonName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = NuvioTheme.extendedColors.textTertiary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                if (addonLogoModel != null) {
+                    AsyncImage(
+                        model = addonLogoModel,
+                        contentDescription = stream.addonName,
+                        modifier = Modifier
+                            .size(NuvioTheme.spacing.xxl)
+                            .clip(RoundedCornerShape(NuvioTheme.radii.xs)),
+                        contentScale = ContentScale.Fit
                     )
                 }
+
+                Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
+
+                Text(
+                    text = stream.addonName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = NuvioTheme.extendedColors.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

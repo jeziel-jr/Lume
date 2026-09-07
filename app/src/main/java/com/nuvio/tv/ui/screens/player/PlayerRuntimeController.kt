@@ -20,7 +20,6 @@ import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.PlayerSettingsDataStore
 import com.nuvio.tv.data.local.DeviceLocalPlayerPreferences
 import com.nuvio.tv.data.local.StreamLinkCacheDataStore
-import com.nuvio.tv.data.local.StreamBadgeSettingsDataStore
 import com.nuvio.tv.data.local.BingeGroupCacheDataStore
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.data.repository.SkipIntroRepository
@@ -52,7 +51,6 @@ class PlayerRuntimeController(
     internal val playerSettingsDataStore: PlayerSettingsDataStore,
     internal val deviceLocalPlayerPreferences: DeviceLocalPlayerPreferences,
     internal val streamLinkCacheDataStore: StreamLinkCacheDataStore,
-    internal val streamBadgeSettingsDataStore: StreamBadgeSettingsDataStore,
     internal val bingeGroupCacheDataStore: BingeGroupCacheDataStore,
     internal val layoutPreferenceDataStore: com.nuvio.tv.data.local.LayoutPreferenceDataStore,
     internal val watchedItemsPreferences: com.nuvio.tv.data.local.WatchedItemsPreferences,
@@ -61,7 +59,6 @@ class PlayerRuntimeController(
     internal val tmdbService: com.nuvio.tv.core.tmdb.TmdbService,
     internal val tmdbMetadataService: com.nuvio.tv.core.tmdb.TmdbMetadataService,
     internal val tmdbSettingsDataStore: com.nuvio.tv.data.local.TmdbSettingsDataStore,
-    internal val streamBadgePresentation: com.nuvio.tv.core.streams.StreamBadgePresentation,
     internal val xtreamServerHealthMonitor: XtreamServerHealthMonitor,
     savedStateHandle: SavedStateHandle,
     internal val scope: CoroutineScope
@@ -247,7 +244,6 @@ class PlayerRuntimeController(
     internal var sourceStreamsJob: Job? = null
     internal var sourceStreamsScope: kotlinx.coroutines.CoroutineScope? = null
     internal var episodeStreamsScope: kotlinx.coroutines.CoroutineScope? = null
-    internal var episodeBadgeJob: Job? = null
     internal var sourceChipErrorDismissJob: Job? = null
     internal var sourceStreamsCacheRequestKey: String? = null
     internal var sourceStreamsFetchCompleted: Boolean = false
@@ -427,22 +423,7 @@ class PlayerRuntimeController(
         fetchMetaDetails(contentId, contentType)
         observeBlurUnwatchedEpisodes()
         observeEpisodeWatchProgress()
-        observeStreamBadgeSettings()
         observeDeviceLocalAspectMode()
-    }
-
-    private fun observeStreamBadgeSettings() {
-        scope.launch {
-            streamBadgeSettingsDataStore.settings.collect { settings ->
-                _uiState.update {
-                    it.copy(
-                        showFileSizeBadges = settings.showFileSizeBadges,
-                        showAddonLogo = settings.showAddonLogo,
-                        streamBadgePlacement = settings.badgePlacement
-                    )
-                }
-            }
-        }
     }
 
     fun onCleared() {

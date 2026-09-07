@@ -8,13 +8,7 @@
     alias(libs.plugins.kotlin.serialization)
 }
 
-import java.io.File
 import java.util.Properties
-
-fun parseBooleanProperty(value: String?): Boolean {
-    val normalized = value?.trim()?.lowercase() ?: return false
-    return normalized == "1" || normalized == "true" || normalized == "yes" || normalized == "on"
-}
 
 fun resolveProperty(dev: Properties, local: Properties, key: String, fallback: String = ""): String {
     return dev.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
@@ -29,13 +23,6 @@ fun buildConfigString(value: String): String {
 fun requiredLocalProperty(properties: Properties, key: String): String =
     properties.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
         ?: error("Missing required $key in local.properties")
-
-fun cmakePath(path: String): String {
-    if (path.isBlank()) return ""
-    val file = File(path)
-    val resolved = if (file.isAbsolute) file else rootProject.file(path)
-    return resolved.absolutePath.replace("\\", "/")
-}
 
 val localProperties = Properties().apply {
     val localPropertiesFile = rootProject.file("local.properties")
@@ -52,29 +39,6 @@ val devProperties = Properties().apply {
 }
 
 val tmdbApiKey = requiredLocalProperty(localProperties, "TMDB_API_KEY")
-val xtreamBaseUrl = requiredLocalProperty(localProperties, "XTREAM_BASE_URL").trimEnd('/')
-
-val enableDoviNative = parseBooleanProperty(
-    resolveProperty(devProperties, localProperties, "DOVI_NATIVE_ENABLED")
-)
-val doviExtractorHookReady = parseBooleanProperty(
-    resolveProperty(devProperties, localProperties, "DOVI_EXTRACTOR_HOOK_READY")
-)
-val doviEnableRealLink = parseBooleanProperty(
-    resolveProperty(devProperties, localProperties, "DOVI_ENABLE_REAL_LINK")
-)
-val realtimeSyncEnabled = parseBooleanProperty(
-    resolveProperty(devProperties, localProperties, "NUVIO_REALTIME_SYNC_ENABLED", "true")
-)
-val selfHosted = parseBooleanProperty(
-    providers.gradleProperty("SELF_HOSTED").orNull
-        ?: providers.environmentVariable("SELF_HOSTED").orNull
-        ?: resolveProperty(devProperties, localProperties, "SELF_HOSTED")
-)
-val doviStaticLibPath = resolveProperty(devProperties, localProperties, "DOVI_LIBDOVI_STATIC_LIB")
-val doviIncludeDirPath = resolveProperty(devProperties, localProperties, "DOVI_LIBDOVI_INCLUDE_DIR")
-val doviPrebuiltRootPath = resolveProperty(devProperties, localProperties, "DOVI_LIBDOVI_PREBUILT_ROOT")
-val sponsorNames = resolveProperty(devProperties, localProperties, "SPONSOR_NAMES", "ragmehos.")
 
 fun env(name: String): String? = providers.environmentVariable(name).orNull
 
@@ -111,43 +75,14 @@ android {
         versionCode = 1062
         versionName = "0.7.37-beta"
 
-        buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", buildConfigString(localProperties.getProperty("INTRODB_API_URL", "https://api.introdb.app/")))
         buildConfigField("String", "ANIMESKIP_CLIENT_ID", buildConfigString(localProperties.getProperty("ANIMESKIP_CLIENT_ID", "")))
         buildConfigField("String", "TRAILER_API_URL", "\"${localProperties.getProperty("TRAILER_API_URL", "")}\"")
-        buildConfigField("String", "IMDB_RATINGS_API_BASE_URL", "\"${localProperties.getProperty("IMDB_RATINGS_API_BASE_URL", "")}\"")
-        buildConfigField("String", "IMDB_TAPFRAME_API_BASE_URL", "\"${localProperties.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}\"")
-        buildConfigField("String", "TRAKT_CLIENT_ID", "\"${localProperties.getProperty("TRAKT_CLIENT_ID", "")}\"")
-        buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${localProperties.getProperty("TRAKT_CLIENT_SECRET", "")}\"")
-        buildConfigField("String", "TRAKT_API_URL", "\"${localProperties.getProperty("TRAKT_API_URL", "https://api.trakt.tv/")}\"")
-        buildConfigField("String", "TRAKT_REDIRECT_URI", "\"${localProperties.getProperty("TRAKT_REDIRECT_URI", "urn:ietf:wg:oauth:2.0:oob")}\"")
         buildConfigField("String", "TMDB_API_KEY", buildConfigString(tmdbApiKey))
-        buildConfigField("String", "XTREAM_DEFAULT_BASE_URL", buildConfigString(xtreamBaseUrl))
-        buildConfigField("String", "TMDB_HOME_LIST_IDS", buildConfigString(localProperties.getProperty("TMDB_HOME_LIST_IDS", "")))
-        buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
-        buildConfigField("boolean", "DOVI_NATIVE_ENABLED", enableDoviNative.toString())
-        buildConfigField("boolean", "DOVI_EXTRACTOR_HOOK_READY", doviExtractorHookReady.toString())
-        buildConfigField("boolean", "REALTIME_SYNC_ENABLED", realtimeSyncEnabled.toString())
-        buildConfigField("boolean", "SELF_HOSTED", selfHosted.toString())
-        if (enableDoviNative) {
-            externalNativeBuild {
-                cmake {
-                    arguments(
-                        "-DDOVI_ENABLE_LIBDOVI=${if (doviEnableRealLink) "ON" else "OFF"}",
-                        "-DDOVI_LIBDOVI_STATIC_LIB=${cmakePath(doviStaticLibPath)}",
-                        "-DDOVI_LIBDOVI_INCLUDE_DIR=${cmakePath(doviIncludeDirPath)}",
-                        "-DDOVI_LIBDOVI_PREBUILT_ROOT=${cmakePath(doviPrebuiltRootPath)}"
-                    )
-                }
-            }
-        }
-        buildConfigField("String", "DONATIONS_BASE_URL", "\"${localProperties.getProperty("DONATIONS_BASE_URL", "")}\"")
-        buildConfigField("String", "DONATIONS_DONATE_URL", "\"${localProperties.getProperty("DONATIONS_DONATE_URL", "")}\"")
-        buildConfigField("String", "AVATAR_PUBLIC_BASE_URL", "\"${localProperties.getProperty("AVATAR_PUBLIC_BASE_URL", "")}\"")
-        buildConfigField("String", "UNIQUE_CONTRIBUTIONS_BASE_URL", "\"${localProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", "")}\"")
-        buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(localProperties.getProperty("PLAYBACK_REPORTS_BASE_URL", "")))
-        buildConfigField("String", "PREMIUMIZE_CLIENT_ID", "\"${localProperties.getProperty("PREMIUMIZE_CLIENT_ID", "")}\"")
-        buildConfigField("String", "SPONSOR_NAMES", buildConfigString(sponsorNames))
+        // Native Dolby Vision tooling is not built; the Kotlin Dolby bridge reports
+        // the compile-time capability as disabled (see core/player/DoviBridge.kt).
+        buildConfigField("boolean", "DOVI_NATIVE_ENABLED", "false")
+        buildConfigField("boolean", "DOVI_EXTRACTOR_HOOK_READY", "false")
 
         // In-app updater (GitHub Releases)
         buildConfigField("String", "GITHUB_OWNER", "\"jeziel-jr\"")
@@ -158,26 +93,10 @@ android {
     productFlavors {
         create("full") {
             dimension = "distribution"
-            buildConfigField("boolean", "FEATURE_PLUGINS_ENABLED", "false")
-            buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "false")
-            buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "true")
-            buildConfigField("boolean", "FEATURE_EXTERNAL_TRAILERS_ENABLED", "true")
         }
         create("playstore") {
             dimension = "distribution"
             applicationId = "com.jeziel.lume"
-            buildConfigField("boolean", "FEATURE_PLUGINS_ENABLED", "false")
-            buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "false")
-            buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "false")
-            buildConfigField("boolean", "FEATURE_EXTERNAL_TRAILERS_ENABLED", "true")
-        }
-    }
-
-    if (enableDoviNative) {
-        externalNativeBuild {
-            cmake {
-                path = file("src/main/cpp/CMakeLists.txt")
-            }
         }
     }
 
@@ -199,23 +118,9 @@ android {
             buildConfigField("boolean", "IS_DEBUG_BUILD", "true")
 
             // Dev environment (from local.dev.properties)
-            buildConfigField("String", "SUPABASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_URL")))
-            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_ANON_KEY")))
-            buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_FALLBACK_URL")))
-            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${devProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
-            buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${devProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
             buildConfigField("String", "INTRODB_API_URL", buildConfigString(resolveProperty(devProperties, localProperties, "INTRODB_API_URL", "https://api.introdb.app/")))
             buildConfigField("String", "ANIMESKIP_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "ANIMESKIP_CLIENT_ID")))
             buildConfigField("String", "TRAILER_API_URL", "\"${devProperties.getProperty("TRAILER_API_URL", "")}\"")
-            buildConfigField("String", "IMDB_RATINGS_API_BASE_URL", "\"${devProperties.getProperty("IMDB_RATINGS_API_BASE_URL", "")}\"")
-            buildConfigField("String", "IMDB_TAPFRAME_API_BASE_URL", "\"${devProperties.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}\"")
-            buildConfigField("String", "DONATIONS_BASE_URL", "\"${devProperties.getProperty("DONATIONS_BASE_URL", localProperties.getProperty("DONATIONS_BASE_URL", ""))}\"")
-            buildConfigField("String", "DONATIONS_DONATE_URL", "\"${devProperties.getProperty("DONATIONS_DONATE_URL", localProperties.getProperty("DONATIONS_DONATE_URL", ""))}\"")
-            buildConfigField("String", "AVATAR_PUBLIC_BASE_URL", "\"${devProperties.getProperty("AVATAR_PUBLIC_BASE_URL", localProperties.getProperty("AVATAR_PUBLIC_BASE_URL", ""))}\"")
-            buildConfigField("String", "UNIQUE_CONTRIBUTIONS_BASE_URL", "\"${devProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", localProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", ""))}\"")
-            buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "PLAYBACK_REPORTS_BASE_URL")))
-            buildConfigField("String", "PREMIUMIZE_CLIENT_ID", "\"${devProperties.getProperty("PREMIUMIZE_CLIENT_ID", localProperties.getProperty("PREMIUMIZE_CLIENT_ID", ""))}\"")
-            buildConfigField("String", "SPONSOR_NAMES", buildConfigString(sponsorNames))
         }
         release {
             isMinifyEnabled = true
@@ -231,25 +136,6 @@ android {
             }
 
             buildConfigField("boolean", "IS_DEBUG_BUILD", "false")
-
-            // Production environment (from local.properties)
-            buildConfigField("String", "SUPABASE_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_URL", "")))
-            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_ANON_KEY", "")))
-            buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_FALLBACK_URL", "")))
-            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
-            buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
-            buildConfigField("String", "INTRODB_API_URL", buildConfigString(localProperties.getProperty("INTRODB_API_URL", "https://api.introdb.app/")))
-            buildConfigField("String", "ANIMESKIP_CLIENT_ID", buildConfigString(localProperties.getProperty("ANIMESKIP_CLIENT_ID", "")))
-            buildConfigField("String", "TRAILER_API_URL", "\"${localProperties.getProperty("TRAILER_API_URL", "")}\"")
-            buildConfigField("String", "IMDB_RATINGS_API_BASE_URL", "\"${localProperties.getProperty("IMDB_RATINGS_API_BASE_URL", "")}\"")
-            buildConfigField("String", "IMDB_TAPFRAME_API_BASE_URL", "\"${localProperties.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}\"")
-            buildConfigField("String", "DONATIONS_BASE_URL", "\"${localProperties.getProperty("DONATIONS_BASE_URL", "")}\"")
-            buildConfigField("String", "DONATIONS_DONATE_URL", "\"${localProperties.getProperty("DONATIONS_DONATE_URL", "")}\"")
-            buildConfigField("String", "AVATAR_PUBLIC_BASE_URL", "\"${localProperties.getProperty("AVATAR_PUBLIC_BASE_URL", "")}\"")
-            buildConfigField("String", "UNIQUE_CONTRIBUTIONS_BASE_URL", "\"${localProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", "")}\"")
-            buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(localProperties.getProperty("PLAYBACK_REPORTS_BASE_URL", "")))
-            buildConfigField("String", "PREMIUMIZE_CLIENT_ID", "\"${localProperties.getProperty("PREMIUMIZE_CLIENT_ID", "")}\"")
-            buildConfigField("String", "SPONSOR_NAMES", buildConfigString(sponsorNames))
         }
         create("benchmark") {
             initWith(buildTypes.getByName("release"))
@@ -316,8 +202,7 @@ android {
                 "lib/*/libavformat.so",
                 "lib/*/libavutil.so",
                 "lib/*/libswscale.so",
-                "lib/*/libswresample.so",
-                "lib/*/libtorrserver.so"
+                "lib/*/libswresample.so"
             )
         }
     }
@@ -474,35 +359,15 @@ dependencies {
 
     implementation(libs.gson)
 
-    add("fullImplementation", files("libs/quickjs-kt-android-1.0.5-nuvio.aar"))
-    add("fullImplementation", libs.jsoup)
-    add("fullImplementation", "com.fasterxml.jackson.core:jackson-databind:2.17.0")
-    add("fullImplementation", "com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
-    add("fullImplementation", libs.nicehttp)
-    add("fullImplementation", libs.conscrypt.android)
-    add("fullImplementation", "com.github.recloudstream.cloudstream:library:${libs.versions.cloudstream.get()}") {
-        exclude(group = "org.mozilla", module = "rhino")
-        exclude(group = "com.github.AmarullisVFX", module = "newpipeextractor")
-        exclude(group = "com.github.AmaryllisVFX", module = "newpipeextractor")
-        exclude(group = "com.github.AmaryllisVFX.newpipeextractor")
-        exclude(group = "info.debatty", module = "java-string-similarity")
-    }
+    // WebJar crypto-js for the Xtream QR pairing page (served by XtreamSetupServer)
+    add("fullImplementation", libs.crypto.js)
 
     // Markdown rendering
     implementation(libs.markdown.renderer.m3)
 
-    add("fullImplementation", libs.crypto.js)
-    // QR code + local server for addon management
+    // QR code + local server for Xtream pairing setup
     implementation(libs.nanohttpd)
     implementation(libs.zxing.core)
-
-
-    // Supabase
-    implementation(platform(libs.supabase.bom))
-    implementation(libs.supabase.auth)
-    implementation(libs.supabase.postgrest)
-    implementation(libs.supabase.realtime)
-    implementation(libs.ktor.client.okhttp)
 
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)
@@ -510,8 +375,6 @@ dependencies {
     // Performance profiling
     implementation("androidx.metrics:metrics-performance:1.0.0-rc01")  // JankStats
     debugImplementation("androidx.compose.runtime:runtime-tracing")
-
-    add("fullImplementation", "org.webjars.npm:crypto-js:4.2.0")
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

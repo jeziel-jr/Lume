@@ -1005,37 +1005,6 @@
     <string name="debrid_formatter_reset_title">Nulstil formatering</string>
     <string name="debrid_formatter_reset_subtitle">Gendan standardformatering af kilder.</string>
     <string name="debrid_formatter_qr_instruction">Scan denne QR-kode på din telefon for at konfigurere Debrid-kildeindstillinger.</string>
-    <string name="settings_stream_badges_section">Fusion Style</string>
-    <string name="settings_stream_size_badges_title">Størrelsesbadges</string>
-    <string name="settings_stream_size_badges_description">Vis størrelsesbadges i streamresultater og afspillerens kildevisning.</string>
-    <string name="settings_stream_addon_logo_title">Addon-logo</string>
-    <string name="settings_stream_addon_logo_description">Vis addon-logo og -navn ved siden af streamkilder.</string>
-    <string name="settings_stream_display_section">Visning</string>
-    <string name="settings_stream_badge_position_title">Badgeplacering</string>
-    <string name="settings_stream_badge_position_description">Vælg om Fusion- og størrelsesbadges vises over eller under streamkort.</string>
-    <string name="settings_stream_badge_position_dialog_title">Badgeplacering</string>
-    <string name="settings_stream_badge_position_dialog_description">Vælg, hvor streambadges vises på streamkort.</string>
-    <string name="settings_stream_badge_position_top">Øverst</string>
-    <string name="settings_stream_badge_position_bottom">Nederst</string>
-    <string name="settings_stream_badge_urls_title">Fusion badge-URL\'er</string>
-    <string name="settings_stream_badge_urls_description">Importér op til %1$d Fusion-style streambadge JSON-URL\'er. Hver URL kan opdateres eller slettes separat.</string>
-    <string name="settings_stream_badge_urls_search_description">Administrér importerede Fusion-style streambadge JSON-URL\'er.</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d URL\'er, %3$d aktive Fusion-badges</string>
-    <string name="settings_fusion_badges_empty">Ingen Fusion badge-URL\'er importeret.</string>
-    <string name="settings_fusion_badge_url_label">Fusion badge JSON-URL</string>
-    <string name="settings_fusion_badge_urls_imported">%1$d/%2$d Fusion-URL\'er importeret</string>
-    <string name="settings_fusion_badge_url_active">Aktiv</string>
-    <string name="settings_fusion_badge_url_inactive">Inaktiv</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s, %2$d aktiverede badges, %3$d grupper</string>
-    <string name="settings_fusion_badge_preview_action">Forhåndsvisning</string>
-    <string name="settings_fusion_badge_preview_title">Fusion badge-forhåndsvisning</string>
-    <string name="settings_fusion_badge_preview_count">%1$d Fusion-style badges fra denne URL</string>
-    <string name="settings_fusion_badge_preview_empty">Ingen Fusion-style badge-billeder i denne URL.</string>
-    <string name="settings_fusion_badge_group_title">Gruppe %1$d</string>
-    <string name="settings_fusion_badge_other_group_title">Andre Fusion-badges</string>
-    <string name="stream_badge_qr_instruction">Scan denne QR-kode på din telefon for at administrere Fusion badge-URL\'er.</string>
-    <string name="streams_size">STØRRELSE %1$s</string>
-    <string name="action_import">Importér</string>
     <string name="action_delete">Slet</string>
 
     <!-- Anime-Skip -->
@@ -2569,14 +2538,6 @@
     <string name="web_status_could_not_save">Kunne ikke gemme</string>
 
     <!-- Web config page: stream badge import status -->
-    <string name="web_stream_badge_importing">Importerer…</string>
-    <string name="web_stream_badge_imported">Badge-URL importeret.</string>
-    <string name="web_stream_badge_import_error">Badge-import mislykkedes.</string>
-    <string name="web_stream_badge_deleted">Badge-URL slettet.</string>
-    <string name="web_stream_badge_load_error">Kunne ikke indlæse stream badge-indstillinger</string>
-    <string name="web_stream_badge_error_url_required">Indtast en badge JSON-URL.</string>
-    <string name="web_stream_badge_error_url_scheme">Badge-URL skal starte med http:// eller https://.</string>
-    <string name="web_stream_badge_error_import_limit">Du kan importere op til %1$d badge-URL\'er.</string>
 
     <!-- Playback — Buffer & Network settings -->
     <string name="playback_section_buffer_network">Buffer &amp; netværk</string>

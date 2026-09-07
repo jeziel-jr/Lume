@@ -1009,37 +1009,6 @@
     <string name="debrid_formatter_reset_title">フォーマットをリセット</string>
     <string name="debrid_formatter_reset_subtitle">デフォルトのソースフォーマットを復元します。</string>
     <string name="debrid_formatter_qr_instruction">スマートフォンでこのQRコードをスキャンしてDebridソース設定を構成します。</string>
-    <string name="settings_stream_badges_section">フュージョンスタイル</string>
-    <string name="settings_stream_size_badges_title">サイズバッジ</string>
-    <string name="settings_stream_size_badges_description">ストリーム結果とプレーヤーソースパネルにファイルサイズバッジを表示します。</string>
-    <string name="settings_stream_addon_logo_title">アドオンロゴ</string>
-    <string name="settings_stream_addon_logo_description">ストリームソースの横にアドオンロゴと名前を表示します。</string>
-    <string name="settings_stream_display_section">表示</string>
-    <string name="settings_stream_badge_position_title">バッジの位置</string>
-    <string name="settings_stream_badge_position_description">フュージョンバッジとサイズバッジをストリームカードの上または下に表示するかを選択します。</string>
-    <string name="settings_stream_badge_position_dialog_title">バッジの位置</string>
-    <string name="settings_stream_badge_position_dialog_description">ストリームカード上のバッジの表示位置を選択します。</string>
-    <string name="settings_stream_badge_position_top">上</string>
-    <string name="settings_stream_badge_position_bottom">下</string>
-    <string name="settings_stream_badge_urls_title">フュージョンバッジURL</string>
-    <string name="settings_stream_badge_urls_description">最大%1$d個のフュージョンスタイルストリームバッジJSON URLをインポートします。各URLは個別に更新または削除できます。</string>
-    <string name="settings_stream_badge_urls_search_description">インポートしたフュージョンスタイルストリームバッジJSON URLを管理します。</string>
-    <string name="settings_fusion_badges_summary">%1$d/%2$d URL、%3$d有効なフュージョンバッジ</string>
-    <string name="settings_fusion_badges_empty">フュージョンバッジURLがインポートされていません。</string>
-    <string name="settings_fusion_badge_url_label">フュージョンバッジJSON URL</string>
-    <string name="settings_fusion_badge_urls_imported">%1$d/%2$d個のフュージョンURLをインポート済み</string>
-    <string name="settings_fusion_badge_url_active">有効</string>
-    <string name="settings_fusion_badge_url_inactive">無効</string>
-    <string name="settings_fusion_badge_url_status_summary">%1$s、%2$d有効バッジ、%3$dグループ</string>
-    <string name="settings_fusion_badge_preview_action">プレビュー</string>
-    <string name="settings_fusion_badge_preview_title">フュージョンバッジプレビュー</string>
-    <string name="settings_fusion_badge_preview_count">このURLからの%1$d個のフュージョンスタイルバッジ</string>
-    <string name="settings_fusion_badge_preview_empty">このURLにフュージョンスタイルバッジ画像はありません。</string>
-    <string name="settings_fusion_badge_group_title">グループ%1$d</string>
-    <string name="settings_fusion_badge_other_group_title">その他のフュージョンバッジ</string>
-    <string name="stream_badge_qr_instruction">スマートフォンでこのQRコードをスキャンしてフュージョンバッジURLを管理します。</string>
-    <string name="streams_size">サイズ %1$s</string>
-    <string name="action_import">インポート</string>
     <string name="action_delete">削除</string>
 
     <!-- Anime-Skip -->
@@ -2570,14 +2539,6 @@
     <string name="web_status_could_not_save">保存できませんでした</string>
 
     <!-- Web config page: stream badge import status -->
-    <string name="web_stream_badge_importing">インポート中…</string>
-    <string name="web_stream_badge_imported">バッジURLをインポートしました。</string>
-    <string name="web_stream_badge_import_error">バッジのインポートに失敗しました。</string>
-    <string name="web_stream_badge_deleted">バッジURLを削除しました。</string>
-    <string name="web_stream_badge_load_error">ストリームバッジ設定を読み込めませんでした</string>
-    <string name="web_stream_badge_error_url_required">バッジJSON URLを入力してください。</string>
-    <string name="web_stream_badge_error_url_scheme">バッジURLは http:// または https:// で始まる必要があります。</string>
-    <string name="web_stream_badge_error_import_limit">最大%1$d個のバッジURLをインポートできます。</string>
 
     <!-- Playback — Buffer & Network settings -->
     <string name="playback_section_buffer_network">バッファ &amp; ネットワーク</string>

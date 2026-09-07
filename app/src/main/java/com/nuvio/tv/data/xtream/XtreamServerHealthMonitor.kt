@@ -375,7 +375,7 @@ class XtreamServerHealthMonitor @Inject constructor(
                 .build()
             probeHttpClient.newCall(request).execute().use { response ->
                 val bytes = if (response.code in 200..299) {
-                    response.body.source().readByteArray(PROBE_MAX_BYTES)
+                    response.body?.source()?.readByteArray(PROBE_MAX_BYTES) ?: ByteArray(0)
                 } else {
                     ByteArray(0)
                 }

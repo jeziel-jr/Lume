@@ -39,7 +39,6 @@ import androidx.compose.foundation.lazy.items
 @Composable
 fun StreamsSkeletonList(
     modifier: Modifier = Modifier,
-    showAddonLogo: Boolean = true,
     itemCount: Int = 6
 ) {
     LazyColumn(
@@ -50,7 +49,7 @@ fun StreamsSkeletonList(
         contentPadding = PaddingValues(vertical = NuvioTheme.spacing.sm)
     ) {
         items(itemCount) {
-            StreamCardSkeleton(showAddonLogo = showAddonLogo, shimmerBrush = rememberShimmerBrush())
+            StreamCardSkeleton(shimmerBrush = rememberShimmerBrush())
         }
     }
 }
@@ -58,7 +57,6 @@ fun StreamsSkeletonList(
 @Composable
 fun StreamCardSkeleton(
     modifier: Modifier = Modifier,
-    showAddonLogo: Boolean = true,
     shimmerBrush: Brush = rememberShimmerBrush()
 ) {
     Box(
@@ -85,19 +83,17 @@ fun StreamCardSkeleton(
                 }
             }
 
-            if (showAddonLogo) {
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(NuvioTheme.spacing.xxl)
-                            .clip(RoundedCornerShape(NuvioTheme.radii.sm))
-                            .background(shimmerBrush)
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    SkeletonBar(width = 64.dp, height = 10.dp, brush = shimmerBrush, cornerRadius = NuvioTheme.spacing.sm)
-                }
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(NuvioTheme.spacing.xxl)
+                        .clip(RoundedCornerShape(NuvioTheme.radii.sm))
+                        .background(shimmerBrush)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                SkeletonBar(width = 64.dp, height = 10.dp, brush = shimmerBrush, cornerRadius = NuvioTheme.spacing.sm)
             }
         }
     }
