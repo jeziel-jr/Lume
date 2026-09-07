@@ -62,10 +62,6 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.nuvio.tv.core.cloud.CloudLibraryFile
-import com.nuvio.tv.core.cloud.CloudLibraryItem
-import com.nuvio.tv.core.cloud.CloudLibraryItemType
-import com.nuvio.tv.core.cloud.CloudLibraryPlaybackInfo
 import com.nuvio.tv.domain.model.PosterShape
 import com.nuvio.tv.ui.components.EmptyScreenState
 import com.nuvio.tv.ui.components.GridContentCard
@@ -82,10 +78,6 @@ import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 
 private const val KEY_REPEAT_THROTTLE_MS = 80L
 
-private enum class LibraryViewMode {
-    Saved,
-    Cloud
-}
 
 @Composable
 private fun localizedTypeLabel(key: String): String = when (key.lowercase()) {
@@ -99,15 +91,12 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
     showBuiltInHeader: Boolean = true,
     onNavigateToDetail: (String, String, String?) -> Unit,
-    onCloudPlaybackResolved: (CloudLibraryPlaybackInfo) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val catalogAvailability by viewModel.catalogAvailability.collectAsState()
     val watchedMovieIds by viewModel.watchedMovieIds.collectAsState()
     val watchedSeriesIds by viewModel.watchedSeriesIds.collectAsState()
     var expandedPicker by remember { mutableStateOf<String?>(null) }
-    var viewMode by rememberSaveable { mutableStateOf(LibraryViewMode.Saved) }
-    var activeCloudItem by remember { mutableStateOf<CloudLibraryItem?>(null) }
     val primaryFocusRequester = remember { FocusRequester() }
     val selectorFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
@@ -125,11 +114,6 @@ fun LibraryScreen(
     val firstVisiblePosterKey = visibleItemKeys.firstOrNull()
     val posterCardStyle = PosterCardDefaults.Style
 
-    LaunchedEffect(viewMode, uiState.cloudLibrary.isEnabled, uiState.cloudLibrary.isLoaded, uiState.cloudLibrarySettingsVersion) {
-        if (viewMode == LibraryViewMode.Cloud) {
-            viewModel.ensureCloudLibraryLoaded()
-        }
-    }
 
     LaunchedEffect(uiState.isLoading) {
         if (uiState.isLoading) {
@@ -241,10 +225,7 @@ fun LibraryScreen(
                     letterSpacing = 0.5.sp
                 )
                 Text(
-                    text = when {
-                        viewMode == LibraryViewMode.Cloud -> stringResource(R.string.library_source_cloud).uppercase()
-                        else -> stringResource(R.string.library_source_local)
-                    },
+                    text = stringResource(R.string.library_source_local),
                     style = MaterialTheme.typography.labelLarge,
                     color = if (showBuiltInHeader) NuvioTheme.colors.TextTertiary else Color.Transparent,
                     fontWeight = FontWeight.Medium,
@@ -253,18 +234,7 @@ fun LibraryScreen(
             }
         }
 
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            LibraryViewModeRow(
-                selectedMode = viewMode,
-                primaryFocusRequester = primaryFocusRequester,
-                onSelected = { mode ->
-                    viewMode = mode
-                    expandedPicker = null
-                }
-            )
-        }
 
-        if (viewMode == LibraryViewMode.Saved) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 LibrarySelectorsRow(
                     typeTabs = uiState.availableTypeTabs,
@@ -336,104 +306,10 @@ fun LibraryScreen(
                     }
                 )
             }
-        } else {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                CloudLibrarySelectorsRow(
-                    providerOptions = uiState.availableCloudProviders,
-                    typeOptions = uiState.availableCloudTypes,
-                    selectedProviderId = uiState.selectedCloudProviderId,
-                    selectedType = uiState.selectedCloudType,
-                    expandedPicker = expandedPicker,
-                    onExpandedChange = { picker, shouldExpand ->
-                        expandedPicker = if (shouldExpand) picker else null
-                    },
-                    onSelectProvider = { providerId ->
-                        viewModel.onSelectCloudProvider(providerId)
-                        expandedPicker = null
-                    },
-                    onSelectType = { type ->
-                        viewModel.onSelectCloudType(type)
-                        expandedPicker = null
-                    }
-                )
-            }
-
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                CloudLibraryActionsRow(
-                    isRefreshing = uiState.cloudLibrary.isRefreshing,
-                    onRefresh = viewModel::refreshCloudLibrary
-                )
-            }
-
-            if (uiState.cloudLibrary.isRefreshing && uiState.visibleCloudItems.isEmpty()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    CloudLibraryLoadingState()
-                }
-            } else if (!uiState.cloudLibrary.isEnabled) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    EmptyScreenState(
-                        title = stringResource(R.string.cloud_library_disabled_title),
-                        subtitle = stringResource(R.string.cloud_library_disabled_message),
-                        icon = Icons.Default.BookmarkBorder,
-                        height = 260.dp
-                    )
-                }
-            } else if (!uiState.cloudLibrary.hasConnectedProvider) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    EmptyScreenState(
-                        title = stringResource(R.string.cloud_library_connect_title),
-                        subtitle = stringResource(R.string.cloud_library_connect_message),
-                        icon = Icons.Default.BookmarkBorder,
-                        height = 260.dp
-                    )
-                }
-            } else if (uiState.visibleCloudItems.isEmpty()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    EmptyScreenState(
-                        title = stringResource(R.string.cloud_library_empty_title),
-                        subtitle = stringResource(R.string.cloud_library_empty_message),
-                        icon = Icons.Default.BookmarkBorder,
-                        height = 260.dp
-                    )
-                }
-            }
-
-            items(
-                items = uiState.visibleCloudItems,
-                key = { it.stableKey },
-                span = { GridItemSpan(maxLineSpan) }
-            ) { item ->
-                CloudLibraryCard(
-                    item = item,
-                    isResolving = uiState.resolvingCloudFileKey?.startsWith(item.stableKey) == true,
-                    onClick = {
-                        val playableFiles = item.playableFiles
-                        when (playableFiles.size) {
-                            0 -> viewModel.onCloudItemHasNoPlayableFiles()
-                            1 -> viewModel.resolveCloudPlayback(item, playableFiles.first(), onCloudPlaybackResolved)
-                            else -> activeCloudItem = item
-                        }
-                    }
-                )
-            }
-        }
 
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(NuvioTheme.spacing.sm)) }
     }
 
-    activeCloudItem?.let { item ->
-        CloudFilePickerDialog(
-            item = item,
-            resolvingFileKey = uiState.resolvingCloudFileKey,
-            onPlay = { file ->
-                viewModel.resolveCloudPlayback(item, file) { info ->
-                    activeCloudItem = null
-                    onCloudPlaybackResolved(info)
-                }
-            },
-            onDismiss = { activeCloudItem = null }
-        )
-    }
 
     val transientMessage = uiState.transientMessage
     if (!transientMessage.isNullOrBlank()) {
@@ -464,311 +340,6 @@ fun LibraryScreen(
     )
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun LibraryViewModeRow(
-    selectedMode: LibraryViewMode,
-    primaryFocusRequester: FocusRequester,
-    onSelected: (LibraryViewMode) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
-    ) {
-        LibraryViewMode.entries.forEachIndexed { index, mode ->
-            val selected = mode == selectedMode
-            Button(
-                onClick = { onSelected(mode) },
-                modifier = Modifier
-                    .then(if (index == 0) Modifier.focusRequester(primaryFocusRequester) else Modifier),
-                colors = ButtonDefaults.colors(
-                    containerColor = if (selected) NuvioTheme.colors.FocusBackground else NuvioTheme.colors.BackgroundCard,
-                    contentColor = NuvioTheme.colors.TextPrimary
-                )
-            ) {
-                Text(
-                    text = when (mode) {
-                        LibraryViewMode.Saved -> stringResource(R.string.library_source_saved)
-                        LibraryViewMode.Cloud -> stringResource(R.string.library_source_cloud)
-                    }
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun CloudLibrarySelectorsRow(
-    providerOptions: List<FilterOption>,
-    typeOptions: List<FilterOption>,
-    selectedProviderId: String?,
-    selectedType: CloudLibraryItemType?,
-    expandedPicker: String?,
-    onExpandedChange: (String, Boolean) -> Unit,
-    onSelectProvider: (String?) -> Unit,
-    onSelectType: (CloudLibraryItemType?) -> Unit
-) {
-    val allLabel = stringResource(R.string.cloud_library_provider_all)
-    val typeAllLabel = stringResource(R.string.cloud_library_type_all)
-    val selectedProviderLabel = providerOptions.firstOrNull { it.key == selectedProviderId }?.label ?: allLabel
-    val selectedTypeLabel = selectedType?.localizedLabel() ?: typeAllLabel
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
-    ) {
-        LibraryDropdownPicker(
-            modifier = Modifier.weight(1f),
-            title = stringResource(R.string.cloud_library_select_provider),
-            value = selectedProviderLabel,
-            selectedValue = selectedProviderId ?: "__all__",
-            expanded = expandedPicker == "cloud_provider",
-            options = listOf(LibraryOption(allLabel, "__all__")) + providerOptions.map {
-                LibraryOption("${it.label} (${it.count})", it.key)
-            },
-            onExpandedChange = { onExpandedChange("cloud_provider", it) },
-            onSelect = { option ->
-                onSelectProvider(if (option.value == "__all__") null else option.value)
-            }
-        )
-
-        LibraryDropdownPicker(
-            modifier = Modifier.weight(1f),
-            title = stringResource(R.string.cloud_library_select_type),
-            value = selectedTypeLabel,
-            selectedValue = selectedType?.name ?: "__all__",
-            expanded = expandedPicker == "cloud_type",
-            options = listOf(LibraryOption(typeAllLabel, "__all__")) + typeOptions.map {
-                LibraryOption("${it.label} (${it.count})", it.key)
-            },
-            onExpandedChange = { onExpandedChange("cloud_type", it) },
-            onSelect = { option ->
-                onSelectType(CloudLibraryItemType.entries.firstOrNull { it.name == option.value })
-            }
-        )
-    }
-}
-
-@Composable
-private fun CloudLibraryItemType.localizedLabel(): String =
-    when (this) {
-        CloudLibraryItemType.Torrent -> stringResource(R.string.cloud_library_type_torrents)
-        CloudLibraryItemType.Usenet -> stringResource(R.string.cloud_library_type_usenet)
-        CloudLibraryItemType.WebDownload -> stringResource(R.string.cloud_library_type_web)
-        CloudLibraryItemType.File -> stringResource(R.string.cloud_library_type_files)
-    }
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun CloudLibraryActionsRow(
-    isRefreshing: Boolean,
-    onRefresh: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
-    ) {
-        Button(
-            onClick = onRefresh,
-            enabled = !isRefreshing,
-            colors = ButtonDefaults.colors(
-                containerColor = NuvioTheme.colors.BackgroundCard,
-                contentColor = NuvioTheme.colors.TextPrimary
-            )
-        ) {
-            Text(if (isRefreshing) stringResource(R.string.library_syncing_btn) else stringResource(R.string.cloud_library_refresh))
-        }
-    }
-}
-
-@Composable
-private fun CloudLibraryLoadingState() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(260.dp),
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        LoadingIndicator()
-        Spacer(modifier = Modifier.height(14.dp))
-        Text(
-            text = stringResource(R.string.library_syncing_library),
-            style = MaterialTheme.typography.bodyMedium,
-            color = NuvioTheme.colors.TextSecondary
-        )
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun CloudLibraryCard(
-    item: CloudLibraryItem,
-    isResolving: Boolean,
-    onClick: () -> Unit
-) {
-    val fileLine = cloudLibraryFileLine(item)
-    Card(
-        onClick = { if (!isResolving) onClick() },
-        modifier = Modifier.fillMaxWidth(),
-        shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
-        colors = CardDefaults.colors(
-            containerColor = NuvioTheme.colors.BackgroundCard,
-            focusedContainerColor = NuvioTheme.colors.FocusBackground
-        ),
-        border = CardDefaults.border(
-            border = Border(border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border), shape = RoundedCornerShape(10.dp)),
-            focusedBorder = Border(border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.FocusRing), shape = RoundedCornerShape(10.dp))
-        ),
-        scale = CardDefaults.scale(focusedScale = 1.02f)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp)
-        ) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.titleSmall,
-                color = NuvioTheme.colors.TextPrimary,
-                fontWeight = FontWeight.SemiBold
-            )
-            fileLine?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NuvioTheme.colors.TextSecondary
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-            ) {
-                Text(
-                    modifier = Modifier.weight(1f),
-                    text = cloudLibraryMetadata(item),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NuvioTheme.colors.TextTertiary
-                )
-                Text(
-                    text = if (isResolving) {
-                        stringResource(R.string.cloud_library_opening)
-                    } else {
-                        cloudLibraryPlayableLabel(item)
-                    },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (item.playableFiles.isEmpty()) NuvioTheme.colors.TextTertiary else NuvioTheme.colors.Primary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun cloudLibraryFileLine(item: CloudLibraryItem): String? =
-    when (val count = item.playableFiles.size) {
-        0 -> stringResource(R.string.cloud_library_no_playable_files)
-        1 -> item.playableFiles.first().name.takeIf { it != item.name }
-        else -> stringResource(R.string.cloud_library_playable_file_count, count)
-    }
-
-@Composable
-private fun cloudLibraryPlayableLabel(item: CloudLibraryItem): String =
-    when (val count = item.playableFiles.size) {
-        0 -> stringResource(R.string.cloud_library_no_playable_files)
-        1 -> stringResource(R.string.cloud_library_one_playable_file)
-        else -> stringResource(R.string.cloud_library_playable_file_count, count)
-    }
-
-@Composable
-private fun cloudLibraryMetadata(item: CloudLibraryItem): String {
-    val parts = listOfNotNull(
-        item.providerName.takeIf { it.isNotBlank() },
-        item.type.localizedLabel(),
-        item.status?.takeIf { it.isNotBlank() } ?: stringResource(R.string.cloud_library_status_ready),
-        formatCloudSize(item.sizeBytes)
-    )
-    return parts.joinToString(" • ")
-}
-
-private fun formatCloudSize(sizeBytes: Long?): String? {
-    val bytes = sizeBytes ?: return null
-    if (bytes <= 0L) return null
-    val gb = bytes / 1_000_000_000.0
-    return if (gb >= 1.0) {
-        String.format(java.util.Locale.US, "%.1f GB", gb)
-    } else {
-        val mb = bytes / 1_000_000.0
-        String.format(java.util.Locale.US, "%.0f MB", mb)
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun CloudFilePickerDialog(
-    item: CloudLibraryItem,
-    resolvingFileKey: String?,
-    onPlay: (CloudLibraryFile) -> Unit,
-    onDismiss: () -> Unit
-) {
-    NuvioDialog(
-        onDismiss = onDismiss,
-        title = stringResource(R.string.cloud_library_file_picker_title),
-        subtitle = item.name,
-        width = 860.dp,
-        suppressFirstKeyUp = false
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 420.dp),
-            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
-        ) {
-            items(item.playableFiles, key = { it.stableKey }) { file ->
-                val resolving = resolvingFileKey == "${item.stableKey}:${file.stableKey}"
-                Card(
-                    onClick = { if (!resolving) onPlay(file) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.colors(
-                        containerColor = NuvioTheme.colors.BackgroundCard,
-                        focusedContainerColor = NuvioTheme.colors.FocusBackground
-                    ),
-                    shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
-                    scale = CardDefaults.scale(focusedScale = 1f)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
-                    ) {
-                        Text(
-                            text = file.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = NuvioTheme.colors.TextPrimary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        formatCloudSize(file.sizeBytes)?.let { size ->
-                            Text(
-                                text = size,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = NuvioTheme.colors.TextSecondary
-                            )
-                        }
-                        Text(
-                            text = stringResource(R.string.cloud_library_play_file),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = NuvioTheme.colors.Primary
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable

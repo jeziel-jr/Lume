@@ -155,7 +155,6 @@ fun PlayerScreen(
     val progressBarFocusRequester = remember { FocusRequester() }
     val episodesFocusRequester = remember { FocusRequester() }
     val streamsFocusRequester = remember { FocusRequester() }
-    val sourceStreamsFocusRequester = remember { FocusRequester() }
     val skipIntroFocusRequester = remember { FocusRequester() }
     val streamInfoFocusRequester = remember { FocusRequester() }
     var skipButtonActuallyVisible by remember { mutableStateOf(false) }
@@ -233,12 +232,6 @@ fun PlayerScreen(
             viewModel.onEvent(PlayerEvent.OnHideSubtitleDelayOverlay)
         } else if (uiState.showSubtitleStylePanel) {
             viewModel.onEvent(PlayerEvent.OnDismissSubtitleStylePanel)
-        } else if (uiState.showSourcesPanel) {
-            if (uiState.currentStreamUrl.isNullOrBlank()) {
-                exitPlayer()
-            } else {
-                viewModel.onEvent(PlayerEvent.OnDismissSourcesPanel)
-            }
         } else if (uiState.showEpisodesPanel) {
             if (uiState.showEpisodeStreams) {
                 viewModel.onEvent(PlayerEvent.OnBackFromEpisodeStreams)
@@ -383,7 +376,6 @@ fun PlayerScreen(
     LaunchedEffect(
         uiState.showControls,
         uiState.showEpisodesPanel,
-        uiState.showSourcesPanel,
         uiState.showSubtitleStylePanel,
         uiState.showSubtitleDelayOverlay,
         uiState.showAudioOverlay,
@@ -392,7 +384,7 @@ fun PlayerScreen(
         shouldConfirmNextEpisodeOnEnd,
     ) {
         if (shouldConfirmNextEpisodeOnEnd) return@LaunchedEffect
-        if (uiState.showControls && !uiState.showEpisodesPanel && !uiState.showSourcesPanel &&
+        if (uiState.showControls && !uiState.showEpisodesPanel &&
             !uiState.showAudioOverlay && !uiState.showSubtitleOverlay &&
             !uiState.showSubtitleStylePanel && !uiState.showSubtitleDelayOverlay &&
             !uiState.showSpeedDialog
@@ -464,7 +456,6 @@ fun PlayerScreen(
                     viewModel.onEvent(PlayerEvent.OnHideSubtitleDelayOverlay)
                 } else if (
                     !uiState.showEpisodesPanel &&
-                    !uiState.showSourcesPanel &&
                     !uiState.showAudioOverlay &&
                     !uiState.showSubtitleOverlay &&
                     !uiState.showSubtitleStylePanel &&
@@ -493,7 +484,7 @@ fun PlayerScreen(
                 }
 
                 // When a side panel or dialog is open, let it handle all keys
-                val panelOrDialogOpen = uiState.showEpisodesPanel || uiState.showSourcesPanel ||
+                val panelOrDialogOpen = uiState.showEpisodesPanel ||
                         uiState.showAudioOverlay || uiState.showSubtitleOverlay ||
                         uiState.showSubtitleStylePanel || uiState.showSpeedDialog ||
                         uiState.showSubtitleDelayOverlay ||
@@ -647,7 +638,7 @@ fun PlayerScreen(
             backdropUrl = uiState.backdrop,
             logoUrl = uiState.logo,
             title = uiState.title,
-            message = uiState.loadingMessage.takeIf { uiState.showPlayerLoadingStatus || uiState.isTorrentStream },
+            message = uiState.loadingMessage.takeIf { uiState.showPlayerLoadingStatus },
             progress = uiState.loadingProgress,
             modifier = Modifier
                 .fillMaxSize()
@@ -680,29 +671,12 @@ fun PlayerScreen(
                 .zIndex(2.6f)
         )
 
-        // Torrent stats overlay (top-right corner)
-        TorrentOverlay(
-            visible = uiState.isTorrentStream && uiState.showTorrentStats && !uiState.hideTorrentStats && uiState.error == null,
-            downloadSpeed = uiState.torrentDownloadSpeed,
-            uploadSpeed = uiState.torrentUploadSpeed,
-            peers = uiState.torrentPeers,
-            seeds = uiState.torrentSeeds,
-            totalProgress = uiState.torrentTotalProgress,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = NuvioTheme.spacing.lg, end = NuvioTheme.spacing.lg)
-                .zIndex(2.7f)
-        )
-
         // Buffering indicator — isolated in its own composable scope so that
         // isBuffering state changes only recompose this small subtree instead
         // of the entire PlayerScreen.
         PlayerBufferingIndicator(
             isBuffering = uiState.isBuffering,
-            showLoadingOverlay = uiState.showLoadingOverlay,
-            isTorrentStream = uiState.isTorrentStream,
-            torrentBufferingMessage = uiState.torrentBufferingMessage,
-            torrentBufferingProgress = uiState.torrentBufferingProgress
+            showLoadingOverlay = uiState.showLoadingOverlay
         )
 
         // Error state
@@ -760,7 +734,6 @@ fun PlayerScreen(
                     !uiState.showPauseOverlay &&
                     !uiState.showStreamInfoOverlay &&
                     !uiState.showEpisodesPanel &&
-                    !uiState.showSourcesPanel &&
                     !uiState.showAudioOverlay &&
                     !uiState.showSubtitleOverlay &&
                     !uiState.showSubtitleStylePanel &&
@@ -797,7 +770,6 @@ fun PlayerScreen(
             !uiState.showLoadingOverlay &&
             !uiState.showPauseOverlay &&
             !uiState.showEpisodesPanel &&
-            !uiState.showSourcesPanel &&
             !uiState.showAudioOverlay &&
             !uiState.showSubtitleOverlay &&
             !uiState.showSubtitleStylePanel &&
@@ -829,7 +801,6 @@ fun PlayerScreen(
                 !uiState.showSubtitleStylePanel &&
                 !uiState.showSubtitleDelayOverlay &&
                 !uiState.showEpisodesPanel &&
-                !uiState.showSourcesPanel &&
                 !uiState.showAudioOverlay &&
                 !uiState.showSubtitleOverlay &&
                 !uiState.showSpeedDialog &&
@@ -857,7 +828,6 @@ fun PlayerScreen(
                 onSeekBackward = { viewModel.onEvent(PlayerEvent.OnSeekBackward) },
                 onSeekTo = { viewModel.onEvent(PlayerEvent.OnSeekTo(it)) },
                 onShowEpisodesPanel = { viewModel.onEvent(PlayerEvent.OnShowEpisodesPanel) },
-                onShowSourcesPanel = { viewModel.onEvent(PlayerEvent.OnShowSourcesPanel) },
                 onShowAudioDialog = { viewModel.onEvent(PlayerEvent.OnShowAudioOverlay) },
                 onShowSubtitleDialog = { viewModel.onEvent(PlayerEvent.OnShowSubtitleOverlay) },
                 onShowSpeedDialog = { viewModel.onEvent(PlayerEvent.OnShowSpeedDialog) },
@@ -946,7 +916,6 @@ fun PlayerScreen(
                 !uiState.showPauseOverlay &&
                 !uiState.showSubtitleStylePanel &&
                 !uiState.showEpisodesPanel &&
-                !uiState.showSourcesPanel &&
                 !uiState.showAudioOverlay &&
                 !uiState.showSubtitleOverlay &&
                 !uiState.showSpeedDialog,
@@ -1012,50 +981,6 @@ fun PlayerScreen(
                     onAddonFilterSelected = { viewModel.onEvent(PlayerEvent.OnEpisodeAddonFilterSelected(it)) },
                     onEpisodeSelected = { viewModel.onEvent(PlayerEvent.OnEpisodeSelected(it)) },
                     onStreamSelected = { viewModel.onEvent(PlayerEvent.OnEpisodeStreamSelected(it)) },
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                )
-            }
-        }
-
-        // Sources panel scrim
-        AnimatedVisibility(
-            visible = uiState.showSourcesPanel && uiState.error == null,
-            enter = fadeIn(animationSpec = tween(120)),
-            exit = fadeOut(animationSpec = tween(120))
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.45f))
-            )
-        }
-
-        // Sources panel (slides in from right)
-        AnimatedVisibility(
-            visible = uiState.showSourcesPanel && uiState.error == null,
-            enter = slideInHorizontally(
-                animationSpec = tween(220),
-                initialOffsetX = { it }
-            ),
-            exit = slideOutHorizontally(
-                animationSpec = tween(220),
-                targetOffsetX = { it }
-            )
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                StreamSourcesSidePanel(
-                    uiState = uiState,
-                    streamsFocusRequester = sourceStreamsFocusRequester,
-                    onClose = {
-                        if (uiState.currentStreamUrl.isNullOrBlank()) {
-                            exitPlayer()
-                        } else {
-                            viewModel.onEvent(PlayerEvent.OnDismissSourcesPanel)
-                        }
-                    },
-                    onReload = { viewModel.onEvent(PlayerEvent.OnReloadSourceStreams) },
-                    onAddonFilterSelected = { viewModel.onEvent(PlayerEvent.OnSourceAddonFilterSelected(it)) },
-                    onStreamSelected = { viewModel.onEvent(PlayerEvent.OnSourceStreamSelected(it)) },
                     modifier = Modifier.align(Alignment.CenterEnd)
                 )
             }
@@ -1455,7 +1380,6 @@ private fun PlayerControlsOverlay(
     onSeekBackward: () -> Unit,
     onSeekTo: (Long) -> Unit,
     onShowEpisodesPanel: () -> Unit,
-    onShowSourcesPanel: () -> Unit,
     onShowAudioDialog: () -> Unit,
     onShowSubtitleDialog: () -> Unit,
     onShowSpeedDialog: () -> Unit,
@@ -1674,16 +1598,6 @@ private fun PlayerControlsOverlay(
                             onFocused = onResetHideTimer
                         )
                     }
-
-                    ControlButton(
-                        icon = Icons.Default.SwapHoriz,
-                        iconPainter = customSourcePainter,
-                        contentDescription = stringResource(R.string.cd_sources),
-                        onClick = onShowSourcesPanel,
-                        upFocusRequester = progressBarFocusRequester,
-                        onDownKey = onHideControls,
-                        onFocused = onResetHideTimer
-                    )
 
                     ControlButton(
                         icon = Icons.Default.SwapHoriz,
@@ -2684,10 +2598,7 @@ private fun formatSubtitleDelay(delayMs: Int): String {
 @Composable
 private fun PlayerBufferingIndicator(
     isBuffering: Boolean,
-    showLoadingOverlay: Boolean,
-    isTorrentStream: Boolean,
-    torrentBufferingMessage: String?,
-    torrentBufferingProgress: Float
+    showLoadingOverlay: Boolean
 ) {
     if (!isBuffering || showLoadingOverlay) return
 
@@ -2695,44 +2606,7 @@ private fun PlayerBufferingIndicator(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        if (isTorrentStream && torrentBufferingMessage != null) {
-            // Torrent rebuffer: spinner + download stats + progress bar
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                LoadingIndicator()
-                Spacer(modifier = Modifier.height(NuvioTheme.spacing.md))
-                Text(
-                    text = torrentBufferingMessage,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-                if (torrentBufferingProgress > 0f) {
-                    Spacer(modifier = Modifier.height(NuvioTheme.spacing.sm))
-                    Box(
-                        modifier = Modifier
-                            .width(200.dp)
-                            .height(3.dp)
-                            .background(
-                                color = Color.White.copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(NuvioTheme.radii.xxs)
-                            )
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(torrentBufferingProgress.coerceIn(0f, 1f))
-                                .height(3.dp)
-                                .background(
-                                    color = Color.White.copy(alpha = 0.85f),
-                                    shape = RoundedCornerShape(NuvioTheme.radii.xxs)
-                                )
-                        )
-                    }
-                }
-            }
-        } else {
-            LoadingIndicator()
-        }
+        LoadingIndicator()
     }
 }
 

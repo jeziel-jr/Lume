@@ -11,10 +11,7 @@ import com.nuvio.tv.data.remote.api.AnimeSkipApi
 import com.nuvio.tv.data.remote.api.ArmApi
 import com.nuvio.tv.data.remote.api.GitHubReleaseApi
 import com.nuvio.tv.data.remote.api.IntroDbApi
-import com.nuvio.tv.data.remote.api.PremiumizeApi
-import com.nuvio.tv.data.remote.api.RealDebridApi
 import com.nuvio.tv.data.remote.api.TmdbApi
-import com.nuvio.tv.data.remote.api.TorboxApi
 import com.nuvio.tv.data.remote.api.TrailerApi
 import com.nuvio.tv.data.xtream.XtreamCatalogRepository
 import com.nuvio.tv.data.xtream.XtreamCredentialsStore
@@ -147,25 +144,6 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @Named("directDebrid")
-    fun provideDirectDebridOkHttpClient(): OkHttpClient =
-        OkHttpClient.Builder()
-            .dns(IPv4FirstDns())
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .addInterceptor { chain ->
-                val version = BuildConfig.VERSION_NAME.ifBlank { "dev" }
-                val request = chain.request().newBuilder()
-                    .header("User-Agent", "Nuvio/$version")
-                    .header("Accept-Language", buildAcceptLanguageHeader())
-                    .build()
-                chain.proceed(request)
-            }
-            .addInterceptor(SentryNetworkBreadcrumbInterceptor())
-            .build()
-
-    @Provides
-    @Singleton
     @Named("tmdb")
     fun provideTmdbOkHttpClient(okHttpClient: OkHttpClient): OkHttpClient =
         okHttpClient.newBuilder()
@@ -190,62 +168,6 @@ object NetworkModule {
     @Singleton
     fun provideTmdbApi(@Named("tmdb") retrofit: Retrofit): TmdbApi =
         retrofit.create(TmdbApi::class.java)
-
-    // --- Debrid APIs ---
-
-    @Provides
-    @Singleton
-    @Named("torbox")
-    fun provideTorboxRetrofit(
-        @Named("directDebrid") okHttpClient: OkHttpClient,
-        moshi: Moshi
-    ): Retrofit =
-        Retrofit.Builder()
-            .baseUrl("https://api.torbox.app/")
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-
-    @Provides
-    @Singleton
-    fun provideTorboxApi(@Named("torbox") retrofit: Retrofit): TorboxApi =
-        retrofit.create(TorboxApi::class.java)
-
-    @Provides
-    @Singleton
-    @Named("realdebrid")
-    fun provideRealDebridRetrofit(
-        @Named("directDebrid") okHttpClient: OkHttpClient,
-        moshi: Moshi
-    ): Retrofit =
-        Retrofit.Builder()
-            .baseUrl("https://api.real-debrid.com/rest/1.0/")
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-
-    @Provides
-    @Singleton
-    fun provideRealDebridApi(@Named("realdebrid") retrofit: Retrofit): RealDebridApi =
-        retrofit.create(RealDebridApi::class.java)
-
-    @Provides
-    @Singleton
-    @Named("premiumize")
-    fun providePremiumizeRetrofit(
-        @Named("directDebrid") okHttpClient: OkHttpClient,
-        moshi: Moshi
-    ): Retrofit =
-        Retrofit.Builder()
-            .baseUrl("https://www.premiumize.me/")
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-
-    @Provides
-    @Singleton
-    fun providePremiumizeApi(@Named("premiumize") retrofit: Retrofit): PremiumizeApi =
-        retrofit.create(PremiumizeApi::class.java)
 
     // --- Skip Intro APIs ---
 

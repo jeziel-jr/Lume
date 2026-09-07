@@ -5,7 +5,6 @@ import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.data.local.StreamAutoPlaySource
 import com.nuvio.tv.domain.model.AddonStreams
 import com.nuvio.tv.domain.model.Stream
-import com.nuvio.tv.domain.model.StreamDebridCacheState
 
 object StreamAutoPlaySelector {
     fun orderAddonStreams(
@@ -21,26 +20,16 @@ object StreamAutoPlaySelector {
             }
         }
 
-        val (directDebridEntries, remainingEntries) = streams.partition {
-            it.streams.any { stream -> stream.isDirectDebrid() }
-        }
-        if (installedOrder.isEmpty()) return directDebridEntries + remainingEntries
-        val (addonEntries, pluginEntries) = remainingEntries.partition { it.addonName in addonRankByName }
+        if (installedOrder.isEmpty()) return streams
+        val (addonEntries, pluginEntries) = streams.partition { it.addonName in addonRankByName }
         val orderedAddons = addonEntries.sortedBy { addonRankByName.getValue(it.addonName) }
-        return directDebridEntries + orderedAddons + pluginEntries
+        return orderedAddons + pluginEntries
     }
 
     private fun isPlayable(stream: Stream): Boolean {
         // External URL streams (e.g. error pages, web links) are not playable.
         if (stream.isExternal()) return false
-        when (stream.debridCacheStatus?.state) {
-            StreamDebridCacheState.CHECKING,
-            StreamDebridCacheState.NOT_CACHED,
-            StreamDebridCacheState.UNKNOWN -> return false
-            StreamDebridCacheState.CACHED,
-            null -> Unit
-        }
-        return stream.getStreamUrl() != null || stream.isTorrent() || stream.isDirectDebrid()
+        return stream.getStreamUrl() != null
     }
 
 
@@ -129,7 +118,6 @@ object StreamAutoPlaySelector {
                         append(stream.title.orEmpty()).append(' ')
                         append(stream.description.orEmpty()).append(' ')
                         append(stream.getStreamUrl().orEmpty())
-                        if (stream.isTorrent()) append(' ').append(stream.infoHash.orEmpty())
                     }
 
                     // Must match include pattern

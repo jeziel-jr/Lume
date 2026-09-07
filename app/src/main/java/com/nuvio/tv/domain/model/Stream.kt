@@ -1,7 +1,6 @@
 package com.nuvio.tv.domain.model
 
 import androidx.compose.runtime.Immutable
-import com.nuvio.tv.core.debrid.DebridProviders
 
 /**
  * Represents a stream source from a Stremio addon
@@ -31,73 +30,7 @@ data class Stream(
      */
     fun getStreamUrl(): String? =
         listOfNotNull(url, externalUrl)
-            .firstOrNull { !it.isMagnetLink() && !it.isTorrentUrl() }
-
-    fun torrentMagnetUri(): String? =
-        listOfNotNull(url, externalUrl)
-            .firstOrNull { it.isMagnetLink() }
-
-    /**
-     * Returns true if this is a torrent-only stream (no HTTP URL available).
-     * When both infoHash and url are present (e.g. debrid cached torrents),
-     * the HTTP url is preferred and this returns false.
-     */
-    fun isTorrent(): Boolean =
-        !isDirectDebrid() &&
-            getStreamUrl().isNullOrBlank() &&
-            (!infoHash.isNullOrBlank() || !torrentMagnetUri().isNullOrBlank() || hasTorrentUrl())
-
-    fun needsLocalDebridResolve(): Boolean =
-        isTorrent() && getStreamUrl().isNullOrBlank()
-
-    fun getEffectiveInfoHash(): String? =
-        infoHash?.takeIf { it.isNotBlank() }
-            ?: clientResolve?.infoHash?.takeIf { it.isNotBlank() }
-            ?: url?.let { extractInfoHashFromTorrentUrl(it) ?: extractInfoHashFromMagnetLink(it) }
-            ?: externalUrl?.let { extractInfoHashFromTorrentUrl(it) ?: extractInfoHashFromMagnetLink(it) }
-
-    fun getEffectiveFileIdx(): Int? =
-        fileIdx ?: clientResolve?.fileIdx
-            ?: url?.let { extractFileIdxFromTorrentUrl(it) } ?: externalUrl?.let { extractFileIdxFromTorrentUrl(it) }
-
-    private fun String.isTorrentUrl(): Boolean =
-        this.trimStart().startsWith("torrent:", ignoreCase = true)
-
-    private fun hasTorrentUrl(): Boolean =
-        url?.isTorrentUrl() == true || externalUrl?.isTorrentUrl() == true
-
-    private fun extractInfoHashFromTorrentUrl(url: String): String? {
-        if (!url.startsWith("torrent:", ignoreCase = true)) return null
-        val clean = url.substringAfter("torrent://").substringAfter("torrent:")
-            .substringBefore('?')
-            .trimEnd('/')
-        val hash = clean.substringBefore('/')
-        return hash.takeIf { it.length == 40 || it.length == 32 }
-    }
-
-    private fun extractInfoHashFromMagnetLink(url: String): String? {
-        if (!url.startsWith("magnet:", ignoreCase = true)) return null
-        val btih = url.substringAfter("urn:btih:", "")
-        if (btih.isBlank()) return null
-        val hash = btih.substringBefore('&').substringBefore('?')
-        return hash.takeIf { it.length == 40 || it.length == 32 }
-    }
-
-    private fun extractFileIdxFromTorrentUrl(url: String): Int? {
-        if (!url.startsWith("torrent:", ignoreCase = true)) return null
-        val clean = url.substringAfter("torrent://").substringAfter("torrent:")
-            .substringBefore('?')
-            .trimEnd('/')
-        val idxStr = clean.substringAfter('/', "").substringBefore('/')
-        return idxStr.toIntOrNull()
-    }
-
-    fun isDirectDebrid(): Boolean {
-        val resolve = clientResolve ?: return false
-        return resolve.type.equals("debrid", ignoreCase = true) &&
-            DebridProviders.isSupported(resolve.service) &&
-            resolve.isCached == true
-    }
+            .firstOrNull { url -> !url.isMagnetLink() && !url.trimStart().startsWith("torrent:", ignoreCase = true) }
 
     /**
      * Returns true if this is a YouTube stream
@@ -136,7 +69,7 @@ data class Stream(
         append('\u0000')
         append(url ?: infoHash ?: clientResolve?.infoHash ?: ytId ?: externalUrl ?: "")
         append('\u0000')
-        append(getEffectiveFileIdx() ?: "")
+        append(fileIdx ?: clientResolve?.fileIdx ?: "")
         append('\u0000')
         append(name ?: "")
         append('\u0000')

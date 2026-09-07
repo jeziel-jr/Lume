@@ -61,8 +61,6 @@ data class PlayerUiState(
     val contentType: String? = null,
     val currentStreamName: String? = null, // Name of the current stream source
     val currentStreamUrl: String? = null,
-    val currentStreamInfoHash: String? = null, // InfoHash of the currently playing stream (for debrid matching)
-    val currentStreamFileIdx: Int? = null, // FileIdx of the currently playing stream (for debrid matching)
     val currentStreamAddonName: String? = null, // Addon name of the currently playing stream
     val backdrop: String? = null,
     val logo: String? = null,
@@ -125,15 +123,6 @@ data class PlayerUiState(
     val episodeStreamsSeason: Int? = null,
     val episodeStreamsEpisode: Int? = null,
     val episodeStreamsTitle: String? = null,
-    // Stream sources side panel (for switching streams during playback)
-    val showSourcesPanel: Boolean = false,
-    val isLoadingSourceStreams: Boolean = false,
-    val sourceStreamsError: String? = null,
-    val sourceAllStreams: List<Stream> = emptyList(),
-    val sourceSelectedAddonFilter: String? = null, // null means "All"
-    val sourceFilteredStreams: List<Stream> = emptyList(),
-    val sourceAvailableAddons: List<String> = emptyList(),
-    val sourceChips: List<SourceChipItem> = emptyList(),
     val showFileSizeBadges: Boolean = true,
     val showAddonLogo: Boolean = true,
     val streamBadgePlacement: StreamBadgePlacement = StreamBadgePlacement.BOTTOM,
@@ -175,22 +164,7 @@ data class PlayerUiState(
     val aspectRatioIndicatorText: String = "",
     // Stream info overlay
     val showStreamInfoOverlay: Boolean = false,
-    val streamInfoData: StreamInfoData? = null,
-    // Torrent streaming state
-    val isTorrentStream: Boolean = false,
-    val torrentDownloadSpeed: Long = 0L,
-    val torrentUploadSpeed: Long = 0L,
-    val torrentPeers: Int = 0,
-    val torrentSeeds: Int = 0,
-    val torrentBufferProgress: Float = 0f,
-    val torrentTotalProgress: Float = 0f,
-    val showTorrentStats: Boolean = false,
-    // Torrent mid-playback rebuffering (shown on the buffering spinner, not loading overlay)
-    val torrentBufferingMessage: String? = null,
-    val torrentBufferingProgress: Float = 0f,
-    // When true, suppress all torrent stats text (buffer, seeds, peers, speed)
-    // from loading overlay, rebuffering indicator, and corner overlay.
-    val hideTorrentStats: Boolean = true
+    val streamInfoData: StreamInfoData? = null
 )
 
 data class PlaybackTimelineState(
@@ -260,11 +234,6 @@ sealed class PlayerEvent {
     data object OnReloadEpisodeStreams : PlayerEvent()
     data class OnEpisodeAddonFilterSelected(val addonName: String?) : PlayerEvent()
     data class OnEpisodeStreamSelected(val stream: Stream) : PlayerEvent()
-    data object OnShowSourcesPanel : PlayerEvent()
-    data object OnDismissSourcesPanel : PlayerEvent()
-    data object OnReloadSourceStreams : PlayerEvent()
-    data class OnSourceAddonFilterSelected(val addonName: String?) : PlayerEvent()
-    data class OnSourceStreamSelected(val stream: Stream) : PlayerEvent()
     data object OnDismissTransientOverlay : PlayerEvent()
     data object OnRetry : PlayerEvent()
     data class OnShowDisplayModeInfo(val info: DisplayModeInfo) : PlayerEvent()
@@ -289,7 +258,6 @@ sealed class PlayerEvent {
     data object OnSwitchInternalPlayerEngine : PlayerEvent()
     data object OnShowStreamInfo : PlayerEvent()
     data object OnDismissStreamInfo : PlayerEvent()
-    data object OnToggleTorrentStats : PlayerEvent()
 }
 
 data class DisplayModeInfo(

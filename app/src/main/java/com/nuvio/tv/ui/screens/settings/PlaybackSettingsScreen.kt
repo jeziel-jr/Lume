@@ -83,7 +83,6 @@ import com.nuvio.tv.data.local.Dv7HandlingMode
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.displayName
 import com.nuvio.tv.ui.components.NuvioDialog
-import com.nuvio.tv.ui.components.P2pConsentDialog
 import com.nuvio.tv.ui.screens.detail.requestFocusAfterFrames
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.PlayCircle
@@ -115,9 +114,6 @@ fun PlaybackSettingsContent(
     initialFocusRequester: FocusRequester? = null
 ) {
     val playerSettings by viewModel.playerSettings.collectAsStateWithLifecycle(initialValue = PlayerSettings())
-    val torrentSettings by viewModel.torrentSettingsFlow.collectAsStateWithLifecycle(
-        initialValue = com.nuvio.tv.core.torrent.TorrentSettingsData()
-    )
     val coroutineScope = rememberCoroutineScope()
     var memoryUsageTrigger by remember { mutableStateOf(0) }
     var showMemoryUsage by remember { mutableStateOf(false) }
@@ -142,7 +138,6 @@ fun PlaybackSettingsContent(
     var showReuseLastLinkCacheDialog by remember { mutableStateOf(false) }
     var showPlayerPreferenceDialog by remember { mutableStateOf(false) }
     var showInternalPlayerEngineDialog by remember { mutableStateOf(false) }
-    var showP2pConsentDialog by remember { mutableStateOf(false) }
 
     fun dismissAllDialogs() {
         showLanguageDialog = false
@@ -164,7 +159,6 @@ fun PlaybackSettingsContent(
         showReuseLastLinkCacheDialog = false
         showPlayerPreferenceDialog = false
         showInternalPlayerEngineDialog = false
-        showP2pConsentDialog = false
     }
 
     fun openDialog(setter: () -> Unit) {
@@ -318,16 +312,6 @@ fun PlaybackSettingsContent(
                 onSetSubtitleOutlineEnabled = { enabled -> coroutineScope.launch { viewModel.setSubtitleOutlineEnabled(enabled) } },
                 onSetUseLibass = { enabled -> coroutineScope.launch { viewModel.setUseLibass(enabled) } },
                 onSetLibassRenderType = { renderType -> coroutineScope.launch { viewModel.setLibassRenderType(renderType) } },
-                p2pEnabled = torrentSettings.p2pEnabled,
-                onSetP2pEnabled = { enabled ->
-                    if (enabled && !torrentSettings.p2pEnabled) {
-                        openDialog { showP2pConsentDialog = true }
-                    } else {
-                        viewModel.setP2pEnabled(enabled)
-                    }
-                },
-                hideTorrentStats = torrentSettings.hideTorrentStats,
-                onSetHideTorrentStats = { enabled -> viewModel.setHideTorrentStats(enabled) },
                 onSetUseParallelConnections = { enabled ->
                     coroutineScope.launch { viewModel.setUseParallelConnections(enabled) }
                     memoryUsageTrigger++
@@ -558,18 +542,7 @@ fun PlaybackSettingsContent(
         onDismissNextEpisodeThresholdModeDialog = ::dismissAllDialogs,
         onDismissReuseLastLinkCacheDialog = ::dismissAllDialogs
     )
-
-    if (showP2pConsentDialog) {
-        P2pConsentDialog(
-            onEnableP2p = {
-                viewModel.setP2pEnabled(true)
-                showP2pConsentDialog = false
-            },
-            onDismiss = { showP2pConsentDialog = false }
-        )
-    }
 }
-
 @Composable
 internal fun ToggleSettingsItem(
     icon: ImageVector,

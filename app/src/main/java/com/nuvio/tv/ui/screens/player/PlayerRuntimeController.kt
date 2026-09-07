@@ -12,9 +12,6 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer
 import com.nuvio.tv.core.player.BitrateAwareLoadControl
-import com.nuvio.tv.core.debrid.DirectDebridResolver
-import com.nuvio.tv.core.debrid.DirectDebridStreamPreparer
-import com.nuvio.tv.core.torrent.TorrentService
 import com.nuvio.tv.data.local.AutoSkipSegmentType
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.MpvHardwareDecodeMode
@@ -62,13 +59,9 @@ class PlayerRuntimeController(
     internal val watchedItemsPreferences: com.nuvio.tv.data.local.WatchedItemsPreferences,
     internal val trackPreferenceDataStore: com.nuvio.tv.data.local.TrackPreferenceDataStore,
     internal val audioDelayRouteDataStore: AudioDelayRouteDataStore,
-    internal val torrentService: TorrentService,
-    internal val torrentSettings: com.nuvio.tv.core.torrent.TorrentSettings,
     internal val tmdbService: com.nuvio.tv.core.tmdb.TmdbService,
     internal val tmdbMetadataService: com.nuvio.tv.core.tmdb.TmdbMetadataService,
     internal val tmdbSettingsDataStore: com.nuvio.tv.data.local.TmdbSettingsDataStore,
-    internal val directDebridResolver: DirectDebridResolver,
-    internal val directDebridStreamPreparer: DirectDebridStreamPreparer,
     internal val streamBadgePresentation: com.nuvio.tv.core.streams.StreamBadgePresentation,
     internal val xtreamServerHealthMonitor: XtreamServerHealthMonitor,
     savedStateHandle: SavedStateHandle,
@@ -194,8 +187,6 @@ class PlayerRuntimeController(
             contentName = contentName,
             currentStreamName = streamName,
             currentStreamUrl = currentStreamUrl,
-            currentStreamInfoHash = navigationArgs.infoHash,
-            currentStreamFileIdx = navigationArgs.fileIdx,
             currentStreamAddonName = navigationArgs.addonName,
             releaseYear = year,
             contentType = contentType,
@@ -267,11 +258,8 @@ class PlayerRuntimeController(
     internal var hidePlayerEngineSwitchInfoJob: Job? = null
     internal var hideSubtitleDelayOverlayJob: Job? = null
     internal var nextEpisodeAutoPlayJob: Job? = null
-    internal var debridResolveJob: Job? = null
     internal var stillWatchingPromptJob: Job? = null
     internal var sourceStreamsJob: Job? = null
-    internal var sourceBadgeJob: Job? = null
-    internal var sourceBadgedAddonNames: Set<String> = emptySet()
     internal var sourceStreamsScope: kotlinx.coroutines.CoroutineScope? = null
     internal var episodeStreamsScope: kotlinx.coroutines.CoroutineScope? = null
     internal var episodeBadgeJob: Job? = null
@@ -439,21 +427,6 @@ class PlayerRuntimeController(
     internal var libassPipelineSwitchInFlight: Boolean = false
     internal var hasDetectedAssSsaTrackForCurrentStream: Boolean = false
     internal var libassPipelineDecisionStreamUrl: String? = null
-    internal var torrentStreamJob: Job? = null
-    internal var torrentStateObserverJob: Job? = null
-    internal var isTorrentStream: Boolean = navigationArgs.infoHash != null && !initialStreamUrl.startsWith("http")
-    internal var currentInfoHash: String? = navigationArgs.infoHash
-    internal var currentFileIdx: Int? = navigationArgs.fileIdx
-    internal var currentTorrentSources: List<String>? =
-        navigationArgs.sourcesJson?.let { raw ->
-            runCatching {
-                val arr = org.json.JSONArray(raw)
-                (0 until arr.length()).mapNotNull { i ->
-                    arr.optString(i).takeIf { s -> s.isNotEmpty() }
-                }
-            }.getOrNull()?.takeIf { it.isNotEmpty() }
-        }
-
     internal var currentStreamHasVideoTrack: Boolean = false
     internal var currentVideoTrackIsLikelyVc1: Boolean = false
     internal var currentVideoTrackMimeType: String? = null
@@ -485,17 +458,8 @@ class PlayerRuntimeController(
         fetchMetaDetails(contentId, contentType)
         observeBlurUnwatchedEpisodes()
         observeEpisodeWatchProgress()
-        observeTorrentSettings()
         observeStreamBadgeSettings()
         observeDeviceLocalAspectMode()
-    }
-
-    private fun observeTorrentSettings() {
-        scope.launch {
-            torrentSettings.settings.collect { settings ->
-                _uiState.update { it.copy(hideTorrentStats = settings.hideTorrentStats) }
-            }
-        }
     }
 
     private fun observeStreamBadgeSettings() {
@@ -514,7 +478,6 @@ class PlayerRuntimeController(
 
     fun onCleared() {
         releasePlayer()
-        stopTorrentStream()
         vodTelemetryJob?.cancel()
         mediaSourceFactory.shutdown()
         sourceChipErrorDismissJob?.cancel()

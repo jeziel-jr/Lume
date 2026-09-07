@@ -102,7 +102,6 @@ internal enum class SettingsCategory {
 }
 
 private enum class IntegrationSettingsSection {
-    Debrid,
     AnimeSkip
 }
 
@@ -283,7 +282,6 @@ fun SettingsScreen(
         )
     }
     val railContainerFocusRequester = remember { FocusRequester() }
-    val integrationDebridFocusRequester = remember { FocusRequester() }
     val integrationAnimeSkipFocusRequester = remember { FocusRequester() }
     var integrationSection by remember { mutableStateOf<IntegrationSettingsSection?>(null) }
     var pendingContentFocusCategory by remember { mutableStateOf<SettingsCategory?>(null) }
@@ -510,7 +508,6 @@ fun SettingsScreen(
                                 experienceModeViewModel = experienceModeViewModel,
                                 integrationSection = integrationSection,
                                 onSelectIntegrationSection = { integrationSection = it },
-                                integrationDebridFocusRequester = integrationDebridFocusRequester,
                                 integrationAnimeSkipFocusRequester = integrationAnimeSkipFocusRequester,
                                 onNavigateToXtreamSetup = onNavigateToXtreamSetup,
                                 onNavigateToTmdbSettings = onNavigateToTmdbSettings
@@ -652,7 +649,6 @@ fun SettingsScreen(
                         experienceModeViewModel = experienceModeViewModel,
                         integrationSection = integrationSection,
                         onSelectIntegrationSection = { integrationSection = it },
-                        integrationDebridFocusRequester = integrationDebridFocusRequester,
                         integrationAnimeSkipFocusRequester = integrationAnimeSkipFocusRequester,
                         onNavigateToXtreamSetup = onNavigateToXtreamSetup,
                         onNavigateToTmdbSettings = onNavigateToTmdbSettings
@@ -672,7 +668,6 @@ private fun SettingsDetailPane(
     experienceModeViewModel: ExperienceModeSettingsViewModel,
     integrationSection: IntegrationSettingsSection?,
     onSelectIntegrationSection: (IntegrationSettingsSection?) -> Unit,
-    integrationDebridFocusRequester: FocusRequester,
     integrationAnimeSkipFocusRequester: FocusRequester,
     onNavigateToXtreamSetup: () -> Unit,
     onNavigateToTmdbSettings: () -> Unit
@@ -715,7 +710,6 @@ private fun SettingsDetailPane(
             } else {
                 null
             },
-            debridFocusRequester = integrationDebridFocusRequester,
             animeSkipFocusRequester = integrationAnimeSkipFocusRequester,
             onNavigateToTmdbSettings = onNavigateToTmdbSettings,
             onNavigateToXtreamSetup = onNavigateToXtreamSetup,
@@ -778,7 +772,6 @@ private fun IntegrationSettingsContent(
     selectedSection: IntegrationSettingsSection?,
     onSelectSection: (IntegrationSettingsSection?) -> Unit,
     initialFocusRequester: FocusRequester?,
-    debridFocusRequester: FocusRequester,
     animeSkipFocusRequester: FocusRequester,
     onNavigateToTmdbSettings: () -> Unit,
     onNavigateToXtreamSetup: () -> Unit,
@@ -793,7 +786,6 @@ private fun IntegrationSettingsContent(
         if (!autoFocusEnabled) return@LaunchedEffect
         val requester = when (selectedSection) {
             null -> landingEntryFocusRequester
-            IntegrationSettingsSection.Debrid -> debridFocusRequester
             IntegrationSettingsSection.AnimeSkip -> animeSkipFocusRequester
         }
         runCatching { requester.requestFocus() }
@@ -821,14 +813,6 @@ private fun IntegrationSettingsContent(
                             state = integrationListState,
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            item(key = "integration_debrid") {
-                                SettingsActionRow(
-                                    title = stringResource(R.string.debrid_title),
-                                    subtitle = stringResource(R.string.settings_debrid_subtitle),
-                                    onClick = { onSelectSection(IntegrationSettingsSection.Debrid) },
-                                    modifier = Modifier.focusRequester(landingEntryFocusRequester)
-                                )
-                            }
                             item(key = "integration_tmdb") {
                                 SettingsActionRow(
                                     title = "TMDB",
@@ -855,12 +839,6 @@ private fun IntegrationSettingsContent(
                     }
                 }
             }
-        }
-
-        IntegrationSettingsSection.Debrid -> {
-            DebridSettingsContent(
-                initialFocusRequester = debridFocusRequester
-            )
         }
 
         IntegrationSettingsSection.AnimeSkip -> {

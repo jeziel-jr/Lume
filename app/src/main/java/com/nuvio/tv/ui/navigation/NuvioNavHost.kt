@@ -506,7 +506,6 @@ fun NuvioNavHost(
                 },
                 onStreamSelected = { playbackInfo ->
                     val streamUrl = playbackInfo.url
-                        ?: if (playbackInfo.isTorrent) "torrent://${playbackInfo.infoHash}" else null
                     streamUrl?.let { url ->
                         navController.navigate(
                             Screen.Player.createRoute(
@@ -536,9 +535,6 @@ fun NuvioNavHost(
                                 addonName = playbackInfo.addonName,
                                 addonLogo = playbackInfo.addonLogo,
                                 streamDescription = playbackInfo.streamDescription,
-                                infoHash = playbackInfo.infoHash,
-                                fileIdx = playbackInfo.fileIdx,
-                                sources = playbackInfo.sources,
                                 contentLanguage = playbackInfo.contentLanguage
                             )
                         )
@@ -546,7 +542,6 @@ fun NuvioNavHost(
                 },
                 onAutoPlayResolved = { playbackInfo ->
                     val autoPlayUrl = playbackInfo.url
-                        ?: if (playbackInfo.isTorrent) "torrent://${playbackInfo.infoHash}" else null
                     autoPlayUrl?.let { url ->
                         navController.navigate(
                             Screen.Player.createRoute(
@@ -576,9 +571,6 @@ fun NuvioNavHost(
                                 addonName = playbackInfo.addonName,
                                 addonLogo = playbackInfo.addonLogo,
                                 streamDescription = playbackInfo.streamDescription,
-                                infoHash = playbackInfo.infoHash,
-                                fileIdx = playbackInfo.fileIdx,
-                                sources = playbackInfo.sources,
                                 contentLanguage = playbackInfo.contentLanguage
                             )
                         ) {
@@ -1033,23 +1025,6 @@ fun NuvioNavHost(
                             itemId = itemId,
                             itemType = itemType,
                             addonBaseUrl = addonBaseUrl
-                        )
-                    )
-                },
-                onCloudPlaybackResolved = { info ->
-                    val filename = info.filename ?: info.file.name
-                    navController.navigate(
-                        Screen.Player.createRoute(
-                            streamUrl = info.url,
-                            title = filename,
-                            streamName = filename,
-                            contentType = "cloud",
-                            contentName = info.item.name,
-                            videoId = "${info.item.stableKey}:${info.file.stableKey}",
-                            filename = filename,
-                            videoSize = info.videoSizeBytes,
-                            addonName = info.item.providerName,
-                            streamDescription = info.item.name
                         )
                     )
                 }

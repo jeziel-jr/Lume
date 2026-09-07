@@ -6,14 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.debrid.DebridStreamPresentation
-import com.nuvio.tv.core.debrid.DirectDebridResolveResult
-import com.nuvio.tv.core.debrid.DirectDebridResolver
-import com.nuvio.tv.core.debrid.DirectDebridStreamPreparer
 import com.nuvio.tv.core.network.NetworkResult
-import com.nuvio.tv.core.torrent.TorrentSettings
-import com.nuvio.tv.core.torrent.TorrentService
-import com.nuvio.tv.core.torrent.TorrentState
 import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
 import com.nuvio.tv.core.streams.StreamBadgePresentation
@@ -27,7 +20,6 @@ import com.nuvio.tv.data.local.BingeGroupCacheDataStore
 import com.nuvio.tv.domain.model.AddonStreams
 import com.nuvio.tv.domain.model.Stream
 import com.nuvio.tv.domain.model.WatchProgress
-import com.nuvio.tv.domain.model.StreamDebridCacheState
 import com.nuvio.tv.domain.repository.StreamRepository
 import com.nuvio.tv.domain.repository.WatchProgressRepository
 import com.nuvio.tv.ui.components.SourceChipItem
@@ -62,19 +54,13 @@ class StreamScreenViewModel @Inject constructor(
     private val streamBadgePresentation: StreamBadgePresentation,
     streamBadgeSettingsDataStore: StreamBadgeSettingsDataStore,
     private val bingeGroupCacheDataStore: BingeGroupCacheDataStore,
-    private val torrentSettings: TorrentSettings,
     private val watchProgressRepository: WatchProgressRepository,
-    private val directDebridResolver: DirectDebridResolver,
-    private val directDebridStreamPreparer: DirectDebridStreamPreparer,
-    private val debridStreamPresentation: DebridStreamPresentation,
     private val externalPlaybackTracker: com.nuvio.tv.core.player.ExternalPlaybackTracker,
-    private val torrentService: TorrentService,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var autoPlayHandledForSession = false
     private var directAutoPlayModeInitializedForSession = false
     private var directAutoPlayFlowEnabledForSession = false
-    private var isTorrentStreamStarted = false
     private var streamLoadJob: Job? = null
     private var streamLoadScope: kotlinx.coroutines.CoroutineScope? = null
     private var streamLoadCompleted = false
@@ -137,12 +123,6 @@ class StreamScreenViewModel @Inject constructor(
     val playerPreference = playerSettingsDataStore.playerSettings
         .map { it.playerPreference }
         .distinctUntilChanged()
-
-    val p2pEnabled = torrentSettings.settings
-        .map { it.p2pEnabled }
-        .distinctUntilChanged()
-
-    fun enableP2p() = torrentSettings.setP2pEnabled(true)
 
     private inline fun updateUiStateIfChanged(
         transform: (StreamScreenUiState) -> StreamScreenUiState
@@ -379,10 +359,9 @@ class StreamScreenViewModel @Inject constructor(
                     contentKey = streamCacheKey,
                     maxAgeMs = playerSettings.streamReuseLastLinkCacheHours * 60L * 60L * 1000L
                 )
-                if (cached != null) {
+                if (cached != null && !(cached.infoHash != null && cached.url.isNullOrBlank())) {
                     autoPlayHandledForSession = true
                     resolvedAutoPlayTarget = true
-                    val isCachedTorrent = cached.infoHash != null && cached.url.isNullOrBlank()
                     val showOverlay = playerSettings.playerPreference == PlayerPreference.EXTERNAL
                     updateUiStateIfChanged {
                         it.copy(
@@ -392,8 +371,6 @@ class StreamScreenViewModel @Inject constructor(
                                 streamName = cached.streamName,
                                 year = cached.year ?: year,
                                 isExternal = false,
-                                isTorrent = isCachedTorrent,
-                                infoHash = cached.infoHash,
                                 ytId = null,
                                 headers = cached.headers,
                                 contentId = contentId ?: videoId.substringBefore(":"),
@@ -410,8 +387,6 @@ class StreamScreenViewModel @Inject constructor(
                                 filename = cached.filename,
                                 videoHash = cached.videoHash,
                                 videoSize = cached.videoSize,
-                                fileIdx = cached.fileIdx,
-                                sources = cached.sources,
                                 contentLanguage = cached.contentLanguage ?: contentLanguage
                             ),
                             showDirectAutoPlayOverlay = showOverlay || it.showDirectAutoPlayOverlay,
@@ -431,7 +406,7 @@ class StreamScreenViewModel @Inject constructor(
 
             // Source ordering used to come from the installed-addon registry
             // (deleted). Streams now arrive solely from StreamRepository
-            // (Xtream/local/debrid providers), so groups keep the
+            // (Xtream/HTTP sources), so groups keep the
             // repository's own emission order.
             val persistedBingeGroup = if (playerSettings.streamAutoPlayPreferBingeGroupForNextEpisode &&
                 playerSettings.streamAutoPlayReuseBingeGroup) {
@@ -578,52 +553,8 @@ class StreamScreenViewModel @Inject constructor(
             var lastSuccessData: List<AddonStreams>? = null
             var autoSelectTriggered = false
             var timeoutElapsed = false
-            var debridPreparationLaunched = false
             val isUnlimitedTimeout = playerSettings.streamAutoPlayTimeoutSeconds == PlayerSettings.STREAM_AUTOPLAY_TIMEOUT_UNLIMITED
 
-            fun launchDirectDebridPreparationIfNeeded(streamGroups: List<AddonStreams>) {
-                if (debridPreparationLaunched || streamGroups.none { group -> group.streams.any { it.isReadyForDebridPreparation() } }) {
-                    return
-                }
-                debridPreparationLaunched = true
-                viewModelScope.launch {
-                    directDebridStreamPreparer.prepare(
-                        streams = _uiState.value.allStreams,
-                        season = season,
-                        episode = episode,
-                        playerSettings = playerSettings,
-                        installedAddonNames = _uiState.value.allStreams
-                            .mapNotNull { it.addonName?.takeIf { name -> name.isNotBlank() } }
-                            .toSet()
-                    ) { original, prepared ->
-                        updateUiStateIfChanged { state ->
-                            val updatedGroups = directDebridStreamPreparer.replacePreparedStream(
-                                groups = state.addonStreams,
-                                original = original,
-                                prepared = prepared
-                            )
-                            if (updatedGroups == state.addonStreams) {
-                                state
-                            } else {
-                                val updatedAllStreams = updatedGroups.flatMap { addonStreams ->
-                                    addonStreams.streams
-                                }
-                                val currentFilter = state.selectedAddonFilter
-                                val filteredStreams = if (currentFilter == null) {
-                                    updatedAllStreams
-                                } else {
-                                    updatedAllStreams.filter { it.addonName == currentFilter }
-                                }
-                                state.copy(
-                                    addonStreams = updatedGroups,
-                                    allStreams = updatedAllStreams,
-                                    filteredStreams = filteredStreams
-                                )
-                            }
-                        }
-                    }
-                }
-            }
 
             val streamLoadInner = launch {
                 streamRepository.getStreamsFromAllAddons(
@@ -637,8 +568,6 @@ class StreamScreenViewModel @Inject constructor(
                             val merged = mergeWithBaseline(result.data)
                             lastSuccessData = merged
                             applySuccess(merged, isAllLoaded = false)
-                            launchDirectDebridPreparationIfNeeded(merged)
-
                             if (autoSelectTriggered || resolvedAutoPlayTarget || autoPlayHandledForSession) {
                                 // Already resolved — nothing more to do.
                             } else if (timeoutElapsed) {
@@ -648,26 +577,16 @@ class StreamScreenViewModel @Inject constructor(
                                 if (resolvedAutoPlayTarget) {
                                     autoSelectTriggered = true
                                 } else if (directAutoPlayFlowEnabledForSession && !isUnlimitedTimeout) {
-                                    // Bounded/instant timeout: no match found.
-                                    // If there are still torrents with a pending
-                                    // debrid cache check, wait for the next emission
-                                    // (which will carry the CACHED/NOT_CACHED result)
-                                    // instead of showing the picker immediately.
-                                    val hasCheckingTorrents = merged.any { group ->
-                                        group.streams.any { s ->
-                                            s.isTorrent() && s.debridCacheStatus?.state == com.nuvio.tv.domain.model.StreamDebridCacheState.CHECKING
-                                        }
-                                    }
-                                    if (!hasCheckingTorrents) {
-                                        autoPlayHandledForSession = true
-                                        directAutoPlayFlowEnabledForSession = false
-                                        updateUiStateIfChanged {
-                                            it.copy(
-                                                isDirectAutoPlayFlow = false,
-                                                showDirectAutoPlayOverlay = false,
-                                                directAutoPlayMessage = null
-                                            )
-                                        }
+                                    // Bounded/instant timeout: no match found — reveal
+                                    // the picker instead of holding the overlay.
+                                    autoPlayHandledForSession = true
+                                    directAutoPlayFlowEnabledForSession = false
+                                    updateUiStateIfChanged {
+                                        it.copy(
+                                            isDirectAutoPlayFlow = false,
+                                            showDirectAutoPlayOverlay = false,
+                                            directAutoPlayMessage = null
+                                        )
                                     }
                                 }
                             } else if (directFlowActive && persistedBingeGroup != null) {
@@ -783,23 +702,14 @@ class StreamScreenViewModel @Inject constructor(
             // For unlimited: keep the overlay — we continue checking as more
             // addons respond until the hard timeout below.
             if (directFlowActive && !resolvedAutoPlayTarget && lastSuccessData != null && !isUnlimitedTimeout) {
-                // If torrents are still pending cache check, the next emission
-                // will carry the result — don't tear down yet.
-                val hasCheckingTorrents = lastSuccessData?.any { group ->
-                    group.streams.any { s ->
-                        s.isTorrent() && s.debridCacheStatus?.state == com.nuvio.tv.domain.model.StreamDebridCacheState.CHECKING
-                    }
-                } == true
-                if (!hasCheckingTorrents) {
-                    autoPlayHandledForSession = true
-                    directAutoPlayFlowEnabledForSession = false
-                    updateUiStateIfChanged {
-                        it.copy(
-                            isDirectAutoPlayFlow = false,
-                            showDirectAutoPlayOverlay = false,
-                            directAutoPlayMessage = null
-                        )
-                    }
+                autoPlayHandledForSession = true
+                directAutoPlayFlowEnabledForSession = false
+                updateUiStateIfChanged {
+                    it.copy(
+                        isDirectAutoPlayFlow = false,
+                        showDirectAutoPlayOverlay = false,
+                        directAutoPlayMessage = null
+                    )
                 }
             }
 
@@ -945,93 +855,13 @@ class StreamScreenViewModel @Inject constructor(
     }
 
     suspend fun resolveStreamForPlayback(stream: Stream): StreamPlaybackInfo? {
-        if (!directDebridResolver.shouldResolveToPlayableStream(stream)) {
-            Log.d(TAG, "resolveStreamForPlayback: no debrid resolve needed, using direct URL")
-            return getStreamForPlayback(stream)
+        // Torrent-only results carry no HTTP URL and can no longer be resolved
+        // for playback; leave the picker visible for those.
+        if (stream.getStreamUrl().isNullOrBlank() && stream.ytId == null && !stream.isExternal()) {
+            return null
         }
-
-        Log.d(TAG, "resolveStreamForPlayback: starting debrid resolve for stream=${stream.name} addon=${stream.addonName}")
-        val resolveStartMs = System.currentTimeMillis()
-
-        val showLoadingStatus = playerSettingsDataStore.playerSettings.first().showPlayerLoadingStatus
-        updateUiStateIfChanged {
-            it.copy(
-                showDirectAutoPlayOverlay = true,
-                directAutoPlayMessage = if (showLoadingStatus) {
-                    context.getString(R.string.debrid_resolving_stream)
-                } else {
-                    null
-                },
-                playbackErrorMessage = null
-            )
-        }
-
-        val basePlaybackInfo = getStreamForPlayback(stream)
-        val result = directDebridResolver.resolve(stream, season, episode)
-        val resolveMs = System.currentTimeMillis() - resolveStartMs
-        Log.d(TAG, "resolveStreamForPlayback: debrid resolve completed in ${resolveMs}ms result=${result::class.simpleName}")
-
-        return when (result) {
-            is DirectDebridResolveResult.Success -> {
-                if (!_uiState.value.isDirectAutoPlayFlow) {
-                    updateUiStateIfChanged {
-                        it.copy(
-                            showDirectAutoPlayOverlay = false,
-                            directAutoPlayMessage = null
-                        )
-                    }
-                } else {
-                    updateUiStateIfChanged {
-                        it.copy(directAutoPlayMessage = null)
-                    }
-                }
-                cancelStreamsLoad()
-                val resolved = basePlaybackInfo.copy(
-                    url = result.url,
-                    isExternal = false,
-                    isTorrent = false,
-                    headers = null,
-                    filename = result.filename ?: basePlaybackInfo.filename,
-                    videoSize = result.videoSize ?: basePlaybackInfo.videoSize
-                )
-                // Save resolved URL to cache for reuse last link
-                if (!result.url.isNullOrBlank()) {
-                    pendingCacheSaveJob = viewModelScope.launch {
-                        streamLinkCacheDataStore.save(
-                            contentKey = streamCacheKey,
-                            url = result.url,
-                            streamName = resolved.streamName,
-                            headers = null,
-                            filename = resolved.filename,
-                            videoHash = resolved.videoHash,
-                            videoSize = resolved.videoSize,
-                            bingeGroup = resolved.bingeGroup,
-                            contentLanguage = contentLanguage,
-                            year = year
-                        )
-                    }
-                }
-                resolved
-            }
-            DirectDebridResolveResult.MissingApiKey -> {
-                showDirectDebridPlaybackError(context.getString(R.string.debrid_missing_api_key), refreshStreams = false)
-                null
-            }
-            DirectDebridResolveResult.NotCached -> {
-                showDirectDebridPlaybackError(context.getString(R.string.debrid_not_cached), refreshStreams = false)
-                null
-            }
-            DirectDebridResolveResult.Stale -> {
-                showDirectDebridPlaybackError(context.getString(R.string.debrid_stale_stream), refreshStreams = true)
-                null
-            }
-            DirectDebridResolveResult.Error -> {
-                showDirectDebridPlaybackError(context.getString(R.string.debrid_resolution_failed), refreshStreams = false)
-                null
-            }
-        }
+        return getStreamForPlayback(stream)
     }
-
     fun onPlaybackErrorShown() {
         updateUiStateIfChanged { it.copy(playbackErrorMessage = null) }
     }
@@ -1084,10 +914,6 @@ class StreamScreenViewModel @Inject constructor(
         if (System.currentTimeMillis() - externalPlayerLaunchTimeMs < 500L) return
         externalPlayerLaunched = false
         externalPlayerLaunchTimeMs = 0L
-        if (isTorrentStreamStarted) {
-            torrentService.stopStream()
-            isTorrentStreamStarted = false
-        }
         if (com.nuvio.tv.core.player.ZidooPlayerMonitor.isZidooDevice()) {
             externalPlaybackTracker.dismissOverlayOnly()
         } else {
@@ -1111,25 +937,6 @@ class StreamScreenViewModel @Inject constructor(
         }
     }
 
-    private fun showDirectDebridPlaybackError(message: String, refreshStreams: Boolean) {
-        directAutoPlayFlowEnabledForSession = false
-        updateUiStateIfChanged {
-            it.copy(
-                isDirectAutoPlayFlow = false,
-                showDirectAutoPlayOverlay = false,
-                directAutoPlayMessage = null,
-                autoPlayStream = null,
-                playbackErrorMessage = message
-            )
-        }
-        if (refreshStreams) {
-            loadStreams()
-        }
-    }
-
-    /**
-     * Gets the selected stream for playback
-     */
     fun getStreamForPlayback(stream: Stream): StreamPlaybackInfo {
         cancelStreamsLoad()
         val playbackInfo = StreamPlaybackInfo(
@@ -1138,8 +945,6 @@ class StreamScreenViewModel @Inject constructor(
             streamName = stream.name ?: stream.addonName,
             year = year,
             isExternal = stream.isExternal(),
-            isTorrent = stream.isTorrent(),
-            infoHash = stream.getEffectiveInfoHash(),
             ytId = stream.ytId,
             headers = stream.behaviorHints?.proxyHeaders?.request,
             contentId = contentId ?: videoId.substringBefore(":"),  // Use explicit contentId or extract from videoId
@@ -1159,8 +964,6 @@ class StreamScreenViewModel @Inject constructor(
             addonName = stream.addonName,
             addonLogo = stream.addonLogo,
             streamDescription = stream.description,
-            fileIdx = stream.getEffectiveFileIdx(),
-            sources = stream.sources,
             contentLanguage = contentLanguage
         )
 
@@ -1195,10 +998,6 @@ class StreamScreenViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        if (isTorrentStreamStarted) {
-            torrentService.stopStream()
-            isTorrentStreamStarted = false
-        }
         externalOverlayHideJob?.cancel()
         streamLoadScope?.cancel()
         streamLoadScope = null
@@ -1249,142 +1048,7 @@ class StreamScreenViewModel @Inject constructor(
         persistBingeGroupForPlayback(playbackInfo)
 
         var playUrl = url
-        if (playbackInfo.isTorrent || url.startsWith("torrent:")) {
-            val torrentSettingsData = torrentSettings.settings.first()
-            val statsHidden = torrentSettingsData.hideTorrentStats
-
-            updateUiStateIfChanged {
-                it.copy(
-                    directAutoPlayMessage = context.getString(R.string.player_torrent_starting_engine),
-                    directAutoPlayProgress = null
-                )
-            }
-            
-            val fileLimit = playbackInfo.videoSize ?: Long.MAX_VALUE
-            val preloadTarget = minOf(5_242_880L, fileLimit)
-
-            val preloadCompleted = kotlinx.coroutines.CompletableDeferred<Unit>()
-            val statsJob = viewModelScope.launch {
-                torrentService.state.collectLatest { torrentState ->
-                    when (torrentState) {
-                        is TorrentState.Idle -> { /* No-op */ }
-                        is TorrentState.Connecting -> {
-                            updateUiStateIfChanged {
-                                it.copy(
-                                    directAutoPlayMessage = context.getString(R.string.player_torrent_connecting_peers),
-                                    directAutoPlayProgress = null
-                                )
-                            }
-                        }
-                        is TorrentState.Streaming -> {
-                            val message = if (statsHidden) {
-                                null
-                            } else {
-                                val speed = formatSpeed(context, torrentState.downloadSpeed)
-                                val peerInfo = context.getString(R.string.player_torrent_peer_info, torrentState.seeds, torrentState.peers)
-                                val mbLoaded = formatMB(context, torrentState.preloadedBytes)
-                                context.getString(R.string.player_torrent_buffered_status, mbLoaded, peerInfo, speed)
-                            }
-                            
-                            val progress = (torrentState.preloadedBytes.toFloat() / preloadTarget).coerceIn(0f, 1f)
-                            
-                            updateUiStateIfChanged {
-                                it.copy(
-                                    directAutoPlayMessage = message,
-                                    directAutoPlayProgress = progress
-                                )
-                            }
-                            
-                            if (torrentState.preloadedBytes >= preloadTarget) {
-                                preloadCompleted.complete(Unit)
-                            }
-                        }
-                        is TorrentState.Error -> {
-                            preloadCompleted.completeExceptionally(Exception(torrentState.message))
-                        }
-                    }
-                }
-            }
-
-            var call: okhttp3.Call? = null
-            var fetchJob: kotlinx.coroutines.Job? = null
-            try {
-                val trackers = playbackInfo.sources
-                    ?.filter { it.startsWith("tracker:") }
-                    ?.map { it.removePrefix("tracker:") }
-                    ?: emptyList()
-                val localUrl = torrentService.startStream(
-                    infoHash = playbackInfo.infoHash ?: "",
-                    fileIdx = playbackInfo.fileIdx,
-                    filename = playbackInfo.filename,
-                    trackers = trackers
-                )
-                playUrl = localUrl
-                isTorrentStreamStarted = true
-
-                val client = okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                    .build()
-                val request = okhttp3.Request.Builder()
-                    .url(localUrl)
-                    .build()
-                val activeCall = client.newCall(request)
-                call = activeCall
-
-                fetchJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    try {
-                        activeCall.execute().use { response ->
-                            if (response.isSuccessful) {
-                                val byteStream = response.body?.byteStream()
-                                val buffer = ByteArray(16384)
-                                while (this@launch.isActive) {
-                                    val read = byteStream?.read(buffer) ?: -1
-                                    if (read == -1) break
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.d(TAG, "Preload background HTTP request cancelled or failed: ${e.message}")
-                    }
-                }
-                
-                // Wait for TorrServer to preload (or timeout after 60 seconds)
-                val preloaded = kotlinx.coroutines.withTimeoutOrNull(60_000L) {
-                    preloadCompleted.await()
-                    true
-                } ?: false
-
-                if (!preloaded) {
-                    throw Exception(context.getString(R.string.torrent_error_start_timeout, 60))
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to start torrent stream for external player", e)
-                updateUiStateIfChanged {
-                    it.copy(
-                        showDirectAutoPlayOverlay = false,
-                        externalPlayerOverlayVisible = false,
-                        directAutoPlayMessage = null,
-                        directAutoPlayProgress = null,
-                        playbackErrorMessage = context.getString(
-                            R.string.player_error_failed_start_torrent,
-                            e.message ?: context.getString(R.string.error_unknown)
-                        )
-                    )
-                }
-                externalPlaybackTracker.releaseAutoNextOverlay(forceRelease = true)
-                return
-            } finally {
-                call?.cancel()
-                fetchJob?.cancel()
-                statsJob.cancel()
-                if (!externalPlayerLaunched && isTorrentStreamStarted) {
-                    torrentService.stopStream()
-                    isTorrentStreamStarted = false
-                }
-            }
-        }
-
+        externalPlayerLaunched = true
         externalPlayerLaunched = true
         // Block stopExternalPlayerTracking during player launch. Will be set to
         // real timestamp right before the player intent is sent.
@@ -1501,8 +1165,6 @@ data class StreamPlaybackInfo(
     val streamName: String,
     val year: String?,
     val isExternal: Boolean,
-    val isTorrent: Boolean,
-    val infoHash: String?,
     val ytId: String?,
     val headers: Map<String, String>?,
     // Watch progress metadata
@@ -1523,22 +1185,6 @@ data class StreamPlaybackInfo(
     val addonName: String? = null,
     val addonLogo: String? = null,
     val streamDescription: String? = null,
-    val fileIdx: Int? = null,
-    val sources: List<String>? = null,
     val contentLanguage: String? = null
 )
 
-private fun Stream.isReadyForDebridPreparation(): Boolean =
-    getStreamUrl() == null &&
-        (isDirectDebrid() || (needsLocalDebridResolve() && debridCacheStatus?.state == StreamDebridCacheState.CACHED))
-
-private fun formatSpeed(context: android.content.Context, bytesPerSec: Long): String {
-    return when {
-        bytesPerSec >= 1_048_576 -> context.getString(R.string.unit_speed_mb_s, String.format("%.1f", bytesPerSec / 1_048_576.0))
-        bytesPerSec >= 1_024 -> context.getString(R.string.unit_speed_kb_s, String.format("%.0f", bytesPerSec / 1_024.0))
-        else -> context.getString(R.string.unit_speed_b_s, bytesPerSec)
-    }
-}
-
-private fun formatMB(context: android.content.Context, bytes: Long): String =
-    context.getString(R.string.unit_size_mb, String.format("%.1f", bytes / 1_048_576.0))
