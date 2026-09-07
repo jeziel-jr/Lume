@@ -49,6 +49,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Coalescing: pushes that arrive while an older release builds queue behind it.
+      # When this run finally starts, if main already contains newer commits (a later
+      # push's own run will publish them), exit immediately instead of building twice.
+      - name: Skip obsolete queued release
+        run: |
+          git fetch --quiet origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ] && git merge-base --is-ancestor HEAD origin/main; then
+            echo "main já contém commits mais novos que este run; o run do push mais novo publicará. Saindo."
+            exit 0
+          fi
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -110,6 +121,13 @@ jobs:
 
       - name: Build and publish beta release
         run: |
+          # Mid-build race guard: a newer push may have landed on main while this
+          # release built. Its own run will publish — do not publish a stale build.
+          git fetch --quiet origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ] && git merge-base --is-ancestor HEAD origin/main; then
+            echo "main avançou durante o build; o run mais novo publicará. Pulando publicação."
+            exit 0
+          fi
           args=(python3 scripts/release_beta.py "${{ env.NEXT_VERSION }}" --publish)
           if [ -f "changelogs/${{ env.NEXT_VERSION }}.md" ]; then
             args+=(--custom-notes-file "changelogs/${{ env.NEXT_VERSION }}.md")

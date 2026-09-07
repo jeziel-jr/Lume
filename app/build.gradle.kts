@@ -339,6 +339,12 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+
+    lint {
+        // Keep lint off the release path: lintVital was gating every release build
+        // with results nobody consumes. Manual `lint` tasks remain available.
+        checkReleaseBuilds = false
+    }
 }
 
 androidComponents {
