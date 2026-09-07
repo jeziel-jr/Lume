@@ -358,6 +358,15 @@ def commit_tag_push(
         check=True,
         text=True,
     )
+    # Another push can land on the branch while the release build runs (builds
+    # take ~20 minutes). Rebase the bump commit onto the latest remote before
+    # tagging so the branch push is a fast-forward instead of a rejected push.
+    subprocess.run(
+        ["git", "pull", "--rebase", "origin", branch_name],
+        cwd=ROOT,
+        check=True,
+        text=True,
+    )
     subprocess.run(
         ["git", "tag", "-a", release_tag, "-m", f"Release {release_title}"],
         cwd=ROOT,
