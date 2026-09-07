@@ -27,8 +27,6 @@ class UpdateViewModel @Inject constructor() : ViewModel() {
 
     fun checkForUpdates(force: Boolean, showNoUpdateFeedback: Boolean) = Unit
 
-    fun checkForUpdatesIfStale() = Unit
-
     fun dismissDialog() = Unit
 
     fun ignoreThisVersion() = Unit

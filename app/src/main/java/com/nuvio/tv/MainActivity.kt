@@ -792,10 +792,10 @@ class MainActivity : ComponentActivity() {
                             onOpenUnknownSources = { updateViewModel.openUnknownSourcesSettings() }
                         )
 
-                        // Automatic background update check: at most once per day on release
-                        // builds, without failure feedback (manual check stays in About).
+                        // Automatic background update check on every release-build launch,
+                        // silent on failure (manual check stays in About).
                         LaunchedEffect(Unit) {
-                            updateViewModel.checkForUpdatesIfStale()
+                            updateViewModel.checkForUpdates(force = false, showNoUpdateFeedback = false)
                         }
                     }
 
