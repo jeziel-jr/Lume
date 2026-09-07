@@ -537,9 +537,6 @@
     <string name="playback_player_ask">Питай всеки път</string>
     <string name="playback_internal_player_engine">Вграден двигател</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Бета)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Автоматично превключване на двигателя при грешка при стартиране</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Ако стартирането на потока се провали, превключи автоматично между ExoPlayer и libmpv.</string>
     <string name="playback_external_forward_subtitles">Препрати субтитри към външен плейър</string>
     <string name="playback_external_forward_subtitles_sub">Извлечи субтитри на предпочитания език от добавките и ги предай на външния плейър.</string>
     <string name="playback_section_audio">Аудио и видео</string>
@@ -569,7 +566,6 @@
     <string name="playback_player_auto">Автоматично (най-добро за съдържанието)</string>
     <string name="playback_player_auto_desc">ExoPlayer за филми и сериали · MPV за аниме</string>
     <string name="playback_engine_exoplayer_desc">Най-добра съвместимост с текущите функции на Nuvio.</string>
-    <string name="playback_engine_mvplayer_desc">Използва libmpv с Nuvio OSD контроли. Експериментално.</string>
 
     <string name="video_section">Видео</string>
     <string name="audio_trailer_section">Трейлър</string>
@@ -629,18 +625,6 @@
     <string name="dv7_libdovi_mode_3_sub" translatable="false">Конвертирай Profile 5 (DV5) потоци към Profile 8.1. Същата конверсия, която използва превключвателят Convert DV5 to DV8.1.</string>
     <string name="dv7_libdovi_mode_4_title" translatable="false">Mode 4 — 8.4 (static)</string>
     <string name="dv7_libdovi_mode_4_sub" translatable="false">Конвертирай към статичен profile 8.4.</string>
-    <string name="audio_mpv_hwdec_title">Хардуерно декодиране (само MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Избери как libmpv да използва хардуерни декодери.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Legacy (direct -&gt; copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Предишно поведение по подразбиране: опитай direct hardware първо, след това copy-back.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Автоматично (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">По-безопасен автоматичен режим с fallback при проблеми с някои хардуерни декодери.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardware (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Използва хардуерно декодиране с copy-back към софтуерна памет.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardware (direct) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Използва директно хардуерно декодиране. Най-бързият път на съвместими устройства.</string>
-    <string name="audio_mpv_hwdec_disabled">Деактивирано (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Деактивира хардуерно декодиране и използва само софтуерно.</string>
     <string name="audio_decoder_device_only_desc">Използвай само вградени хардуерни декодери. Най-съвместимо, но може да не поддържа всички формати.</string>
     <string name="audio_decoder_prefer_device_desc">Използвай хардуерни декодери когато са налични, fallback към FFmpeg. Препоръчително за повечето устройства.</string>
     <string name="audio_decoder_prefer_app_desc">Използвай FFmpeg декодери когато са налични. По-добра поддръжка на формати, но по-висока употреба на CPU.</string>
@@ -1952,7 +1936,6 @@
     <string name="cd_subtitles">Субтитри</string>
     <string name="cd_audio_tracks">Аудио писти</string>
     <string name="cd_sources">Източници</string>
-    <string name="cd_switch_player_engine">Превключи двигател на плейъра</string>
     <string name="cd_episodes">Епизоди</string>
     <string name="cd_playback_speed">Скорост на възпроизвеждане</string>
     <string name="cd_aspect_ratio">Съотношение на страните</string>
@@ -2323,8 +2306,6 @@
     <string name="player_error_decoder">Грешка в декодера</string>
     <string name="player_error_unsupported_format">Този поток използва формат, който устройството ти може да не поддържа. Опитай друг източник. [%1$s]</string>
     <string name="player_error_initialize_failed">Неуспешна инициализация на плейъра</string>
-    <string name="player_error_mpv_surface_failed">Неуспешна инициализация на libmpv surface</string>
-    <string name="player_error_mpv_playback_failed">Неуспешна инициализация на libmpv възпроизвеждане</string>
     <string name="player_error_torrent">Torrent грешка: %1$s</string>
     <string name="player_error_playback_fallback">Грешка при възпроизвеждане</string>
     <!-- Subtitle timing recovery -->

@@ -553,9 +553,6 @@
     <string name="playback_player_external">חיצוני</string>
     <string name="playback_player_ask">שאל בכל פעם</string>
     <string name="playback_internal_player_engine">מנוע פנימי</string>
-    <string name="playback_engine_mvplayer">Libmpv (בטא)</string>
-    <string name="playback_auto_switch_internal_player_on_error">החלף מנוע אוטומטית בשגיאת הפעלה</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">אם הפעלת ה-Stream נכשלת, החלף אוטומטית בין ExoPlayer ל-Libmpv</string>
     <string name="playback_external_forward_subtitles">העבר כתוביות לנגן חיצוני</string>
     <string name="playback_external_forward_subtitles_sub">משוך כתוביות בשפה המועדפת שלך מתוספים והעבר אותן לנגן החיצוני.</string>
     <string name="playback_section_audio">שמע ווידאו</string>
@@ -585,7 +582,6 @@
     <string name="playback_player_auto">אוטומטי (הטוב ביותר לתוכן)</string>
     <string name="playback_player_auto_desc">ExoPlayer לסרטים ולתוכניות טלוויזיה · MPV לאנימה</string>
     <string name="playback_engine_exoplayer_desc">תאימות הטובה ביותר עם תכונות Nuvio הנוכחיות.</string>
-    <string name="playback_engine_mvplayer_desc">משתמש ב-Libmpv עם פקדי המסך של Nuvio. ניסיוני.</string>
 
     <string name="video_section">וידאו</string>
     <string name="audio_trailer_section">טריילר</string>
@@ -1783,7 +1779,6 @@
     <string name="cd_subtitles">כתוביות</string>
     <string name="cd_audio_tracks">רצועות שמע</string>
     <string name="cd_sources">מקורות</string>
-    <string name="cd_switch_player_engine">החלף מנוע נגן</string>
     <string name="cd_episodes">פרקים</string>
     <string name="cd_playback_speed">מהירות הפעלה</string>
     <string name="cd_aspect_ratio">יחס תצוגה</string>

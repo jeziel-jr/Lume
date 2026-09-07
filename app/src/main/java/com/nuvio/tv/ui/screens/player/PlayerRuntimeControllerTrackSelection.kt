@@ -39,26 +39,10 @@ internal fun PlayerRuntimeController.showSeekOverlayTemporarily() {
 }
 
 internal fun PlayerRuntimeController.selectAudioTrack(trackIndex: Int) {
-    logSwitchTrace(
-        stage = "select-audio-track",
-        message = "trackIndex=$trackIndex usingMpv=${isUsingMpvEngine()} " +
-            "track=${_uiState.value.audioTracks.getOrNull(trackIndex)?.let { "${it.language}/${it.name}/${it.trackId}" } ?: "none"}"
-    )
-    if (isUsingMpvEngine()) {
-        val wasPlaying = isPlaybackCurrentlyPlaying()
-        val track = _uiState.value.audioTracks.getOrNull(trackIndex)
-        val trackId = track?.trackId?.toIntOrNull()
-        val changed = trackId != null && mpvView?.selectAudioTrackById(trackId) == true
-        if (changed) {
-            keepMpvPlayingIfNeeded(wasPlaying)
-        }
-        return
-    }
-
     _exoPlayer?.let { player ->
         val tracks = player.currentTracks
         var currentAudioIndex = 0
-        
+
         tracks.groups.forEach { trackGroup ->
             if (trackGroup.type == C.TRACK_TYPE_AUDIO) {
                 for (i in 0 until trackGroup.length) {
@@ -83,12 +67,7 @@ internal fun PlayerRuntimeController.selectAudioTrack(trackIndex: Int) {
 
 internal fun PlayerRuntimeController.rememberAudioSelection(trackIndex: Int) {
     val selectedTrack = _uiState.value.audioTracks.getOrNull(trackIndex) ?: return
-    logSwitchTrace(
-        stage = "user-remember-audio",
-        message = "trackIndex=$trackIndex lang=${selectedTrack.language} name=${selectedTrack.name} id=${selectedTrack.trackId}"
-    )
     val basePreference = currentTrackPreferenceForPersistence()
-    clearPendingEngineSwitchTrackPreference()
     persistedTrackPreference = null
     rememberedTrackPreference =
         basePreference
@@ -103,29 +82,11 @@ internal fun PlayerRuntimeController.rememberAudioSelection(trackIndex: Int) {
 }
 
 internal fun PlayerRuntimeController.selectSubtitleTrack(trackIndex: Int) {
-    logSwitchTrace(
-        stage = "select-subtitle-track",
-        message = "trackIndex=$trackIndex usingMpv=${isUsingMpvEngine()} " +
-            "track=${_uiState.value.subtitleTracks.getOrNull(trackIndex)?.let { "${it.language}/${it.name}/${it.trackId}/forced=${it.isForced}" } ?: "none"}"
-    )
-    if (isUsingMpvEngine()) {
-        Log.d(PlayerRuntimeController.TAG, "Selecting INTERNAL subtitle trackIndex=$trackIndex (mpv)")
-        val shouldKeepPlaying = !userPausedManually && !_uiState.value.playbackEnded
-        val track = _uiState.value.subtitleTracks.getOrNull(trackIndex)
-        val trackId = track?.trackId?.toIntOrNull()
-        val changed = trackId != null && mpvView?.selectSubtitleTrackById(trackId) == true
-        if (changed) {
-            updateMpvAvailableTracks()
-            keepMpvPlayingIfNeeded(shouldKeepPlaying)
-        }
-        return
-    }
-
     _exoPlayer?.let { player ->
         Log.d(PlayerRuntimeController.TAG, "Selecting INTERNAL subtitle trackIndex=$trackIndex")
         val tracks = player.currentTracks
         var currentSubIndex = 0
-        
+
         tracks.groups.forEach { trackGroup ->
             if (trackGroup.type == C.TRACK_TYPE_TEXT) {
                 for (i in 0 until trackGroup.length) {
@@ -147,35 +108,17 @@ internal fun PlayerRuntimeController.selectSubtitleTrack(trackIndex: Int) {
 
 internal fun PlayerRuntimeController.rememberInternalSubtitleSelection(trackIndex: Int) {
     val selectedTrack = _uiState.value.subtitleTracks.getOrNull(trackIndex) ?: return
-    logSwitchTrace(
-        stage = "user-remember-subtitle-internal",
-        message = "trackIndex=$trackIndex lang=${selectedTrack.language} name=${selectedTrack.name} " +
-            "id=${selectedTrack.trackId} forced=${selectedTrack.isForced}"
-    )
     val rememberedSelection = PlayerRuntimeController.RememberedSubtitleSelection.Internal(
-        track = buildRememberedInternalSubtitleSelectionForEngineSwitch(
-            state = _uiState.value,
+        track = PlayerRuntimeController.RememberedTrackSelection(
             language = selectedTrack.language,
             name = selectedTrack.name,
             trackId = selectedTrack.trackId,
-            isForced = selectedTrack.isForced,
-            selectedUiTrackOverride = selectedTrack
+            isForcedHint = selectedTrack.isForced
         )
     )
     val basePreference = currentTrackPreferenceForPersistence()
-    clearPendingEngineSwitchTrackPreference()
     persistedTrackPreference = null
     subtitleDisabledByPersistedPreference = false
-    explicitSubtitleSelectionForEngineSwitch =
-        PlayerRuntimeController.ExplicitSubtitleSelectionForEngineSwitch(
-            streamUrl = currentStreamUrl,
-            selection = rememberedSelection
-        )
-    effectiveSubtitleSelectionForEngineSwitch =
-        PlayerRuntimeController.ExplicitSubtitleSelectionForEngineSwitch(
-            streamUrl = currentStreamUrl,
-            selection = rememberedSelection
-        )
     rememberedTrackPreference =
         basePreference
             .copy(subtitle = rememberedSelection)
@@ -183,21 +126,6 @@ internal fun PlayerRuntimeController.rememberInternalSubtitleSelection(trackInde
 }
 
 internal fun PlayerRuntimeController.disableSubtitles() {
-    logSwitchTrace(
-        stage = "disable-subtitles",
-        message = "usingMpv=${isUsingMpvEngine()} selectedSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex}"
-    )
-    if (isUsingMpvEngine()) {
-        if (mpvView?.disableSubtitles() == true) {
-            _uiState.update {
-                it.copy(
-                    selectedSubtitleTrackIndex = -1
-                )
-            }
-            updateMpvAvailableTracks()
-        }
-        return
-    }
     _exoPlayer?.let { player ->
         player.trackSelectionParameters = player.trackSelectionParameters
             .buildUpon()
@@ -230,24 +158,9 @@ internal fun PlayerRuntimeController.refreshActiveSubtitleTrackAfterTimingChange
 }
 
 internal fun PlayerRuntimeController.rememberSubtitleDisabled() {
-    logSwitchTrace(
-        stage = "user-remember-subtitle-disabled",
-        message = "selectedSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex}"
-    )
     val basePreference = currentTrackPreferenceForPersistence()
-    clearPendingEngineSwitchTrackPreference()
     persistedTrackPreference = null
     subtitleDisabledByPersistedPreference = false
-    explicitSubtitleSelectionForEngineSwitch =
-        PlayerRuntimeController.ExplicitSubtitleSelectionForEngineSwitch(
-            streamUrl = currentStreamUrl,
-            selection = PlayerRuntimeController.RememberedSubtitleSelection.Disabled
-        )
-    effectiveSubtitleSelectionForEngineSwitch =
-        PlayerRuntimeController.ExplicitSubtitleSelectionForEngineSwitch(
-            streamUrl = currentStreamUrl,
-            selection = PlayerRuntimeController.RememberedSubtitleSelection.Disabled
-        )
     rememberedTrackPreference =
         basePreference
             .copy(subtitle = PlayerRuntimeController.RememberedSubtitleSelection.Disabled)

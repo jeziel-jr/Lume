@@ -534,9 +534,6 @@
   <string name="playback_player_ask">Ερώτηση κάθε φορά</string>
   <string name="playback_internal_player_engine">Εσωτερική μηχανή</string>
   <string name="playback_engine_exoplayer">ExoPlayer</string>
-  <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-  <string name="playback_auto_switch_internal_player_on_error">Αυτόματη εναλλαγή μηχανής σε σφάλμα εκκίνησης</string>
-  <string name="playback_auto_switch_internal_player_on_error_sub">Αν αποτύχει η εκκίνηση ροής, γίνεται αυτόματη εναλλαγή μεταξύ ExoPlayer και libmpv.</string>
   <string name="playback_section_audio">Ήχος &amp; Βίντεο</string>
   <string name="playback_section_audio_desc">Χειριστήρια ήχου και συμβατότητα βίντεο.</string>
   <string name="playback_section_subtitles">Υπότιτλοι</string>
@@ -564,7 +561,6 @@
   <string name="playback_player_auto">Αυτόματο (Καλύτερο για το περιεχόμενο)</string>
   <string name="playback_player_auto_desc">ExoPlayer για Ταινίες &amp; Σειρές · MPV για Anime</string>
   <string name="playback_engine_exoplayer_desc">Καλύτερη συμβατότητα με τις τρέχουσες δυνατότητες του Nuvio.</string>
-  <string name="playback_engine_mvplayer_desc">Χρησιμοποιεί libmpv με χειριστήρια OSD του Nuvio. Πειραματικό.</string>
   <!-- PlaybackAudioSettings -->
   <string name="audio_trailer_section">Τρέιλερ</string>
   <string name="audio_autoplay_trailers">Αυτόματη αναπαραγωγή τρέιλερ</string>
@@ -592,18 +588,6 @@
   <string name="audio_enable_downmix_subtitle">Χρησιμοποιεί τη διαδρομή downmix FFmpeg. Όταν είναι απενεργοποιημένο, ο ήχος ακολουθεί την προηγούμενη διαδρομή Android/συσκευής.</string>
   <string name="audio_tunneled">Αναπαραγωγή tunneled</string>
   <string name="audio_tunneled_sub">Συγχρονισμός ήχου/βίντεο σε επίπεδο υλικού. Μπορεί να βελτιώσει την αναπαραγωγή σε ορισμένες συσκευές Android TV</string>
-  <string name="audio_mpv_hwdec_title">Αποκωδικοποίηση υλικού (μόνο MPV)</string>
-  <string name="audio_mpv_hwdec_dialog_subtitle">Επιλέξτε πώς θα χρησιμοποιεί το libmpv τους αποκωδικοποιητές υλικού.</string>
-  <string name="audio_mpv_hwdec_legacy_direct_copy">Παλαιό (direct -&gt; copy)</string>
-  <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Προηγούμενη προεπιλεγμένη συμπεριφορά: δοκιμή πρώτα direct hardware και μετά copy-back.</string>
-  <string name="audio_mpv_hwdec_auto_safe">Αυτόματο (auto-safe)</string>
-  <string name="audio_mpv_hwdec_auto_safe_desc">Ασφαλέστερη αυτόματη λειτουργία με fallback όταν αποτυγχάνουν ορισμένοι αποκωδικοποιητές υλικού.</string>
-  <string name="audio_mpv_hwdec_hardware_copy">Υλικό (copy) (mediacodec-copy)</string>
-  <string name="audio_mpv_hwdec_hardware_copy_desc">Χρήση αποκωδικοποίησης υλικού με copy-back στη μνήμη λογισμικού.</string>
-  <string name="audio_mpv_hwdec_hardware_direct">Υλικό (direct) (mediacodec)</string>
-  <string name="audio_mpv_hwdec_hardware_direct_desc">Χρήση άμεσης αποκωδικοποίησης υλικού. Η ταχύτερη διαδρομή σε συμβατές συσκευές.</string>
-  <string name="audio_mpv_hwdec_disabled">Απενεργοποιημένο (no)</string>
-  <string name="audio_mpv_hwdec_disabled_desc">Απενεργοποίηση αποκωδικοποίησης υλικού και χρήση μόνο αποκωδικοποίησης λογισμικού.</string>
   <string name="audio_decoder_device_only_desc">Χρήση μόνο ενσωματωμένων αποκωδικοποιητών υλικού. Πιο συμβατό αλλά μπορεί να μην υποστηρίζει όλα τα φορμά.</string>
   <string name="audio_decoder_prefer_device_desc">Χρήση αποκωδικοποιητών υλικού όταν είναι διαθέσιμοι, εναλλακτικά FFmpeg. Προτεινόμενο για τις περισσότερες συσκευές.</string>
   <string name="audio_decoder_prefer_app_desc">Χρήση αποκωδικοποιητών FFmpeg όταν είναι διαθέσιμοι. Καλύτερη υποστήριξη φορμά αλλά υψηλότερη χρήση CPU.</string>
@@ -1817,7 +1801,6 @@
   <string name="cd_subtitles">Υπότιτλοι</string>
   <string name="cd_audio_tracks">Κομμάτια ήχου</string>
   <string name="cd_sources">Πηγές</string>
-  <string name="cd_switch_player_engine">Εναλλαγή μηχανής αναπαραγωγής</string>
   <string name="cd_episodes">Επεισόδια</string>
   <string name="cd_playback_speed">Ταχύτητα αναπαραγωγής</string>
   <string name="cd_aspect_ratio">Αναλογία εικόνας</string>
@@ -2181,8 +2164,6 @@
   <string name="player_error_decoder">Σφάλμα αποκωδικοποιητή</string>
   <string name="player_error_unsupported_format">Αυτή η ροή χρησιμοποιεί μορφή που η συσκευή σας μπορεί να μην υποστηρίζει. Δοκιμάστε διαφορετική πηγή. [%1$s]</string>
   <string name="player_error_initialize_failed">Αποτυχία αρχικοποίησης προγράμματος αναπαραγωγής</string>
-  <string name="player_error_mpv_surface_failed">Αποτυχία αρχικοποίησης επιφάνειας libmpv</string>
-  <string name="player_error_mpv_playback_failed">Αποτυχία αρχικοποίησης αναπαραγωγής libmpv</string>
   <string name="player_error_torrent">Σφάλμα torrent: %1$s</string>
   <string name="player_error_playback_fallback">Σφάλμα αναπαραγωγής</string>
   <!-- Subtitle timing recovery -->
@@ -2700,21 +2681,6 @@
   <string name="settings_style_zen_desc">Απλή, επίπεδη διάταξη</string>
   <string name="settings_style_horizon">Επάνω γραμμή</string>
   <string name="settings_style_horizon_desc">Καρτέλες πλοήγησης στο επάνω μέρος</string>
-  <string name="advanced_sentry_reports">Αναφορές σφαλμάτων Sentry</string>
-  <string name="advanced_sentry_reports_subtitle">Αποστολή αναφορών σφαλμάτων και ANR με ασφαλές πλαίσιο δεδομένων. Ενεργό από προεπιλογή.</string>
-  <string name="sentry_enable_dialog_title">Ενεργοποίηση αναφορών σφαλμάτων;</string>
-  <string name="sentry_enable_dialog_subtitle">Οι αναφορές σφαλμάτων βοηθούν στον εντοπισμό προβλημάτων που αφορούν τη συσκευή σας, χωρίς να χρειάζεται να αναπαράγετε το πρόβλημα με αρχεία καταγραφής ADB.</string>
-  <string name="sentry_disable_dialog_title">Απενεργοποίηση αναφορών σφαλμάτων;</string>
-  <string name="sentry_disable_dialog_subtitle">Τα μελλοντικά σφάλματα και τα τρέχοντα ANR από αυτήν τη συσκευή δεν θα αναφέρονται. Αυτό μπορεί να δυσκολέψει σημαντικά τη διόρθωση προβλημάτων που αφορούν συγκεκριμένες συσκευές.</string>
-  <string name="sentry_help_title">Πώς βοηθά</string>
-  <string name="sentry_help_body">Οι αναφορές ομαδοποιούνται ανά έκδοση εφαρμογής, μοντέλο συσκευής, έκδοση Android και stack trace, ώστε να διορθώνονται πρώτα τα πιο συχνά πραγματικά σφάλματα.</string>
-  <string name="sentry_sent_title">Αποστέλλονται</string>
-  <string name="sentry_sent_body">Σφάλματα, τρέχοντα ANR, stack traces, έκδοση εφαρμογής, τύπος build, flavor, μεταδεδομένα συσκευής και λειτουργικού συστήματος, καθώς και ασφαλή ίχνη δικτύου με μέθοδο, διακομιστή, διαδρομή, κατάσταση, διάρκεια και τύπο εξαίρεσης.</string>
-  <string name="sentry_not_sent_title">Δεν αποστέλλονται</string>
-  <string name="sentry_not_sent_body">Κωδικοί πρόσβασης, tokens πρόσβασης, tokens ανανέωσης, σώματα αιτημάτων και αποκρίσεων, headers, cookies, στιγμιότυπα οθόνης, ιεραρχία προβολών, επανάληψη συνεδρίας, ακατέργαστα διαγνωστικά και τιμές ερωτήματος ή τμήματος του URL ροής.</string>
-  <string name="sentry_keep_enabled">Παραμονή ενεργό</string>
-  <string name="sentry_turn_off">Απενεργοποίηση</string>
-  <string name="sentry_turn_on">Ενεργοποίηση</string>
   <string name="debug_section_progress">Δείκτης προόδου</string>
   <string name="debug_progress_indicator_title">Δείκτης φόρτωσης</string>
   <string name="debug_progress_indicator_subtitle">Προεπισκόπηση του κοινού κινούμενου δείκτη φόρτωσης σε συνήθη μεγέθη διεπαφής</string>

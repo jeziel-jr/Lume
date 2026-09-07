@@ -116,7 +116,6 @@ import com.nuvio.tv.R
 import com.nuvio.tv.data.xtream.XtreamComponentHealth
 import com.nuvio.tv.data.xtream.XtreamHealthReason
 import com.nuvio.tv.data.xtream.XtreamHealthState
-import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.LibassRenderType
 import com.nuvio.tv.data.local.SubtitleStyleSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
@@ -609,28 +608,17 @@ fun PlayerScreen(
             }
     ) {
         // Video Player
-        if (uiState.internalPlayerEngine == InternalPlayerEngine.MVP_PLAYER) {
-            MpvPlayerSurface(
-                viewModel = viewModel,
+        viewModel.exoPlayer?.let { player ->
+            ExoPlayerSurface(
+                player = player,
                 isPlaying = uiState.isPlaying,
                 isBuffering = uiState.isBuffering,
                 aspectMode = uiState.aspectMode,
+                useLibass = uiState.useLibass,
+                libassRenderType = uiState.libassRenderType,
                 subtitleStyle = uiState.subtitleStyle,
                 modifier = Modifier.fillMaxSize()
             )
-        } else {
-            viewModel.exoPlayer?.let { player ->
-                ExoPlayerSurface(
-                    player = player,
-                    isPlaying = uiState.isPlaying,
-                    isBuffering = uiState.isBuffering,
-                    aspectMode = uiState.aspectMode,
-                    useLibass = uiState.useLibass,
-                    libassRenderType = uiState.libassRenderType,
-                    subtitleStyle = uiState.subtitleStyle,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
         }
 
         LoadingOverlay(
@@ -835,7 +823,6 @@ fun PlayerScreen(
                     Log.d("PlayerScreen", "onToggleAspectRatio called - dispatching event")
                     viewModel.onEvent(PlayerEvent.OnToggleAspectRatio)
                 },
-                onSwitchPlayerEngine = { viewModel.onEvent(PlayerEvent.OnSwitchInternalPlayerEngine) },
                 onToggleMoreActions = {
                     if (uiState.showMoreDialog) {
                         viewModel.onEvent(PlayerEvent.OnDismissMoreDialog)
@@ -1079,59 +1066,6 @@ internal fun shouldShowNextEpisodeEndPrompt(state: PlayerUiState): Boolean {
         state.error == null &&
         !state.streamAutoPlayNextEpisodeEnabled &&
         state.nextEpisode?.hasAired == true
-}
-
-@Composable
-private fun MpvPlayerSurface(
-    viewModel: PlayerViewModel,
-    isPlaying: Boolean,
-    isBuffering: Boolean,
-    aspectMode: AspectMode,
-    subtitleStyle: SubtitleStyleSettings,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val latestAspectMode by rememberUpdatedState(aspectMode)
-    val mpvView = remember(context) {
-        NuvioMpvSurfaceView(context)
-    }
-
-    AndroidView(
-        factory = { mpvView },
-        modifier = modifier
-    )
-
-    DisposableEffect(viewModel, mpvView) {
-        viewModel.attachMpvView(mpvView)
-        onDispose {
-            viewModel.attachMpvView(null)
-        }
-    }
-
-    DisposableEffect(mpvView) {
-        val listener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            mpvView.applyAspectMode(latestAspectMode)
-        }
-        mpvView.addOnLayoutChangeListener(listener)
-        onDispose {
-            mpvView.removeOnLayoutChangeListener(listener)
-        }
-    }
-
-    LaunchedEffect(mpvView, isPlaying, isBuffering) {
-        val shouldKeepScreenOn = isPlaying || isBuffering
-        if (mpvView.keepScreenOn != shouldKeepScreenOn) {
-            mpvView.keepScreenOn = shouldKeepScreenOn
-        }
-    }
-
-    LaunchedEffect(mpvView, aspectMode) {
-        mpvView.applyAspectMode(aspectMode)
-    }
-
-    LaunchedEffect(mpvView, subtitleStyle) {
-        mpvView.applySubtitleStyle(subtitleStyle)
-    }
 }
 
 @Composable
@@ -1384,7 +1318,6 @@ private fun PlayerControlsOverlay(
     onShowSubtitleDialog: () -> Unit,
     onShowSpeedDialog: () -> Unit,
     onToggleAspectRatio: () -> Unit,
-    onSwitchPlayerEngine: () -> Unit,
     onToggleMoreActions: () -> Unit,
     onOpenInExternalPlayer: () -> Unit,
     onShowStreamInfo: () -> Unit,
@@ -1598,15 +1531,6 @@ private fun PlayerControlsOverlay(
                             onFocused = onResetHideTimer
                         )
                     }
-
-                    ControlButton(
-                        icon = Icons.Default.SwapHoriz,
-                        contentDescription = stringResource(R.string.cd_switch_player_engine),
-                        onClick = onSwitchPlayerEngine,
-                        upFocusRequester = progressBarFocusRequester,
-                        onDownKey = onHideControls,
-                        onFocused = onResetHideTimer
-                    )
 
                     if (hasEpisodeContext) {
                         ControlButton(

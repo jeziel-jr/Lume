@@ -1305,9 +1305,6 @@
     <!-- PlaybackSettingsSections -->
     <string name="playback_internal_player_engine">Intern motor</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Växla motor automatiskt vid startfel</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Om strömstart misslyckas, växla automatiskt mellan ExoPlayer och libmpv.</string>
     <string name="playback_resolution_matching_unsupported_sub">Skärmen rapporterar bara en upplösning; matchning kanske inte påverkar.</string>
     <string name="playback_afr_capability_unsupported_title">Vissa inställningar kanske inte fungerar</string>
     <string name="playback_afr_capability_both_problem_body">Automatisk bildfrekvens och upplösningsmatchning är båda aktiverade, men din skärm rapporterar bara en uppdateringsfrekvens och en upplösning. Ingendera kanske påverkar, så det rekommenderas att inaktivera båda.</string>
@@ -1317,23 +1314,10 @@
     <string name="playback_afr_capability_disable_resolution_button">Inaktivera upplösningsmatchning</string>
     <string name="playback_afr_capability_disable_both_button">Inaktivera båda</string>
     <string name="playback_engine_exoplayer_desc">Bästa kompatibilitet med nuvarande Nuvio-funktioner.</string>
-    <string name="playback_engine_mvplayer_desc">Använder libmpv med Nuvios OSD-kontroller. Experimentellt.</string>
 
     <!-- PlaybackAudioSettings -->
     <string name="audio_lang_original">Originalspråk</string>
     <string name="audio_lang_original_hint">Kräver att TMDB-berikning är aktiverad</string>
-    <string name="audio_mpv_hwdec_title">Hårdvaruavkodning (endast MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Välj hur libmpv ska använda hårdvaruavkodare.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Äldre (direkt -&gt; copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Tidigare standardbeteende: prova direkt hårdvara först, sedan copy-back.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Auto (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Säkrare automatiskt läge med reserv när vissa hårdvaruavkodare misslyckas.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hårdvara (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Använder hårdvaruavkodning med kopiering till mjukvaruminne.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hårdvara (direkt) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Använder direkt hårdvaruavkodning. Snabbaste vägen på kompatibla enheter.</string>
-    <string name="audio_mpv_hwdec_disabled">Inaktiverad (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Inaktiverar hårdvaruavkodning och använder endast mjukvaruavkodning.</string>
 
     <!-- PlaybackSubtitleSettings -->
     <string name="sub_mode_overlay_canvas_sub">HDR-stöd med canvas-rendering. Kan blockera UI-tråden.</string>
@@ -1509,7 +1493,6 @@
     <string name="cd_subtitles">Undertexter</string>
     <string name="cd_audio_tracks">Ljudspår</string>
     <string name="cd_sources">Källor</string>
-    <string name="cd_switch_player_engine">Byt spelarmotor</string>
     <string name="cd_episodes">Avsnitt</string>
     <string name="cd_playback_speed">Uppspelningshastighet</string>
     <string name="cd_aspect_ratio">Bildförhållande</string>

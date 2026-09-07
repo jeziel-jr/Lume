@@ -567,9 +567,6 @@
     <string name="playback_player_ask">Her seferinde sor</string>
     <string name="playback_internal_player_engine">Dahili Oynatıcı Motoru</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Başlangıç hatasında motoru otomatik değiştir</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Yayın başlarken hata olursa ExoPlayer ile libmpv arasında otomatik geçiş yap.</string>
     <string name="playback_external_forward_subtitles">Altyazıları harici oynatıcıya aktar</string>
     <string name="playback_external_forward_subtitles_sub">Altyazıları tercih ettiğiniz dilde eklentilerden çekip harici oynatıcıya gönderir.</string>
     <string name="playback_section_audio">Ses &amp; Video</string>
@@ -599,7 +596,6 @@
     <string name="playback_player_auto">Otomatik (İçerik için en iyisi)</string>
     <string name="playback_player_auto_desc">Filmler ve Diziler için ExoPlayer · Anime için MPV</string>
     <string name="playback_engine_exoplayer_desc">Nuvio\'nun mevcut özellikleriyle en uyumlu seçenek.</string>
-    <string name="playback_engine_mvplayer_desc">Nuvio ekran kontrolleriyle libmpv kullanır. Deneysel.</string>
 
     <string name="video_section">Video</string>
 
@@ -651,18 +647,6 @@
     <string name="audio_strip_hdr10plus_sub">HDR10+ dinamik meta verilerini yayınlardan kaldırır. DV8.1\'e Dönüştür seçeneği de etkinse, kaldırma işlemi dönüştürmeden sonra çalışır.</string>
     <string name="audio_dv7_preserve_mapping_title">DV eşlemesini koru (DV7 -> DV8.1)</string>
     <string name="audio_dv7_preserve_mapping_sub">Kare başına biraz daha fazla işlem yapma pahasına, yapımcının hedeflediği orijinal ton eşlemesini korur.</string>
-    <string name="audio_mpv_hwdec_title">Donanım Kod Çözme (yalnızca MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">libmpv\'nin donanım kod çözücülerini nasıl kullanacağını seçin.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Eski mod (direct -&gt; copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Önce doğrudan donanımı dener, olmazsa kopyalama moduna geçer.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Otomatik (güvenli)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Bazı donanım kod çözücüler çalışmazsa daha güvenli bir geri dönüş kullanır.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Donanım (kopya) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Donanım kod çözmeyi kullanır, görüntüyü yazılım belleğine kopyalar.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Donanım (doğrudan) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Doğrudan donanım kod çözme kullanır. Uyumlu cihazlarda en hızlı seçenektir.</string>
-    <string name="audio_mpv_hwdec_disabled">Kapalı (yok)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Donanım kod çözmeyi kapatır, sadece yazılım kod çözme kullanır.</string>
     <string name="audio_decoder_device_only_desc">Yalnızca yerleşik donanım kod çözücülerini kullan. En uyumlusu ancak tüm formatları desteklemeyebilir.</string>
     <string name="audio_decoder_prefer_device_desc">Mümkün olduğunda donanım kod çözücülerini kullan, değilse FFmpeg\'e dön. Çoğu cihaz için önerilir.</string>
     <string name="audio_decoder_prefer_app_desc">Mümkün olduğunda FFmpeg kod çözücülerini kullan. Daha iyi format desteği ancak daha yüksek CPU kullanımı.</string>
@@ -2231,7 +2215,6 @@
     <string name="cd_subtitles">Altyazılar</string>
     <string name="cd_audio_tracks">Ses parçaları</string>
     <string name="cd_sources">Kaynaklar</string>
-    <string name="cd_switch_player_engine">Oynatıcı motorunu değiştir</string>
     <string name="cd_episodes">Bölümler</string>
     <string name="cd_playback_speed">Oynatma hızı</string>
     <string name="cd_aspect_ratio">Görüntü oranı</string>
@@ -2616,8 +2599,6 @@
     <string name="player_error_decoder">Kod çözücü hatası</string>
     <string name="player_error_unsupported_format">Bu yayın cihazınızın desteklemeyebileceği bir format kullanıyor. Farklı bir kaynak deneyin. [%1$s]</string>
     <string name="player_error_initialize_failed">Oynatıcı başlatılamadı</string>
-    <string name="player_error_mpv_surface_failed">libmpv yüzeyi başlatılamadı</string>
-    <string name="player_error_mpv_playback_failed">libmpv oynatması başlatılamadı</string>
     <string name="player_error_torrent">Torrent hatası: %1$s</string>
     <string name="player_error_playback_fallback">Oynatma hatası</string>
     <!-- Subtitle timing recovery -->

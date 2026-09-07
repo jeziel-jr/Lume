@@ -56,7 +56,6 @@ import com.nuvio.tv.data.local.AudioLanguageOption
 import com.nuvio.tv.data.local.AudioOutputChannels
 import com.nuvio.tv.data.local.Dv7HandlingMode
 import com.nuvio.tv.data.local.InternalPlayerEngine
-import com.nuvio.tv.data.local.MpvHardwareDecodeMode
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.displayName
 import com.nuvio.tv.ui.components.NuvioDialog
@@ -67,7 +66,6 @@ internal fun LazyListScope.trailerAndAudioSettingsItems(
     onShowSecondaryAudioLanguageDialog: () -> Unit,
     onShowAudioOutputChannelsDialog: () -> Unit,
     onShowDecoderPriorityDialog: () -> Unit,
-    onShowMpvHardwareDecodeModeDialog: () -> Unit,
     onShowDv7HandlingModeDialog: () -> Unit,
     onSetDownmixEnabled: (Boolean) -> Unit,
     onSetMaintainOriginalAudioOnDownmix: (Boolean) -> Unit,
@@ -83,8 +81,6 @@ internal fun LazyListScope.trailerAndAudioSettingsItems(
     videoExtraItems: (LazyListScope.() -> Unit)? = null
 ) {
     val isExoEngine = playerSettings.internalPlayerEngine == InternalPlayerEngine.EXOPLAYER ||
-            playerSettings.internalPlayerEngine == InternalPlayerEngine.AUTO
-    val isMpvEngine = playerSettings.internalPlayerEngine == InternalPlayerEngine.MVP_PLAYER ||
             playerSettings.internalPlayerEngine == InternalPlayerEngine.AUTO
 
     // ── Audio Section ──
@@ -258,18 +254,16 @@ internal fun LazyListScope.trailerAndAudioSettingsItems(
             )
         }
 
-        if (isExoEngine || isMpvEngine) {
-            item(key = "audio_force_optical_passthrough") {
-                ToggleSettingsItem(
-                    icon = Icons.Default.VolumeUp,
-                    title = stringResource(R.string.audio_force_optical_passthrough),
-                    subtitle = stringResource(R.string.audio_force_optical_passthrough_sub),
-                    isChecked = playerSettings.forceOpticalPassthrough && playerSettings.decoderPriority != 0,
-                    onCheckedChange = onSetForceOpticalPassthrough,
-                    onFocused = onItemFocused,
-                    enabled = enabled && playerSettings.decoderPriority != 0
-                )
-            }
+        item(key = "audio_force_optical_passthrough") {
+            ToggleSettingsItem(
+                icon = Icons.Default.VolumeUp,
+                title = stringResource(R.string.audio_force_optical_passthrough),
+                subtitle = stringResource(R.string.audio_force_optical_passthrough_sub),
+                isChecked = playerSettings.forceOpticalPassthrough && playerSettings.decoderPriority != 0,
+                onCheckedChange = onSetForceOpticalPassthrough,
+                onFocused = onItemFocused,
+                enabled = enabled && playerSettings.decoderPriority != 0
+            )
         }
     }
 
@@ -344,26 +338,6 @@ internal fun LazyListScope.trailerAndAudioSettingsItems(
         }
     }
 
-    if (isMpvEngine) {
-        item(key = "audio_mpv_hardware_decode_mode") {
-        val hwDecodeModeName = when (playerSettings.mpvHardwareDecodeMode) {
-            MpvHardwareDecodeMode.LEGACY_DIRECT_COPY -> stringResource(R.string.audio_mpv_hwdec_legacy_direct_copy)
-            MpvHardwareDecodeMode.AUTO_SAFE -> stringResource(R.string.audio_mpv_hwdec_auto_safe)
-            MpvHardwareDecodeMode.HARDWARE_COPY -> stringResource(R.string.audio_mpv_hwdec_hardware_copy)
-            MpvHardwareDecodeMode.HARDWARE_DIRECT -> stringResource(R.string.audio_mpv_hwdec_hardware_direct)
-            MpvHardwareDecodeMode.DISABLED -> stringResource(R.string.audio_mpv_hwdec_disabled)
-        }
-
-        NavigationSettingsItem(
-            icon = Icons.Default.Tune,
-            title = stringResource(R.string.audio_mpv_hwdec_title),
-            subtitle = hwDecodeModeName,
-            onClick = onShowMpvHardwareDecodeModeDialog,
-            onFocused = onItemFocused,
-            enabled = enabled
-        )
-        }
-    }
 }
 
 @Composable
@@ -372,25 +346,21 @@ internal fun AudioSettingsDialogs(
     showSecondaryAudioLanguageDialog: Boolean,
     showAudioOutputChannelsDialog: Boolean,
     showDecoderPriorityDialog: Boolean,
-    showMpvHardwareDecodeModeDialog: Boolean,
     showDv7HandlingModeDialog: Boolean,
     selectedLanguage: String,
     selectedSecondaryLanguage: String?,
     selectedAudioOutputChannels: AudioOutputChannels,
     selectedPriority: Int,
-    selectedMpvHardwareDecodeMode: MpvHardwareDecodeMode,
     selectedDv7HandlingMode: Dv7HandlingMode,
     onSetPreferredAudioLanguage: (String) -> Unit,
     onSetSecondaryPreferredAudioLanguage: (String?) -> Unit,
     onSetAudioOutputChannels: (AudioOutputChannels) -> Unit,
     onSetDecoderPriority: (Int) -> Unit,
-    onSetMpvHardwareDecodeMode: (MpvHardwareDecodeMode) -> Unit,
     onSetDv7HandlingMode: (Dv7HandlingMode) -> Unit,
     onDismissAudioLanguageDialog: () -> Unit,
     onDismissSecondaryAudioLanguageDialog: () -> Unit,
     onDismissAudioOutputChannelsDialog: () -> Unit,
     onDismissDecoderPriorityDialog: () -> Unit,
-    onDismissMpvHardwareDecodeModeDialog: () -> Unit,
     onDismissDv7HandlingModeDialog: () -> Unit
 ) {
     if (showAudioLanguageDialog) {
@@ -439,17 +409,6 @@ internal fun AudioSettingsDialogs(
                 onDismissDecoderPriorityDialog()
             },
             onDismiss = onDismissDecoderPriorityDialog
-        )
-    }
-
-    if (showMpvHardwareDecodeModeDialog) {
-        MpvHardwareDecodeModeDialog(
-            selectedMode = selectedMpvHardwareDecodeMode,
-            onModeSelected = {
-                onSetMpvHardwareDecodeMode(it)
-                onDismissMpvHardwareDecodeModeDialog()
-            },
-            onDismiss = onDismissMpvHardwareDecodeModeDialog
         )
     }
 
@@ -579,51 +538,6 @@ private fun AudioLanguageSelectionDialog(
     )
 }
 
-@Composable
-private fun MpvHardwareDecodeModeDialog(
-    selectedMode: MpvHardwareDecodeMode,
-    onModeSelected: (MpvHardwareDecodeMode) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val options = listOf(
-        SettingsPickerOption(
-            MpvHardwareDecodeMode.AUTO_SAFE,
-            stringResource(R.string.audio_mpv_hwdec_auto_safe),
-            stringResource(R.string.audio_mpv_hwdec_auto_safe_desc)
-        ),
-        SettingsPickerOption(
-            MpvHardwareDecodeMode.HARDWARE_COPY,
-            stringResource(R.string.audio_mpv_hwdec_hardware_copy),
-            stringResource(R.string.audio_mpv_hwdec_hardware_copy_desc)
-        ),
-        SettingsPickerOption(
-            MpvHardwareDecodeMode.HARDWARE_DIRECT,
-            stringResource(R.string.audio_mpv_hwdec_hardware_direct),
-            stringResource(R.string.audio_mpv_hwdec_hardware_direct_desc)
-        ),
-        SettingsPickerOption(
-            MpvHardwareDecodeMode.DISABLED,
-            stringResource(R.string.audio_mpv_hwdec_disabled),
-            stringResource(R.string.audio_mpv_hwdec_disabled_desc)
-        ),
-        SettingsPickerOption(
-            MpvHardwareDecodeMode.LEGACY_DIRECT_COPY,
-            stringResource(R.string.audio_mpv_hwdec_legacy_direct_copy),
-            stringResource(R.string.audio_mpv_hwdec_legacy_direct_copy_desc)
-        )
-    )
-
-    SettingsSingleChoiceDialog(
-        title = stringResource(R.string.audio_mpv_hwdec_title),
-        subtitle = stringResource(R.string.audio_mpv_hwdec_dialog_subtitle),
-        options = options,
-        selectedValue = selectedMode,
-        onOptionSelected = onModeSelected,
-        onDismiss = onDismiss,
-        width = 460.dp,
-        maxHeight = 360.dp
-    )
-}
 @Composable
 private fun Dv7HandlingModeDialog(
     selectedMode: Dv7HandlingMode,

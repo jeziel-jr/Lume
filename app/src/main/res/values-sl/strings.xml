@@ -527,10 +527,7 @@
     <string name="playback_player_ask">Vprašaj vsakič</string>
 	<string name="playback_internal_player_engine">Predvajalnik</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Samodejno preklopi predvajalnik ob napaki pri zagonu</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Če zagon vira ne uspe, samodejno preklopi med ExoPlayer in libmpv.</string>																	   
-	<string name="playback_section_audio">Zvok in video</string>
+         	<string name="playback_section_audio">Zvok in video</string>
     <string name="playback_section_audio_desc">Kontrole zvoka in združljivost videa.</string>
     <string name="playback_section_subtitles">Podnapisi</string>
     <string name="playback_section_subtitles_desc">Jezik, slog in način izrisa.</string>
@@ -557,8 +554,7 @@
     <string name="playback_player_auto">Samodejno (najboljše za vsebino)</string>
     <string name="playback_player_auto_desc">ExoPlayer za filme in TV-serije · MPV za anime</string>
     <string name="playback_engine_exoplayer_desc">Najboljša združljivost s trenutnimi funkcijami Nuvio.</string>
-    <string name="playback_engine_mvplayer_desc">Uporablja libmpv s kontrolniki Nuvio OSD. Eksperimentalno.</string>																								  
-    <!-- PlaybackAudioSettings -->
+       <!-- PlaybackAudioSettings -->
     <string name="audio_trailer_section">Napovednik</string>
     <string name="audio_autoplay_trailers">Samodejno predvajaj napovednike</string>
     <string name="audio_autoplay_trailers_sub">Samodejno predvajaj napovednike na zaslonu s podrobnostmi po določenem času nedejavnosti</string>
@@ -581,19 +577,7 @@
     <string name="audio_decoder_priority">Prioriteta dekoderja</string>
     <string name="audio_tunneled">Tunelirano predvajanje</string>
     <string name="audio_tunneled_sub">Strojna sinhronizacija zvoka/videa. Lahko izboljša predvajanje na nekaterih napravah Android TV</string>
-    <string name="audio_mpv_hwdec_title">Strojno dekodiranje (samo MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Izberite, kako naj libmpv uporablja strojne dekoderje.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Podedovano (direct -&gt; copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Prejšnje privzeto vedenje: najprej poskusi z neposrednim strojnim dekodiranjem, nato s kopiranjem nazaj.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Samodejno (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Varnejši samodejni način z nadomestno možnostjo, ko nekateri strojni dekoderji odpovejo.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Strojno (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Uporablja strojno dekodiranje s kopiranjem nazaj v pomnilnik programske opreme.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Strojno (direct) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Uporablja neposredno strojno dekodiranje. Najhitrejša pot na združljivih napravah.</string>
-    <string name="audio_mpv_hwdec_disabled">Onemogočeno (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Onemogoči strojno dekodiranje in uporablja samo programsko dekodiranje.</string>
-    <string name="audio_decoder_device_only_desc">Uporabi samo vgrajene strojne dekoderje. Najbolj združljivo, vendar morda ne podpira vseh formatov.</string>
+                                     <string name="audio_decoder_device_only_desc">Uporabi samo vgrajene strojne dekoderje. Najbolj združljivo, vendar morda ne podpira vseh formatov.</string>
 	<string name="audio_decoder_prefer_device_desc">Uporabi strojne dekoderje, ko so na voljo, sicer FFmpeg. Priporočeno za večino naprav.</string>
     <string name="audio_decoder_prefer_app_desc">Uporabi FFmpeg dekoderje, ko so na voljo. Boljša podpora za formate, vendar višja poraba procesorja.</string>
     <string name="audio_decoder_controls">Nadzira, ali se za zvok in video uporabljajo strojni ali programski (FFmpeg) dekoderji</string>
@@ -1652,7 +1636,6 @@
     <string name="cd_subtitles">Podnapisi</string>
     <string name="cd_audio_tracks">Zvočni zapisi</string>
     <string name="cd_sources">Viri</string>
-    <string name="cd_switch_player_engine">Preklopi pogon predvajalnika</string>
     <string name="cd_episodes">Epizode</string>
     <string name="cd_playback_speed">Hitrost predvajanja</string>
     <string name="cd_aspect_ratio">Razmerje stranic</string>
@@ -2026,9 +2009,7 @@
     <string name="player_error_decoder">Napaka dekodirnika</string>
     <string name="player_error_unsupported_format">Ta vir uporablja format, ki ga vaša naprava morda ne podpira. Poskusite z drugim virom. [%1$s]</string>
     <string name="player_error_initialize_failed">Predvajalnika ni bilo mogoče zagnati</string>
-    <string name="player_error_mpv_surface_failed">Površine libmpv ni bilo mogoče zagnati</string>
-    <string name="player_error_mpv_playback_failed">Predvajanja libmpv ni bilo mogoče zagnati</string>
-    <string name="player_error_torrent">Napaka torrenta: %1$s</string>
+          <string name="player_error_torrent">Napaka torrenta: %1$s</string>
     <string name="player_error_playback_fallback">Napaka pri predvajanju</string>
     <!-- Subtitle timing recovery -->    
     <string name="subtitle_timing_file_no_lines">V tej datoteki ni bilo najdenih vrstic s podnapisi.</string>

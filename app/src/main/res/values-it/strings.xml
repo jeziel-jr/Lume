@@ -389,9 +389,6 @@
 <string name="playback_player_ask">Chiedi ogni volta</string>
 <string name="playback_internal_player_engine">Motore Interno</string>
 <string name="playback_engine_exoplayer">ExoPlayer</string>
-<string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-<string name="playback_auto_switch_internal_player_on_error">Cambio motore automatico su errore di avvio</string>
-<string name="playback_auto_switch_internal_player_on_error_sub">Se l\'avvio del flusso fallisce, passa automaticamente tra ExoPlayer e libmpv.</string>
 <string name="playback_section_audio">Audio &amp; Video</string>
 <string name="playback_section_audio_desc">Controlli audio e compatibilità video.</string>
 <string name="playback_section_subtitles">Sottotitoli</string>
@@ -419,7 +416,6 @@
 <string name="playback_player_auto">Automatico (Il migliore per i contenuti)</string>
 <string name="playback_player_auto_desc">ExoPlayer per Film e Serie TV · MPV per gli Anime</string>
 <string name="playback_engine_exoplayer_desc">Migliore compatibilità con le attuali funzioni di Nuvio.</string>
-<string name="playback_engine_mvplayer_desc">Usa libmpv con i controlli OSD di Nuvio. Sperimentale.</string>
 
     <!-- PlaybackAudioSettings -->
 <string name="audio_trailer_section">Trailer</string>
@@ -442,18 +438,6 @@
 <string name="audio_decoder_priority">Priorità decoder</string>
 <string name="audio_tunneled">Riproduzione Tunneled</string>
 <string name="audio_tunneled_sub">Sincronizzazione audio/video a livello hardware. Può migliorare la riproduzione su alcuni dispositivi Android TV</string>
-<string name="audio_mpv_hwdec_title">Decodifica Hardware (Solo MPV)</string>
-<string name="audio_mpv_hwdec_dialog_subtitle">Seleziona come libmpv deve utilizzare i decoder hardware.</string>
-<string name="audio_mpv_hwdec_legacy_direct_copy">Legacy (diretto -> copia)</string>
-<string name="audio_mpv_hwdec_legacy_direct_copy_desc">Comportamento predefinito precedente: prova prima l\'hardware diretto, poi il copy-back.</string>
-<string name="audio_mpv_hwdec_auto_safe">Automatico (auto-safe)</string>
-<string name="audio_mpv_hwdec_auto_safe_desc">Modalità automatica più sicura con fallback in caso di errore di alcuni decoder hardware.</string>
-<string name="audio_mpv_hwdec_hardware_copy">Hardware (copy) (mediacodec-copy)</string>
-<string name="audio_mpv_hwdec_hardware_copy_desc">Usa la decodifica hardware con copy-back nella memoria software.</string>
-<string name="audio_mpv_hwdec_hardware_direct">Hardware (direct) (mediacodec)</string>
-<string name="audio_mpv_hwdec_hardware_direct_desc">Usa la decodifica hardware diretta. Percorso più veloce su dispositivi compatibili.</string>
-<string name="audio_mpv_hwdec_disabled">Disattivata (no)</string>
-<string name="audio_mpv_hwdec_disabled_desc">Disabilita la decodifica hardware e utilizza solo quella software.</string>
 <string name="audio_decoder_device_only_desc">Usa solo i decoder hardware integrati. Massima compatibilità, ma potrebbe non supportare tutti i formati.</string>
 <string name="audio_decoder_prefer_device_desc">Usa i decoder hardware quando disponibili, altrimenti passa a FFmpeg. Consigliato per la maggior parte dei dispositivi.</string>
 <string name="audio_decoder_prefer_app_desc">Usa i decoder FFmpeg quando disponibili. Migliore supporto ai formati ma maggiore utilizzo della CPU.</string>
@@ -1464,7 +1448,6 @@
 <string name="cd_subtitles">Sottotitoli</string>
 <string name="cd_audio_tracks">Tracce audio</string>
 <string name="cd_sources">Sorgenti</string>
-<string name="cd_switch_player_engine">Cambia motore player</string>
 <string name="cd_episodes">Episodi</string>
 <string name="cd_playback_speed">Velocità di riproduzione</string>
 <string name="cd_aspect_ratio">Proporzioni</string>
@@ -2072,8 +2055,6 @@
   <string name="player_error_decoder">Errore del decoder</string>
   <string name="player_error_unsupported_format">Questo streaming utilizza un formato che il tuo dispositivo potrebbe non supportare. Prova una sorgente diversa. [%1$s]</string>
   <string name="player_error_initialize_failed">Impossibile inizializzare il lettore</string>
-  <string name="player_error_mpv_surface_failed">Impossibile inizializzare la superficie libmpv</string>
-  <string name="player_error_mpv_playback_failed">Impossibile inizializzare la riproduzione libmpv</string>
   <string name="player_error_torrent">Errore torrent: %1$s</string>
   <string name="player_error_playback_fallback">Errore di riproduzione</string>
   <string name="subtitle_timing_file_no_lines">Nessuna riga di sottotitoli trovata in questo file.</string>

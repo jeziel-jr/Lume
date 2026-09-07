@@ -536,9 +536,6 @@
     <string name="playback_player_ask">Kérdezzen rá minden alkalommal</string>
     <string name="playback_internal_player_engine">Belső motor</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Béta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Automatikus motorváltás indítási hiba esetén</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Ha a stream indítása sikertelen, váltson automatikusan az ExoPlayer és libmpv között.</string>
     <string name="playback_external_forward_subtitles">Feliratok továbbítása külső lejátszónak</string>
     <string name="playback_external_forward_subtitles_sub">Töltsd le a feliratokat az előnyben részesített nyelven a bővítményekből, és add át a külső lejátszónak.</string>
     <string name="playback_section_audio">Hang és előzetes</string>
@@ -568,7 +565,6 @@
     <string name="playback_player_auto">Automatikus (A tartalomhoz legjobb)</string>
     <string name="playback_player_auto_desc">ExoPlayer filmekhez és sorozatokhoz · MPV animékhez</string>
     <string name="playback_engine_exoplayer_desc">Legjobb kompatibilitás a jelenlegi Nuvio funkciókkal.</string>
-    <string name="playback_engine_mvplayer_desc">Libmpv-t használ a Nuvio OSD vezérlőivel. Kísérleti funkció.</string>
 
     <string name="video_section">Videó</string>
     <string name="audio_trailer_section">Előzetes</string>
@@ -626,18 +622,6 @@
     <string name="dv7_libdovi_mode_3_sub" translatable="false">Convert Profile 5 (DV5) streams to Profile 8.1. Same conversion the Convert DV5 to DV8.1 toggle uses.</string>
     <string name="dv7_libdovi_mode_4_title" translatable="false">Mode 4 — 8.4 (static)</string>
     <string name="dv7_libdovi_mode_4_sub" translatable="false">Convert to static profile 8.4.</string>
-    <string name="audio_mpv_hwdec_title">Hardveres dekódolás (Csak MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Válaszd ki, hogyan használja a libmpv a hardveres dekódereket.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Hagyományos (közvetlen -&gt; másolás)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Korábbi alapértelmezett viselkedés: először próbálja a közvetlen hardvereset, majd másolj vissza.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Automatikus (biztonságos)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Biztonságosabb automatikus mód alternatívával, ha egyes hardveres dekóderek hibáznának.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardveres (másolás) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Hardveres dekódolást használ a szoftver memóriájába való visszamásolással.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardveres (közvetlen) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Közvetlen hardveres dekódolás. A leggyorsabb út a kompatibilis eszközökön.</string>
-    <string name="audio_mpv_hwdec_disabled">Letiltva (nem)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Kikapcsolja a hardveres dekódolást és kizárólag szoftverest használ.</string>
     <string name="audio_decoder_device_only_desc">Csak a beépített hardveres dekóderek használata. A leginkább kompatibilis, de nem biztos, hogy minden formátumot támogat.</string>
     <string name="audio_decoder_prefer_device_desc">Hardveres dekóderek használata, ha elérhetőek, egyébként FFmpeg. A legtöbb eszközhöz ez ajánlott.</string>
     <string name="audio_decoder_prefer_app_desc">FFmpeg dekóderek használata, ha elérhetőek. Jobb formátumtámogatás, de magasabb CPU-használat.</string>
@@ -1940,7 +1924,6 @@
     <string name="cd_subtitles">Feliratok</string>
     <string name="cd_audio_tracks">Hangsávok</string>
     <string name="cd_sources">Források</string>
-    <string name="cd_switch_player_engine">Lejátszó motor váltása</string>
     <string name="cd_episodes">Epizódok</string>
     <string name="cd_playback_speed">Lejátszási sebesség</string>
     <string name="cd_aspect_ratio">Képarány</string>
@@ -2323,8 +2306,6 @@ Próbálj meg egy másik forrást. [%1$s]</string>
     <string name="player_error_decoder">Dekóder hiba</string>
     <string name="player_error_unsupported_format">Ez a stream olyan formátumot használ, amelyet a készüléked nem biztos, hogy támogat. Próbálj meg egy másik forrást. [%1$s]</string>
     <string name="player_error_initialize_failed">A lejátszó inicializálása sikertelen</string>
-    <string name="player_error_mpv_surface_failed">A libmpv felület inicializálása sikertelen</string>
-    <string name="player_error_mpv_playback_failed">A libmpv lejátszás inicializálása sikertelen</string>
     <string name="player_error_torrent">Torrent hiba: %1$s</string>
     <string name="player_error_playback_fallback">Lejátszási hiba</string>
     <!-- Subtitle timing recovery -->

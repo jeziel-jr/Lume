@@ -551,9 +551,6 @@
     <string name="playback_player_ask">Tanya setiap kali</string>
     <string name="playback_internal_player_engine">Mesin Internal</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Ganti mesin otomatis saat error startup</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Jika stream gagal dimulai, ganti antara ExoPlayer dan libmpv secara otomatis.</string>
     <string name="playback_section_audio">Audio &amp; Video</string>
     <string name="playback_section_audio_desc">Kontrol audio dan kompatibilitas video.</string>
     <string name="playback_section_subtitles">Subtitle</string>
@@ -581,7 +578,6 @@
     <string name="playback_player_auto">Otomatis (Terbaik untuk Konten)</string>
     <string name="playback_player_auto_desc">ExoPlayer untuk Film &amp; Serial TV · MPV untuk Anime</string>
     <string name="playback_engine_exoplayer_desc">Kompatibilitas terbaik dengan fitur Nuvio saat ini.</string>
-    <string name="playback_engine_mvplayer_desc">Menggunakan libmpv dengan kontrol OSD Nuvio. Eksperimental.</string>
 
     <!-- PlaybackAudioSettings -->
     <string name="audio_trailer_section">Trailer</string>
@@ -610,18 +606,6 @@
     <string name="audio_enable_downmix_subtitle">Menggunakan jalur downmix FFmpeg. Jika dinonaktifkan, audio akan mengikuti jalur Android/perangkat sebelumnya.</string>
     <string name="audio_tunneled">Tunneled Playback</string>
     <string name="audio_tunneled_sub">Sinkronisasi audio/video tingkat hardware. Mungkin meningkatkan pemutaran di beberapa perangkat Android TV</string>
-    <string name="audio_mpv_hwdec_title">Dekoding Hardware (Hanya MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Pilih cara libmpv menggunakan dekoder hardware.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Lama (direct → copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Perilaku bawaan sebelumnya: coba hardware langsung dulu, lalu copy-back.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Otomatis (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Mode otomatis lebih aman dengan fallback saat beberapa dekoder hardware gagal.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardware (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Menggunakan dekoding hardware dengan copy-back ke memori software.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardware (direct) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Menggunakan dekoding hardware langsung. Jalur tercepat di perangkat yang kompatibel.</string>
-    <string name="audio_mpv_hwdec_disabled">Dinonaktifkan (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Menonaktifkan dekoding hardware dan hanya menggunakan dekoding software.</string>
     <string name="audio_decoder_device_only_desc">Hanya gunakan dekoder hardware bawaan. Paling kompatibel tetapi mungkin tidak mendukung semua format.</string>
     <string name="audio_decoder_prefer_device_desc">Gunakan dekoder hardware bila tersedia, fallback ke FFmpeg. Disarankan untuk kebanyakan perangkat.</string>
     <string name="audio_decoder_prefer_app_desc">Gunakan dekoder FFmpeg bila tersedia. Dukungan format lebih baik tetapi penggunaan CPU lebih tinggi.</string>
@@ -1918,7 +1902,6 @@
     <string name="cd_subtitles">Subtitle</string>
     <string name="cd_audio_tracks">Trek audio</string>
     <string name="cd_sources">Sumber</string>
-    <string name="cd_switch_player_engine">Ganti mesin pemutar</string>
     <string name="cd_episodes">Episode</string>
     <string name="cd_playback_speed">Kecepatan pemutaran</string>
     <string name="cd_aspect_ratio">Rasio aspek</string>
@@ -2290,8 +2273,6 @@
     <string name="player_error_decoder">Error dekoder</string>
     <string name="player_error_unsupported_format">Stream ini menggunakan format yang mungkin tidak didukung perangkat Anda. Coba sumber lain. [%1$s]</string>
     <string name="player_error_initialize_failed">Gagal menginisialisasi pemutar</string>
-    <string name="player_error_mpv_surface_failed">Gagal menginisialisasi permukaan libmpv</string>
-    <string name="player_error_mpv_playback_failed">Gagal menginisialisasi pemutaran libmpv</string>
     <string name="player_error_torrent">Error torrent: %1$s</string>
     <string name="player_error_playback_fallback">Error pemutaran</string>
     <!-- Subtitle timing recovery -->

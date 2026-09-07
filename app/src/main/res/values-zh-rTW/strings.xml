@@ -449,23 +449,8 @@
     <string name="network_connection_offline">離線</string>
     <string name="advanced_section_performance">效能與導航</string>
     <string name="advanced_section_diagnostics">診斷</string>
-    <string name="advanced_sentry_reports">Sentry 崩潰報告</string>
-    <string name="advanced_sentry_reports_subtitle">傳送包含安全上下文的崩潰和 ANR 報告。預設開啟。</string>
     <string name="advanced_playback_issue_reports">播放問題報告</string>
     <string name="advanced_playback_issue_reports_subtitle">在播放期間、長時間載入和播放錯誤時顯示報告按鈕</string>
-    <string name="sentry_enable_dialog_title">開啟崩潰報告？</string>
-    <string name="sentry_enable_dialog_subtitle">崩潰報告有助於識別特定於裝置的故障，無需您透過 ADB 日誌重現問題。</string>
-    <string name="sentry_disable_dialog_title">關閉崩潰報告？</string>
-    <string name="sentry_disable_dialog_subtitle">此裝置未來的崩潰和當前的 ANR 將不再報告。這可能會使特定於裝置的錯誤更難修復。</string>
-    <string name="sentry_help_title">它如何提供幫助</string>
-    <string name="sentry_help_body">報告按應用程式版本、裝置型號、Android 版本和堆疊追蹤分組，以便優先修復最常見的實際崩潰。</string>
-    <string name="sentry_sent_title">已傳送</string>
-    <string name="sentry_sent_body">崩潰、當前 ANR、堆疊追蹤、應用程式版本、建置類型、變體、裝置和作業系統元資料，以及包含方法、主機、路徑、狀態、持續時間和異常類型的安全網路麵包屑。</string>
-    <string name="sentry_not_sent_title">不傳送</string>
-    <string name="sentry_not_sent_body">密碼、存取權杖、重新整理權杖、請求主體、回應主體、標頭、Cookie、螢幕截圖、檢視階層、會話重播、原始診斷資料以及串流 URL 查詢或片段值。</string>
-    <string name="sentry_keep_enabled">保持開啟</string>
-    <string name="sentry_turn_off">關閉</string>
-    <string name="sentry_turn_on">開啟</string>
     <string name="advanced_section_cache">快取</string>
     <string name="advanced_section_dv_diagnostics" translatable="false">DV Diagnostics</string>
     <string name="advanced_fast_horizontal_navigation">快速水平導航</string>
@@ -580,9 +565,6 @@
     <string name="playback_player_ask">每次詢問</string>
     <string name="playback_internal_player_engine">內建播放引擎</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (測試版)</string>
-    <string name="playback_auto_switch_internal_player_on_error">啟動錯誤時自動切換播放引擎</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">如果串流啟動失敗，自動在 ExoPlayer 和 libmpv 之間切換。</string>
     <string name="playback_external_forward_subtitles">將字幕轉發至外部播放器</string>
     <string name="playback_external_forward_subtitles_sub">從擴充套件獲取您偏好語言的字幕，並傳遞給外部播放器。</string>
     <string name="playback_external_send_skip_segments">傳送片頭和片尾時間戳</string>
@@ -614,7 +596,6 @@
     <string name="playback_player_auto">自動 (最適合內容)</string>
     <string name="playback_player_auto_desc">電影與電視節目使用 ExoPlayer · 動畫使用 MPV</string>
     <string name="playback_engine_exoplayer_desc">與目前 Nuvio 功能相容性最佳。</string>
-    <string name="playback_engine_mvplayer_desc">使用帶有 Nuvio OSD 控制的 libmpv。實驗性功能。</string>
 
     <string name="video_section">影片</string>
     <string name="audio_trailer_section">預告片</string>
@@ -678,18 +659,6 @@
     <string name="dv7_libdovi_mode_3_sub" translatable="false">Convert Profile 5 (DV5) streams to Profile 8.1. Same conversion the Convert DV5 to DV8.1 toggle uses.</string>
     <string name="dv7_libdovi_mode_4_title" translatable="false">Mode 4 — 8.4 (static)</string>
     <string name="dv7_libdovi_mode_4_sub" translatable="false">Convert to static profile 8.4.</string>
-    <string name="audio_mpv_hwdec_title">硬體解碼 (僅限 MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">選擇 libmpv 應如何使用硬體解碼器。</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">傳統 (direct -> copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">先前的預設行為：先嘗試直接硬體，然後回退到 copy-back。</string>
-    <string name="audio_mpv_hwdec_auto_safe">自動 (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">更安全的自動模式，當部分硬體解碼器失敗時有回退機制。</string>
-    <string name="audio_mpv_hwdec_hardware_copy">硬體 (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">使用硬體解碼並將結果複製回軟體記憶體。</string>
-    <string name="audio_mpv_hwdec_hardware_direct">硬體 (direct) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">使用直接硬體解碼。在相容裝置上速度最快。</string>
-    <string name="audio_mpv_hwdec_disabled">停用 (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">停用硬體解碼，僅使用軟體解碼。</string>
     <string name="audio_decoder_device_only_desc">僅使用內建硬體解碼器。相容性最佳，但可能不支援所有格式。</string>
     <string name="audio_decoder_prefer_device_desc">優先使用硬體解碼器，不可用時回退到 FFmpeg。建議大多數裝置使用。</string>
     <string name="audio_decoder_prefer_app_desc">優先使用 FFmpeg 解碼器。格式支援更好，但 CPU 使用率較高。</string>
@@ -2032,7 +2001,6 @@
     <string name="cd_subtitles">字幕</string>
     <string name="cd_audio_tracks">音軌</string>
     <string name="cd_sources">來源</string>
-    <string name="cd_switch_player_engine">切換播放引擎</string>
     <string name="cd_episodes">集數</string>
     <string name="cd_playback_speed">播放速度</string>
     <string name="cd_aspect_ratio">畫面比例</string>
@@ -2403,8 +2371,6 @@
     <string name="player_error_decoder">解碼器錯誤</string>
     <string name="player_error_unsupported_format">此串流使用的格式您的裝置可能不支援。請嘗試其他來源。[%1$s]</string>
     <string name="player_error_initialize_failed">初始化播放器失敗</string>
-    <string name="player_error_mpv_surface_failed">初始化 libmpv 表面失敗</string>
-    <string name="player_error_mpv_playback_failed">初始化 libmpv 播放失敗</string>
     <string name="player_error_torrent">Torrent 錯誤：%1$s</string>
     <string name="player_error_playback_fallback">播放錯誤</string>
     <!-- 字幕時間同步復原 -->

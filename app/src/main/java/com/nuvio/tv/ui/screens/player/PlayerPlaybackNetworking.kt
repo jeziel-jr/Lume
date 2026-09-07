@@ -61,7 +61,7 @@ internal object PlayerPlaybackNetworking {
             // WebDAV servers behind reverse proxies commonly redirect to a
             // different host/port, causing auth to be lost. A network
             // interceptor ensures the header is always present on every
-            // outgoing request — same behavior as mpv/curl.
+            // outgoing request — same behavior as command-line curl with auth headers.
             val authValue = defaultHeaders.entries
                 .first { it.key.equals("Authorization", ignoreCase = true) }
                 .value

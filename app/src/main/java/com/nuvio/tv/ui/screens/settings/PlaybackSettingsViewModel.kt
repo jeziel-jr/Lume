@@ -16,7 +16,6 @@ import com.nuvio.tv.data.local.StreamAutoPlaySource
 import com.nuvio.tv.data.local.AddonSubtitleStartupMode
 import com.nuvio.tv.data.local.AudioOutputChannels
 import com.nuvio.tv.data.local.AutoSkipSegmentType
-import com.nuvio.tv.data.local.MpvHardwareDecodeMode
 import com.nuvio.tv.data.local.SubtitleOrganizationMode
 import com.nuvio.tv.data.local.TrailerSettings
 import com.nuvio.tv.data.local.TrailerSettingsDataStore
@@ -43,10 +42,6 @@ class PlaybackSettingsViewModel @Inject constructor(
 
     suspend fun setInternalPlayerEngine(engine: InternalPlayerEngine) {
         playerSettingsDataStore.setInternalPlayerEngine(engine)
-    }
-
-    suspend fun setAutoSwitchInternalPlayerOnError(enabled: Boolean) {
-        playerSettingsDataStore.setAutoSwitchInternalPlayerOnError(enabled)
     }
 
     suspend fun setExternalPlayerForwardSubtitles(enabled: Boolean) {
@@ -143,11 +138,6 @@ class PlaybackSettingsViewModel @Inject constructor(
         playerSettingsDataStore.setFrameRateMatchingMode(FrameRateMatchingMode.OFF)
         playerSettingsDataStore.setResolutionMatchingEnabled(false)
     }
-
-    suspend fun setMpvHardwareDecodeMode(mode: MpvHardwareDecodeMode) {
-        playerSettingsDataStore.setMpvHardwareDecodeMode(mode)
-    }
-
 
     suspend fun setDv5ToDv81Enabled(enabled: Boolean) {
         playerSettingsDataStore.setDv5ToDv81Enabled(enabled)

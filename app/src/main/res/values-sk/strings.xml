@@ -551,9 +551,6 @@
     <string name="playback_player_ask">Opýtať sa pri každom prehratí</string>
     <string name="playback_internal_player_engine">Interný engine</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Automaticky prepnúť engine pri chybe spustenia</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Ak spustenie streamu zlyhá, automaticky prepnúť medzi ExoPlayer a libmpv.</string>
     <string name="playback_section_audio">Audio &amp; video</string>
     <string name="playback_section_audio_desc">Kompatibilita videa a ovládanie audia.</string>
     <string name="playback_section_subtitles">Titulky</string>
@@ -581,7 +578,6 @@
     <string name="playback_player_auto">Automaticky (Najlepšie pre obsah)</string>
     <string name="playback_player_auto_desc">ExoPlayer pre filmy a seriály · MPV pre anime</string>
     <string name="playback_engine_exoplayer_desc">Najlepšia kompatibilita s aktuálnymi funkciami Nuvio.</string>
-    <string name="playback_engine_mvplayer_desc">Používa libmpv s ovládaním Nuvio OSD. Experimentálne.</string>
 
     <!-- PlaybackAudioSettings -->
     <string name="audio_trailer_section">Trailer</string>
@@ -611,18 +607,6 @@
     <string name="audio_tunneled">Tunelované prehrávanie</string>
     <string name="audio_tunneled_sub">Hardvérová synchronizácia audia a videa. Môže zlepšiť prehrávanie na niektorých Android TV zariadeniach</string>
     <string name="audio_dv_sub">Mapovať Dolby Vision Profile 7 na štandardné HEVC pre zariadenia bez hardvérovej podpory DV</string>
-    <string name="audio_mpv_hwdec_title">Hardvérové dekódovanie (iba MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Vyberte, ako má libmpv používať hardvérové dekodéry.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Staršie (direct -&gt; copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Predchádzajúce predvolené správanie: najprv skúsiť priamy hardvér, potom copy-back.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Automaticky (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Bezpečnejší automatický režim so zálohou, keď niektoré hardvérové dekodéry zlyhajú.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardvér (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Používa hardvérové dekódovanie s kopírovaním späť do softvérovej pamäte.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardvér (direct) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Používa priame hardvérové dekódovanie. Najrýchlejšia cesta na kompatibilných zariadeniach.</string>
-    <string name="audio_mpv_hwdec_disabled">Zakázané (nie)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Zakáže hardvérové dekódovanie a používa iba softvérové dekódovanie.</string>
     <string name="audio_decoder_device_only_desc">Používať iba vstavané hardvérové dekodéry. Najkompatibilnejšie, ale nemusia podporovať všetky formáty.</string>
     <string name="audio_decoder_prefer_device_desc">Použiť hardvérové dekodéry, ak sú dostupné, inak FFmpeg. Odporúčané pre väčšinu zariadení.</string>
     <string name="audio_decoder_prefer_app_desc">Použiť FFmpeg dekodéry, ak sú dostupné. Lepšia podpora formátov, ale vyššie zaťaženie CPU.</string>
@@ -1919,7 +1903,6 @@
     <string name="cd_subtitles">Titulky</string>
     <string name="cd_audio_tracks">Zvukové stopy</string>
     <string name="cd_sources">Zdroje</string>
-    <string name="cd_switch_player_engine">Prepnúť engine prehrávača</string>
     <string name="cd_episodes">Epizódy</string>
     <string name="cd_playback_speed">Rýchlosť prehrávania</string>
     <string name="cd_aspect_ratio">Pomer strán</string>
@@ -2291,8 +2274,6 @@
     <string name="player_error_decoder">Chyba dekodéra</string>
     <string name="player_error_unsupported_format">Tento stream používa formát, ktorý vaše zariadenie nemusí podporovať. Skúste iný zdroj. [%1$s]</string>
     <string name="player_error_initialize_failed">Nepodarilo sa inicializovať prehrávač</string>
-    <string name="player_error_mpv_surface_failed">Nepodarilo sa inicializovať povrch libmpv</string>
-    <string name="player_error_mpv_playback_failed">Nepodarilo sa inicializovať prehrávanie libmpv</string>
     <string name="player_error_torrent">Chyba torrentu: %1$s</string>
     <string name="player_error_playback_fallback">Chyba prehrávania</string>
     <!-- Subtitle timing recovery -->

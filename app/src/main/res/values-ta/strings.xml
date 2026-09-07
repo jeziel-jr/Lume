@@ -544,9 +544,6 @@
     <string name="playback_player_ask">ஒவ்வொரு முறையும் கேள்</string>
     <string name="playback_internal_player_engine">உள்ளமை engine</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (பீட்டா)</string>
-    <string name="playback_auto_switch_internal_player_on_error">தொடக்க பிழையில் engine-ஐ தானாக மாற்று</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">ஸ்ட்ரீம் தொடக்கம் தோல்வியடைந்தால் ExoPlayer மற்றும் libmpv இடையே தானாக மாறு.</string>
     <string name="playback_section_audio">ஒலி &amp; வீடியோ</string>
     <string name="playback_section_audio_desc">ஒலி கட்டுப்பாடுகள் மற்றும் வீடியோ இணக்கத்தன்மை.</string>
     <string name="playback_section_subtitles">உபதலைப்புகள்</string>
@@ -574,7 +571,6 @@
     <string name="playback_player_auto">தானாக (உள்ளடக்கத்திற்கு சிறந்தது)</string>
     <string name="playback_player_auto_desc">திரைப்படங்கள் &amp; தொடர்களுக்கு ExoPlayer · Anime-க்கு MPV</string>
     <string name="playback_engine_exoplayer_desc">தற்போதைய Nuvio அம்சங்களுடன் சிறந்த பொருத்தம்.</string>
-    <string name="playback_engine_mvplayer_desc">Nuvio OSD கட்டுப்பாடுகளுடன் libmpv பயன்படுத்துகிறது. சோதனை நிலையில் உள்ளது.</string>
 
         <!-- PlaybackAudioSettings -->
     <string name="audio_trailer_section">ட்ரெய்லர்</string>
@@ -599,18 +595,6 @@
     <string name="audio_decoder_priority">டிகோடர் முன்னுரிமை</string>
     <string name="audio_tunneled">டனல்டு இயக்கம்</string>
     <string name="audio_tunneled_sub">வன்பொருள் நிலை ஒலி/காணொளி ஒத்திசைவு. சில ஆண்ட்ராய்டு டிவி சாதனங்களில் இயக்கத்தை மேம்படுத்தலாம்</string>
-    <string name="audio_mpv_hwdec_title">வன்பொருள் டிகோடிங் (எம்பிவி மட்டும்)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">லிப்எம்பிவி வன்பொருள் டிகோடர்களை எவ்வாறு பயன்படுத்த வேண்டும் என்பதைத் தேர்ந்தெடுக்கவும்.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">பழைய முறை (நேரடி -&gt; நகல்)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">முந்தைய இயல்புநிலை நடைமுறை: முதலில் நேரடி வன்பொருளை முயன்று, பின்னர் நகல்-மீள்பதிவு செய்க.</string>
-    <string name="audio_mpv_hwdec_auto_safe">தானியங்கு (பாதுகாப்பானது)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">சில வன்பொருள் டிகோடர்கள் தோல்வியுற்றால் மாற்று வழியுடன் பாதுகாப்பான தானியங்கு முறை.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">வன்பொருள் (நகல்) (மீடியகோடெக்-காப்பி)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">வன்பொருள் டிகோடிங்கை பயன்படுத்தி மென்பொருள் நினைவகத்திற்கு நகலெடுக்கிறது.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">வன்பொருள் (நேரடி) (மீடியகோடெக்)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">நேரடி வன்பொருள் டிகோடிங்கைப் பயன்படுத்துகிறது. பொருந்தும் சாதனங்களில் மிக வேகமான நடைமுறை.</string>
-    <string name="audio_mpv_hwdec_disabled">முடக்கப்பட்டது (இல்லை)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">வன்பொருள் டிகோடிங்கை முடக்கி மென்பொருள் டிகோடிங்கை மட்டும் பயன்படுத்துகிறது.</string>
     <string name="audio_decoder_device_only_desc">உள்ளமைந்த வன்பொருள் டிகோடர்களை மட்டும் பயன்படுத்து. மிகவும் பொருந்தக்கூடியது, ஆனால் எல்லா வடிவங்களையும் ஆதரிக்காமல் இருக்கலாம்.</string>
     <string name="audio_decoder_prefer_device_desc">கிடைக்கும் போது வன்பொருள் டிகோடர்களைப் பயன்படுத்து, இல்லையெனில் எப்எப்எம்பிஇஜிக்கு மாறு. பெரும்பாலான சாதனங்களுக்கு பரிந்துரைக்கப்படுகிறது.</string>
     <string name="audio_decoder_prefer_app_desc">கிடைக்கும் போது எப்எப்எம்பிஇஜி டிகோடர்களைப் பயன்படுத்து. சிறந்த வடிவ ஆதரவு, ஆனால் அதிக சிபியூ பயன்பாடு.</string>
@@ -1739,7 +1723,6 @@
     <string name="cd_subtitles">உபதலைப்புகள்</string>
     <string name="cd_audio_tracks">ஒலி தடங்கள்</string>
     <string name="cd_sources">ஆதாரங்கள்</string>
-    <string name="cd_switch_player_engine">பிளேயர் என்ஜினை மாற்று</string>
     <string name="cd_episodes">எபிசோடுகள்</string>
     <string name="cd_playback_speed">இயக்க வேகம்</string>
     <string name="cd_aspect_ratio">காட்சி விகிதம்</string>
@@ -2111,8 +2094,6 @@
     <string name="player_error_decoder">டிகோடர் பிழை</string>
     <string name="player_error_unsupported_format">இந்த ஸ்ட்ரீம் உங்கள் சாதனம் ஆதரிக்காத வடிவத்தை பயன்படுத்துகிறது. வேறு மூலத்தை முயற்சிக்கவும். [%1$s]</string>
     <string name="player_error_initialize_failed">பிளேயரை தொடங்க முடியவில்லை</string>
-    <string name="player_error_mpv_surface_failed">libmpv மேற்பரப்பை தொடங்க முடியவில்லை</string>
-    <string name="player_error_mpv_playback_failed">libmpv இயக்கத்தை தொடங்க முடியவில்லை</string>
     <string name="player_error_torrent">டாரண்ட் பிழை: %1$s</string>
     <string name="player_error_playback_fallback">இயக்கப் பிழை</string>
     <!-- Subtitle timing recovery -->

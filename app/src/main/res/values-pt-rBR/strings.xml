@@ -560,9 +560,6 @@
     <string name="playback_player_ask">Sempre perguntar</string>
     <string name="playback_internal_player_engine">Player Interno</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Alternar motor em erro inicial</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Se falhar, alternar ExoPlayer/libmpv</string>
     <string name="playback_external_forward_subtitles">Enviar legendas ao player externo</string>
     <string name="playback_external_forward_subtitles_sub">Carrega automaticamente as legendas no seu idioma quando você escolhe assistir usando outro aplicativo de vídeo.</string>
     <string name="playback_external_send_skip_segments">Enviar marcadores de tempo de introdução e créditos</string>
@@ -594,7 +591,6 @@
     <string name="playback_player_auto">Automático (Melhor para conteúdo)</string>
     <string name="playback_player_auto_desc">ExoPlayer: Filmes/Séries · MPV: Animes</string>
     <string name="playback_engine_exoplayer_desc">Compatível com recursos atuais do Nuvio</string>
-    <string name="playback_engine_mvplayer_desc">Usa libmpv com OSD do Nuvio (Experimental)</string>
 
     <string name="video_section">Vídeo</string>
     <string name="audio_trailer_section">Trailer</string>
@@ -658,18 +654,6 @@
     <string name="dv7_libdovi_mode_3_sub">Converte vídeos do Perfil 5 para o 8.1. Tem a mesma função do botão de conversão principal.</string>
     <string name="dv7_libdovi_mode_4_title">Modo 4 — Perfil 8.4 (Estático)</string>
     <string name="dv7_libdovi_mode_4_sub">Converte os dados de imagem para o perfil estático 8.4.</string>
-    <string name="audio_mpv_hwdec_title">Decodificação por hardware (MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Definir uso de decodificadores</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Legacy (direto → cópia)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Tenta hardware direto, depois cópia</string>
-    <string name="audio_mpv_hwdec_auto_safe">Auto (seguro)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Modo automático seguro com fallback</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardware (cópia)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Usa hardware com cópia</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardware (direto)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Usa decodificação direta</string>
-    <string name="audio_mpv_hwdec_disabled">Desativado</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Usa apenas software</string>
     <string name="audio_decoder_device_only_desc">Mais compatível, suporta menos formatos</string>
     <string name="audio_decoder_prefer_device_desc">Usa hardware, FFmpeg como fallback</string>
     <string name="audio_decoder_prefer_app_desc">Usa FFmpeg, mais CPU</string>
@@ -1996,7 +1980,6 @@
     <string name="cd_subtitles">Legendas</string>
     <string name="cd_audio_tracks">Faixas de áudio</string>
     <string name="cd_sources">Fontes</string>
-    <string name="cd_switch_player_engine">Mudando player</string>
     <string name="cd_episodes">Episódios</string>
     <string name="cd_playback_speed">Velocidade de reprodução</string>
     <string name="cd_aspect_ratio">Proporção da tela</string>
@@ -2367,8 +2350,6 @@
     <string name="player_error_decoder">Erro de decodificação</string>
     <string name="player_error_unsupported_format">Formato não suportado pelo dispositivo. Tente outra fonte. [%1$s]</string>
     <string name="player_error_initialize_failed">Falha ao inicializar player</string>
-    <string name="player_error_mpv_surface_failed">Falha ao iniciar a renderização de vídeo (libmpv)</string>
-    <string name="player_error_mpv_playback_failed">Falha ao inicializar reprodução libmpv</string>
     <string name="player_error_torrent">Erro de torrent: %1$s</string>
     <string name="player_error_playback_fallback">Erro de reprodução</string>
     <!-- Subtitle timing recovery -->

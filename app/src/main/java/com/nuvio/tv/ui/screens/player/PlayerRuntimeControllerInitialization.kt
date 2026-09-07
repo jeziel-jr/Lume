@@ -84,7 +84,6 @@ import java.net.SocketTimeoutException
 import kotlin.math.min
 import androidx.media3.common.Tracks
 
-private const val MPV_AFR_SETTLE_DELAY_MS = 2_000L
 private const val AUDIO_DELAY_REFRESH_DEBOUNCE_MS = 120L
 private const val PLAYER_RELEASE_TIMEOUT_MS = 3000L
 private const val PLAYER_REBUILD_SETTLE_DELAY_MS = 120L
@@ -148,9 +147,6 @@ internal fun PlayerRuntimeController.initializePlayer(
 
     scope.launch {
         try {
-            if (allowEngineFailover) {
-                startupEngineFailoverTriggered = false
-            }
             autoSubtitleSelected = false
             hasScannedTextTracksOnce = false
             resetLoadingOverlayForNewStream()
@@ -165,7 +161,6 @@ internal fun PlayerRuntimeController.initializePlayer(
             }
             hasTriedDv7HevcFallback = false
             forceDv7ToHevc = false
-            mpvDelayStartAfterAfrSwitch = false
             playerInitializationStartedAtMs = System.currentTimeMillis()
             // Reset per playback; only the ExoPlayer custom-buffer path sets a real value.
             effectiveBackBufferDurationMs = 0
@@ -185,15 +180,13 @@ internal fun PlayerRuntimeController.initializePlayer(
                 deviceLanguages = resolveDeviceAudioLanguages(),
                 contentOriginalLanguage = contentLanguage
             )
-            mpvPreferredAudioLanguages = preferredAudioLanguages
-            mpvHardwareDecodeModeSetting = playerSettings.mpvHardwareDecodeMode
-            var effectiveInternalPlayerEngine = overrideInternalPlayerEngine ?: playerSettings.internalPlayerEngine
-            if (effectiveInternalPlayerEngine == InternalPlayerEngine.AUTO) {
-                effectiveInternalPlayerEngine = resolveAutoInternalPlayerEngine()
+            val effectiveInternalPlayerEngine = when (overrideInternalPlayerEngine ?: playerSettings.internalPlayerEngine) {
+                InternalPlayerEngine.AUTO -> InternalPlayerEngine.EXOPLAYER
+                InternalPlayerEngine.EXOPLAYER -> InternalPlayerEngine.EXOPLAYER
             }
             runtimeInternalPlayerEngineOverride = overrideInternalPlayerEngine
             if (overrideInternalPlayerEngine == null && playerSettings.internalPlayerEngine == InternalPlayerEngine.AUTO) {
-                resolvedAutoPlayerEngine = effectiveInternalPlayerEngine
+                resolvedAutoPlayerEngine = InternalPlayerEngine.EXOPLAYER
             } else if (overrideInternalPlayerEngine != null) {
                 resolvedAutoPlayerEngine = null
             }
@@ -205,8 +198,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                     frameRateMatchingMode = playerSettings.frameRateMatchingMode,
                     resizeMode = playerSettings.resizeMode,
                     aspectMode = deviceAspectMode,
-                    tunnelingEnabled = playerSettings.tunnelingEnabled &&
-                            effectiveInternalPlayerEngine != InternalPlayerEngine.MVP_PLAYER
+                    tunnelingEnabled = playerSettings.tunnelingEnabled
                 )
             }
             setLoadingStatus(
@@ -221,28 +213,10 @@ internal fun PlayerRuntimeController.initializePlayer(
                     resolutionMatchingEnabled = playerSettings.resolutionMatchingEnabled
                 )
             }
-            if (effectiveInternalPlayerEngine == InternalPlayerEngine.MVP_PLAYER) {
-                mpvInitializationInProgress = true
-                try {
-                    afrJob.await()
-                    if (mpvDelayStartAfterAfrSwitch) {
-                        Log.d(PlayerRuntimeController.TAG, "AFR display mode switched; delaying MPV start by ${MPV_AFR_SETTLE_DELAY_MS}ms")
-                        delay(MPV_AFR_SETTLE_DELAY_MS)
-                    }
-                    setLoadingStatus(
-                        context.getString(R.string.player_loading_buffering)
-                    )
-                    initializeMpvPlayer(url = url, headers = headers, allowEngineFailover = allowEngineFailover)
-                } finally {
-                    mpvInitializationInProgress = false
-                }
-                return@launch
-            }
             resolveCurrentStreamMimeType(
                 url = url,
                 headers = headers
             )
-            mpvInitializationInProgress = false
 
             // ── ExoPlayer Dolby Vision Logic (mode-driven via Dv7HandlingMode) ──
             DoviBridge.resetRuntimeCounters()
@@ -1172,9 +1146,8 @@ internal fun PlayerRuntimeController.initializePlayer(
                             return
                         }
 
-                        if ((error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED ||
-                             error.errorCode == PlaybackException.ERROR_CODE_FAILED_RUNTIME_CHECK) &&
-                            !autoSwitchInternalPlayerOnErrorEnabled) {
+                        if (error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED ||
+                             error.errorCode == PlaybackException.ERROR_CODE_FAILED_RUNTIME_CHECK) {
                             if (!isSafeAudioModeActiveForCurrentPlayback) {
                                 safeAudioForcedStreamUrls.add(currentStreamUrl)
                                 retryCurrentStreamWithSafeAudioFallback(currentPosition)
@@ -1242,10 +1215,6 @@ internal fun PlayerRuntimeController.initializePlayer(
                             return
                         }
 
-                        // ── Main Engine Failover ──
-                        if (maybeAutoSwitchInternalPlayerOnStartupError(detailedError = detailedError, allowEngineFailover = allowEngineFailover)) {
-                            return
-                        }
                         if (attemptAutoRetry(error, detailedError)) {
                             return
                         }
@@ -1305,14 +1274,6 @@ internal fun PlayerRuntimeController.initializePlayer(
                 })
             }
         } catch (e: Exception) {
-            if (
-                maybeAutoSwitchInternalPlayerOnStartupError(
-                    detailedError = e.message ?: context.getString(com.nuvio.tv.R.string.player_error_initialize_failed),
-                    allowEngineFailover = allowEngineFailover
-                )
-            ) {
-                return@launch
-            }
             val displayError = e.toDisplayMessage(context, context.getString(com.nuvio.tv.R.string.player_error_initialize_failed))
             val diagnostics = LastPlaybackDiagnostics(
                 timestampMs = System.currentTimeMillis(),
@@ -1329,31 +1290,6 @@ internal fun PlayerRuntimeController.initializePlayer(
                 )
             }
         }
-    }
-}
-
-internal fun PlayerRuntimeController.resolveAutoInternalPlayerEngine(): InternalPlayerEngine {
-    val streamMetadataText = buildString {
-        currentFilename?.let { appendLine(it) }
-        streamName?.let { appendLine(it) }
-        currentStreamDescription?.let { appendLine(it) }
-        append(title)
-    }
-    val isHdrOrDv = Regex("""(?i)\b(hdr|hdr10\+?|dv|dolby\s*vision)\b""").containsMatchIn(streamMetadataText)
-
-    return if (isHdrOrDv) {
-        InternalPlayerEngine.EXOPLAYER
-    } else {
-        val hasAnimeGenre = metaGenres.any { it.equals("anime", ignoreCase = true) }
-        val isAnimationFromJapan = (metaGenres.any { it.equals("animation", ignoreCase = true) } &&
-                metaCountry?.contains("Japan", ignoreCase = true) == true)
-        val hasAnimeId = currentVideoId?.startsWith("kitsu:") == true ||
-                currentVideoId?.startsWith("mal:") == true ||
-                currentVideoId?.startsWith("anilist:") == true
-
-        val isAnime = hasAnimeGenre || hasAnimeId || isAnimationFromJapan
-
-        if (isAnime) InternalPlayerEngine.MVP_PLAYER else InternalPlayerEngine.EXOPLAYER
     }
 }
 

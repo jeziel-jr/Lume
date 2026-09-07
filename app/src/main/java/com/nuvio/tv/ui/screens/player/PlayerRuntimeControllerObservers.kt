@@ -133,7 +133,6 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
                 schedulePauseOverlay()
             }
             streamReuseLastLinkEnabled = settings.streamReuseLastLinkEnabled
-            autoSwitchInternalPlayerOnErrorEnabled = settings.autoSwitchInternalPlayerOnError
             currentInternalPlayerEngine = resolvedInternalPlayerEngine
             streamAutoPlayModeSetting = settings.streamAutoPlayMode
             streamAutoPlayNextEpisodeEnabledSetting = settings.streamAutoPlayNextEpisodeEnabled
@@ -159,26 +158,6 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
             if (settings.bufferEngineEnabled) {
                 mediaSourceFactory.vodCacheSizeMode = settings.vodCacheSizeMode
                 mediaSourceFactory.vodCacheSizeMb = settings.vodCacheSizeMb
-            }
-
-            val previousMpvHardwareDecodeMode = mpvHardwareDecodeModeSetting
-            mpvHardwareDecodeModeSetting = settings.mpvHardwareDecodeMode
-            if (isUsingMpvEngine() && previousMpvHardwareDecodeMode != mpvHardwareDecodeModeSetting) {
-                mpvView?.applyHardwareDecodeMode(mpvHardwareDecodeModeSetting)
-            }
-
-            val resolvedAudioLanguages = resolvePreferredAudioLanguages(
-                preferredAudioLanguage = settings.preferredAudioLanguage,
-                secondaryPreferredAudioLanguage = settings.secondaryPreferredAudioLanguage,
-                deviceLanguages = resolveDeviceAudioLanguages(),
-                contentOriginalLanguage = contentLanguage
-            )
-            if (resolvedAudioLanguages != mpvPreferredAudioLanguages) {
-                mpvPreferredAudioLanguages = resolvedAudioLanguages
-                if (isUsingMpvEngine()) {
-                    mpvView?.applyAudioLanguagePreferences(resolvedAudioLanguages)
-                    updateMpvAvailableTracks()
-                }
             }
 
             applySubtitlePreferences(
@@ -234,16 +213,9 @@ internal fun PlayerRuntimeController.loadSavedProgressFor(season: Int?, episode:
 
             if (saved.isInProgress()) {
                 pendingResumeProgress = saved
-                if (isUsingMpvEngine()) {
-                    _uiState.update { it.copy(pendingSeekPosition = null) }
-                    mpvView?.let { view ->
-                        applyPendingMpvSeekIfNeeded(view)
-                    }
-                } else {
-                    _exoPlayer?.let { player ->
-                        if (player.playbackState == Player.STATE_READY) {
-                            tryApplyPendingResumeProgress(player)
-                        }
+                _exoPlayer?.let { player ->
+                    if (player.playbackState == Player.STATE_READY) {
+                        tryApplyPendingResumeProgress(player)
                     }
                 }
             }

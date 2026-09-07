@@ -366,9 +366,6 @@
     <string name="playback_player_ask">Спрашивать каждый раз</string>
     <string name="playback_internal_player_engine">Движок встроенного плеера</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Бета)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Авто-переключение движка при ошибке запуска</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Если запуск потока не удался, автоматически переключаться между ExoPlayer и libmpv.</string>
     <string name="playback_section_audio">Аудио и видео</string>
     <string name="playback_section_audio_desc">Настройки аудио и совместимость видео.</string>
     <string name="playback_section_subtitles">Субтитры</string>
@@ -386,7 +383,6 @@
     <string name="playback_player_external_desc">Всегда открывать потоки во внешнем приложении</string>
     <string name="playback_player_ask_desc">Выбирать плеер каждый раз</string>
     <string name="playback_engine_exoplayer_desc">Лучшая совместимость с текущими функциями Nuvio.</string>
-    <string name="playback_engine_mvplayer_desc">Использует libmpv с интерфейсом управления Nuvio. Экспериментально.</string>
 
     <!-- PlaybackAudioSettings -->
     <string name="audio_trailer_section">Трейлер</string>
@@ -409,18 +405,6 @@
     <string name="audio_decoder_priority">Приоритет декодеров</string>
     <string name="audio_tunneled">Туннельное воспроизведение</string>
     <string name="audio_tunneled_sub">Аппаратная синхронизация аудио/видео. Может улучшить воспроизведение на некоторых устройствах Android TV</string>
-    <string name="audio_mpv_hwdec_title">Аппаратное декодирование (только MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Выберите, как libmpv должен использовать аппаратные декодеры.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Устаревшее (прямое -&gt; копирование)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Предыдущее поведение: попытка прямого аппаратного декодирования, затем с копированием.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Авто (безопасное)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Более безопасный автоматический режим с откатом, если некоторые аппаратные декодеры дают сбой.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Аппаратное (копирование) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Использует аппаратное декодирование с копированием в программную память.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Аппаратное (прямое) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Использует прямое аппаратное декодирование. Самый быстрый путь на совместимых устройствах.</string>
-    <string name="audio_mpv_hwdec_disabled">Отключено (нет)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Отключает аппаратное декодирование и использует только программное.</string>
     <string name="audio_decoder_device_only_desc">Использовать только встроенные аппаратные декодеры. Наиболее совместимо, но может не поддерживать все форматы.</string>
     <string name="audio_decoder_prefer_device_desc">Использовать аппаратные декодеры, если доступны, иначе FFmpeg. Рекомендуется для большинства устройств.</string>
     <string name="audio_decoder_prefer_app_desc">Использовать декодеры FFmpeg, если доступны. Лучшая поддержка форматов, но выше нагрузка на процессор.</string>
@@ -1390,7 +1374,6 @@
     <string name="cd_subtitles">Субтитры</string>
     <string name="cd_audio_tracks">Аудиодорожки</string>
     <string name="cd_sources">Источники</string>
-    <string name="cd_switch_player_engine">Переключить движок плеера</string>
     <string name="cd_episodes">Эпизоды</string>
     <string name="cd_playback_speed">Скорость воспроизведения</string>
     <string name="cd_aspect_ratio">Соотношение сторон</string>
@@ -2308,8 +2291,6 @@
     <string name="player_error_decoder">Ошибка декодера</string>
     <string name="player_error_unsupported_format">Поток использует формат, который ваше устройство может не поддерживать. Попробуйте другой источник. [%1$s]</string>
     <string name="player_error_initialize_failed">Не удалось инициализировать плеер</string>
-    <string name="player_error_mpv_surface_failed">Не удалось инициализировать поверхность libmpv</string>
-    <string name="player_error_mpv_playback_failed">Не удалось инициализировать воспроизведение libmpv</string>
     <string name="player_error_torrent">Ошибка торрента: %1$s</string>
     <string name="player_error_playback_fallback">Ошибка воспроизведения</string>
     <string name="subtitle_timing_file_no_lines">В этом файле не найдено строк субтитров.</string>

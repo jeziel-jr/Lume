@@ -449,23 +449,8 @@
     <string name="network_connection_offline">Sin conexión</string>
     <string name="advanced_section_performance">Rendimiento y navegación</string>
     <string name="advanced_section_diagnostics">Diagnósticos</string>
-    <string name="advanced_sentry_reports">Reportes de fallos de Sentry</string>
-    <string name="advanced_sentry_reports_subtitle">Enviar reportes de fallos y ANR con contexto seguro. Activado de forma predeterminada.</string>
     <string name="advanced_playback_issue_reports">Reportes de problemas de reproducción</string>
     <string name="advanced_playback_issue_reports_subtitle">Mostrar botones de reporte durante la reproducción, cargas prolongadas y errores de reproducción</string>
-    <string name="sentry_enable_dialog_title">¿Activar reportes de fallos?</string>
-    <string name="sentry_enable_dialog_subtitle">Los reportes de fallos ayudan a identificar errores específicos del dispositivo sin pedirte que reproduzcas el problema con registros ADB.</string>
-    <string name="sentry_disable_dialog_title">¿Desactivar reportes de fallos?</string>
-    <string name="sentry_disable_dialog_subtitle">Los futuros fallos y los ANR actuales de este dispositivo no se reportarán. Esto puede hacer que los errores específicos del dispositivo sean mucho más difíciles de corregir.</string>
-    <string name="sentry_help_title">Cómo ayuda</string>
-    <string name="sentry_help_body">Los reportes se agrupan por versión de la aplicación, modelo del dispositivo, versión de Android y rastreo de pila para que los fallos reales más comunes puedan corregirse primero.</string>
-    <string name="sentry_sent_title">Enviado</string>
-    <string name="sentry_sent_body">Fallos, ANR actuales, rastreos de pila, versión de la aplicación, tipo de compilación, variante, metadatos del dispositivo y del sistema operativo, además de registros seguros de red con método, host, ruta, estado, duración y tipo de excepción.</string>
-    <string name="sentry_not_sent_title">No enviado</string>
-    <string name="sentry_not_sent_body">Contraseñas, tokens de acceso, tokens de actualización, cuerpos de solicitudes, cuerpos de respuestas, encabezados, cookies, capturas de pantalla, jerarquía de vistas, repetición de sesión, diagnósticos sin procesar y valores de consulta o fragmentos de URL de transmisiones.</string>
-    <string name="sentry_keep_enabled">Mantener activado</string>
-    <string name="sentry_turn_off">Desactivar</string>
-    <string name="sentry_turn_on">Activar</string>
     <string name="advanced_section_cache">Caché</string>
     <string name="advanced_section_dv_diagnostics" translatable="false">DV Diagnostics</string>
     <string name="advanced_fast_horizontal_navigation">Navegación horizontal rápida</string>
@@ -580,9 +565,6 @@
     <string name="playback_player_ask">Preguntar siempre</string>
     <string name="playback_internal_player_engine">Motor interno</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Cambiar automáticamente de motor en caso de error al iniciar</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Si falla el inicio del stream, alterna automáticamente entre ExoPlayer y libmpv.</string>
     <string name="playback_external_forward_subtitles">Enviar subtítulos al reproductor externo</string>
     <string name="playback_external_forward_subtitles_sub">Obtén subtítulos en tu idioma preferido desde los addons y envíalos al reproductor externo.</string>
     <string name="playback_external_send_skip_segments">Enviar marcas de tiempo de introducción y créditos finales</string>
@@ -614,7 +596,6 @@
     <string name="playback_player_auto">Automático (Mejor para el contenido)</string>
     <string name="playback_player_auto_desc">ExoPlayer para películas y series · MPV para anime</string>
     <string name="playback_engine_exoplayer_desc">Mejor compatibilidad con las funciones actuales de Nuvio.</string>
-    <string name="playback_engine_mvplayer_desc">Usa libmpv con controles OSD de Nuvio. Experimental.</string>
 
     <string name="video_section">Video</string>
     <string name="audio_trailer_section">Tráiler</string>
@@ -678,18 +659,6 @@
     <string name="dv7_libdovi_mode_3_sub" translatable="false">Convierte streams Perfil 5 (DV5) a Perfil 8.1. Es la misma conversión utilizada por la opción Convertir DV5 a DV8.1.</string>
     <string name="dv7_libdovi_mode_4_title" translatable="false">Modo 4 — 8.4 (estático)</string>
     <string name="dv7_libdovi_mode_4_sub" translatable="false">Convierte al perfil estático 8.4.</string>
-    <string name="audio_mpv_hwdec_title">Decodificación por hardware (solo MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Selecciona cómo libmpv debe utilizar los decodificadores por hardware.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Legacy (directo -&gt; copia)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Comportamiento predeterminado anterior: intenta primero hardware directo, luego copia a memoria.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Automático (seguro)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Modo automático más seguro con fallback cuando fallan algunos decodificadores por hardware.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardware (copia) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Usa decodificación por hardware con copia a memoria de software.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardware (directo) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Usa decodificación directa por hardware. Es la opción más rápida en dispositivos compatibles.</string>
-    <string name="audio_mpv_hwdec_disabled">Desactivado (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Desactiva la decodificación por hardware y usa solo decodificación por software.</string>
     <string name="audio_decoder_device_only_desc">Usar solo decodificadores de hardware integrados. Más compatible, pero podría no soportar todos los formatos.</string>
     <string name="audio_decoder_prefer_device_desc">Usar decodificadores de hardware cuando estén disponibles, recurriendo a FFmpeg si fallan. Recomendado para la mayoría.</string>
     <string name="audio_decoder_prefer_app_desc">Usar decodificadores FFmpeg cuando estén disponibles. Mejor soporte de formatos, pero mayor uso de CPU.</string>
@@ -2024,7 +1993,6 @@
     <string name="cd_subtitles">Subtítulos</string>
     <string name="cd_audio_tracks">Pistas de audio</string>
     <string name="cd_sources">Fuentes</string>
-    <string name="cd_switch_player_engine">Cambiar motor de reproducción</string>
     <string name="cd_episodes">Episodios</string>
     <string name="cd_playback_speed">Velocidad de reproducción</string>
     <string name="cd_aspect_ratio">Relación de aspecto</string>
@@ -2395,8 +2363,6 @@
     <string name="player_error_decoder">Error del decodificador</string>
     <string name="player_error_unsupported_format">Este stream usa un formato que tu dispositivo podría no soportar. Prueba otra fuente. [%1$s]</string>
     <string name="player_error_initialize_failed">No se pudo inicializar el reproductor</string>
-    <string name="player_error_mpv_surface_failed">No se pudo inicializar la superficie de libmpv</string>
-    <string name="player_error_mpv_playback_failed">No se pudo inicializar la reproducción de libmpv</string>
     <string name="player_error_torrent">Error de torrent: %1$s</string>
     <string name="player_error_playback_fallback">Error de reproducción</string>
     <!-- Subtitle timing recovery -->

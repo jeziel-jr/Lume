@@ -14,7 +14,6 @@ import androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer
 import com.nuvio.tv.core.player.BitrateAwareLoadControl
 import com.nuvio.tv.data.local.AutoSkipSegmentType
 import com.nuvio.tv.data.local.InternalPlayerEngine
-import com.nuvio.tv.data.local.MpvHardwareDecodeMode
 import com.nuvio.tv.data.local.NextEpisodeThresholdMode
 import com.nuvio.tv.data.local.AudioDelayRouteDataStore
 import com.nuvio.tv.data.local.PlayerSettings
@@ -70,8 +69,6 @@ class PlayerRuntimeController(
 
     companion object {
         internal const val TAG = "PlayerViewModel"
-        internal const val SWITCH_TRACE_TAG = "SwitchTrace"
-        internal const val SWITCH_TRACE_ENABLED = false
         internal const val TRACK_FRAME_RATE_GRACE_MS = 1500L
         internal const val FIRST_FRAME_TIMEOUT_MS = 12_000L
         // Stall watchdog: re-seeks past the buffered edge if bufferedPosition stops
@@ -101,17 +98,6 @@ class PlayerRuntimeController(
     internal data class TrackPreference(
         val audio: RememberedTrackSelection? = null,
         val subtitle: RememberedSubtitleSelection? = null
-    )
-
-    internal data class PendingEngineSwitchTrackPreference(
-        val streamUrl: String,
-        val preference: TrackPreference,
-        val sourceEngine: InternalPlayerEngine
-    )
-
-    internal data class ExplicitSubtitleSelectionForEngineSwitch(
-        val streamUrl: String,
-        val selection: RememberedSubtitleSelection
     )
 
     internal val navigationArgs = PlayerNavigationArgs.from(savedStateHandle)
@@ -255,7 +241,6 @@ class PlayerRuntimeController(
     internal var frameRateProbeToken: Long = 0L
     internal var hideAspectRatioIndicatorJob: Job? = null
     internal var hideStreamSourceIndicatorJob: Job? = null
-    internal var hidePlayerEngineSwitchInfoJob: Job? = null
     internal var hideSubtitleDelayOverlayJob: Job? = null
     internal var nextEpisodeAutoPlayJob: Job? = null
     internal var stillWatchingPromptJob: Job? = null
@@ -310,16 +295,9 @@ class PlayerRuntimeController(
     internal var lastUseForcedSubtitles: Boolean? = null
     internal var rememberedTrackPreference: TrackPreference? = null
     internal var persistedTrackPreference: TrackPreference? = null
-    internal var pendingEngineSwitchTrackPreference: PendingEngineSwitchTrackPreference? = null
-    internal var explicitSubtitleSelectionForEngineSwitch: ExplicitSubtitleSelectionForEngineSwitch? = null
-    internal var effectiveSubtitleSelectionForEngineSwitch: ExplicitSubtitleSelectionForEngineSwitch? = null
-    internal var switchTraceSessionId: Long = 0L
-    internal var switchTraceSequence: Long = 0L
     internal var subtitleDisabledByPersistedPreference: Boolean = false
     internal var hasScannedTextTracksOnce: Boolean = false
     internal var streamReuseLastLinkEnabled: Boolean = false
-    internal var autoSwitchInternalPlayerOnErrorEnabled: Boolean = false
-    internal var startupEngineFailoverTriggered: Boolean = false
     internal var runtimeInternalPlayerEngineOverride: InternalPlayerEngine? = null
     internal var resolvedAutoPlayerEngine: InternalPlayerEngine? = null
     internal var currentInternalPlayerEngine: InternalPlayerEngine = InternalPlayerEngine.EXOPLAYER
@@ -332,8 +310,6 @@ class PlayerRuntimeController(
     internal var stillWatchingEnabledSetting: Boolean = false
     internal var stillWatchingEpisodeThresholdSetting: Int =
         PlayerSettings.DEFAULT_STILL_WATCHING_EPISODE_THRESHOLD
-    internal var mpvHardwareDecodeModeSetting: MpvHardwareDecodeMode = MpvHardwareDecodeMode.AUTO_SAFE
-    internal var mpvPreferredAudioLanguages: List<String> = emptyList()
     internal var currentStreamBingeGroup: String? = navigationArgs.bingeGroup
     internal var hasAppliedRememberedAudioSelection: Boolean = false
     internal var hasInitializedAudioAmplificationForSession: Boolean = false
@@ -362,13 +338,6 @@ class PlayerRuntimeController(
     internal var trackSelector: DefaultTrackSelector? = null
     internal var currentMediaSession: MediaSession? = null
     internal var ffmpegAudioRenderer: FfmpegAudioRenderer? = null
-    internal var mpvView: NuvioMpvSurfaceView? = null
-    internal var mpvInitializationInProgress: Boolean = false
-    internal var mpvTrackRefreshJob: Job? = null
-    internal var mpvTrackRefreshInProgress: Boolean = false
-    internal var pendingMpvHardRestartOnNextAttach: Boolean = false
-    internal var delayMpvResumeSeekUntilVideoTrack: Boolean = false
-    internal var mpvDelayStartAfterAfrSwitch: Boolean = false
     internal var pauseOverlayJob: Job? = null
     internal val pauseOverlayDelayMs = 5000L
     internal val seekProgressSyncDebounceMs = 700L
@@ -486,33 +455,4 @@ class PlayerRuntimeController(
         episodeStreamsScope?.cancel()
         episodeStreamsScope = null
     }
-}
-
-internal fun PlayerRuntimeController.beginSwitchTraceSession(
-    reason: String,
-    targetEngine: InternalPlayerEngine?
-) {
-    switchTraceSessionId = System.currentTimeMillis()
-    switchTraceSequence = 0L
-    logSwitchTrace(
-        stage = "session-begin",
-        message = "reason=$reason sourceEngine=$currentInternalPlayerEngine targetEngine=$targetEngine"
-    )
-}
-
-internal fun PlayerRuntimeController.logSwitchTrace(
-    stage: String,
-    message: String
-) {
-    if (!PlayerRuntimeController.SWITCH_TRACE_ENABLED) return
-    if (switchTraceSessionId == 0L) {
-        switchTraceSessionId = System.currentTimeMillis()
-        switchTraceSequence = 0L
-    }
-    val sequence = ++switchTraceSequence
-    val streamToken = currentStreamUrl.hashCode().toUInt().toString(16)
-    Log.w(
-        PlayerRuntimeController.SWITCH_TRACE_TAG,
-        "sid=$switchTraceSessionId seq=$sequence stage=$stage engine=$currentInternalPlayerEngine streamToken=$streamToken $message"
-    )
 }

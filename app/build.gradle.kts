@@ -6,7 +6,6 @@
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.sentry.android.gradle)
 }
 
 import java.io.File
@@ -76,15 +75,6 @@ val doviStaticLibPath = resolveProperty(devProperties, localProperties, "DOVI_LI
 val doviIncludeDirPath = resolveProperty(devProperties, localProperties, "DOVI_LIBDOVI_INCLUDE_DIR")
 val doviPrebuiltRootPath = resolveProperty(devProperties, localProperties, "DOVI_LIBDOVI_PREBUILT_ROOT")
 val sponsorNames = resolveProperty(devProperties, localProperties, "SPONSOR_NAMES", "ragmehos.")
-val sentryDsn = providers.environmentVariable("SENTRY_DSN").orNull?.trim()?.takeIf { it.isNotBlank() }
-    ?: resolveProperty(devProperties, localProperties, "SENTRY_DSN")
-val sentryAuthToken = providers.environmentVariable("SENTRY_AUTH_TOKEN").orNull?.trim()?.takeIf { it.isNotBlank() }
-    ?: resolveProperty(devProperties, localProperties, "SENTRY_AUTH_TOKEN").takeIf { it.isNotBlank() }
-val sentryOrg = providers.environmentVariable("SENTRY_ORG").orNull?.trim()?.takeIf { it.isNotBlank() }
-    ?: resolveProperty(devProperties, localProperties, "SENTRY_ORG").takeIf { it.isNotBlank() }
-val sentryProject = providers.environmentVariable("SENTRY_PROJECT").orNull?.trim()?.takeIf { it.isNotBlank() }
-    ?: resolveProperty(devProperties, localProperties, "SENTRY_PROJECT").takeIf { it.isNotBlank() }
-val sentryMappingUploadEnabled = sentryAuthToken != null && sentryOrg != null && sentryProject != null
 
 fun env(name: String): String? = providers.environmentVariable(name).orNull
 
@@ -158,7 +148,6 @@ android {
         buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(localProperties.getProperty("PLAYBACK_REPORTS_BASE_URL", "")))
         buildConfigField("String", "PREMIUMIZE_CLIENT_ID", "\"${localProperties.getProperty("PREMIUMIZE_CLIENT_ID", "")}\"")
         buildConfigField("String", "SPONSOR_NAMES", buildConfigString(sponsorNames))
-        buildConfigField("String", "SENTRY_DSN", buildConfigString(sentryDsn))
 
         // In-app updater (GitHub Releases)
         buildConfigField("String", "GITHUB_OWNER", "\"jeziel-jr\"")
@@ -208,7 +197,6 @@ android {
             isMinifyEnabled = false
 
             buildConfigField("boolean", "IS_DEBUG_BUILD", "true")
-            buildConfigField("String", "SENTRY_ENVIRONMENT", buildConfigString("debug"))
 
             // Dev environment (from local.dev.properties)
             buildConfigField("String", "SUPABASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_URL")))
@@ -243,7 +231,6 @@ android {
             }
 
             buildConfigField("boolean", "IS_DEBUG_BUILD", "false")
-            buildConfigField("String", "SENTRY_ENVIRONMENT", buildConfigString("production"))
 
             // Production environment (from local.properties)
             buildConfigField("String", "SUPABASE_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_URL", "")))
@@ -275,7 +262,6 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("boolean", "IS_DEBUG_BUILD", "true")
-            buildConfigField("String", "SENTRY_ENVIRONMENT", buildConfigString("benchmark"))
             applicationIdSuffix = ".debug"
             matchingFallbacks += "release"
         }
@@ -380,28 +366,6 @@ baselineProfile {
     }
 }
 
-sentry {
-    includeProguardMapping.set(true)
-    autoUploadProguardMapping.set(sentryMappingUploadEnabled)
-    uploadNativeSymbols.set(false)
-    autoUploadNativeSymbols.set(false)
-    includeNativeSources.set(false)
-    includeSourceContext.set(false)
-    autoUploadSourceContext.set(false)
-    includeDependenciesReport.set(false)
-    telemetry.set(false)
-    sentryAuthToken?.let(authToken::set)
-    sentryOrg?.let(org::set)
-    sentryProject?.let(projectName::set)
-    ignoredBuildTypes.set(setOf("debug"))
-    autoInstallation {
-        enabled.set(false)
-    }
-    tracingInstrumentation {
-        enabled.set(false)
-    }
-}
-
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     val composeBom = platform("androidx.compose:compose-bom:2026.05.01")
@@ -491,12 +455,8 @@ dependencies {
     ))
     implementation(libs.media3.ui)
 
-    // Local decoder AARs (AV1, IAMF, MPEG-H)
-    implementation(files(
-        "libs/lib-decoder-av1-release.aar",
-        "libs/lib-decoder-iamf-release.aar",
-        "libs/lib-decoder-mpegh-release.aar"
-    ))
+    // Local decoder AARs (AV1; IAMF/MPEG-H removed)
+    implementation(files("libs/lib-decoder-av1-release.aar"))
     if (useLocalFfmpegDecoder) {
         implementation(project(":ffmpeg-decoder-downmix"))
     } else {
@@ -507,7 +467,6 @@ dependencies {
     implementation("io.github.peerless2012:ass-media:0.4.0")
     // Local nextlib-mediainfo fork (static FFmpeg; no libav*.so in final AAR)
     implementation(files("libs/nextlib-mediainfo-local.aar"))
-    implementation("io.github.abdallahmehiz:mpv-android-lib:0.1.12")
     implementation("dev.chrisbanes.haze:haze-android:0.7.3") {
         exclude(group = "org.jetbrains.compose.ui")
         exclude(group = "org.jetbrains.compose.foundation")
@@ -544,7 +503,6 @@ dependencies {
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.realtime)
     implementation(libs.ktor.client.okhttp)
-    implementation(libs.sentry.android)
 
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)

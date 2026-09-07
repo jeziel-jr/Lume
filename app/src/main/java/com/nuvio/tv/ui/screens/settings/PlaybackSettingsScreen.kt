@@ -130,7 +130,6 @@ fun PlaybackSettingsContent(
     var showSecondaryAudioLanguageDialog by remember { mutableStateOf(false) }
     var showAudioOutputChannelsDialog by remember { mutableStateOf(false) }
     var showDecoderPriorityDialog by remember { mutableStateOf(false) }
-    var showMpvHardwareDecodeModeDialog by remember { mutableStateOf(false) }
     var showStreamAutoPlayModeDialog by remember { mutableStateOf(false) }
     var showStreamAutoPlaySourceDialog by remember { mutableStateOf(false) }
     var showStreamRegexDialog by remember { mutableStateOf(false) }
@@ -150,7 +149,6 @@ fun PlaybackSettingsContent(
         showSecondaryAudioLanguageDialog = false
         showAudioOutputChannelsDialog = false
         showDecoderPriorityDialog = false
-        showMpvHardwareDecodeModeDialog = false
         showDv7HandlingModeDialog = false
         showStreamAutoPlayModeDialog = false
         showStreamAutoPlaySourceDialog = false
@@ -196,7 +194,6 @@ fun PlaybackSettingsContent(
                 onShowSecondaryAudioLanguageDialog = { openDialog { showSecondaryAudioLanguageDialog = true } },
                 onShowAudioOutputChannelsDialog = { openDialog { showAudioOutputChannelsDialog = true } },
                 onShowDecoderPriorityDialog = { openDialog { showDecoderPriorityDialog = true } },
-                onShowMpvHardwareDecodeModeDialog = { openDialog { showMpvHardwareDecodeModeDialog = true } },
                 onShowLanguageDialog = { openDialog { showLanguageDialog = true } },
                 onShowSecondaryLanguageDialog = { openDialog { showSecondaryLanguageDialog = true } },
                 onShowSubtitleStartupModeDialog = { openDialog { showSubtitleStartupModeDialog = true } },
@@ -220,9 +217,6 @@ fun PlaybackSettingsContent(
                     coroutineScope.launch {
                         viewModel.setStreamAutoPlayReuseBingeGroup(enabled)
                     }
-                },
-                onSetAutoSwitchInternalPlayerOnError = { enabled ->
-                    coroutineScope.launch { viewModel.setAutoSwitchInternalPlayerOnError(enabled) }
                 },
                 onSetExternalPlayerForwardSubtitles = { enabled ->
                     coroutineScope.launch { viewModel.setExternalPlayerForwardSubtitles(enabled) }
@@ -458,7 +452,6 @@ fun PlaybackSettingsContent(
         showSecondaryAudioLanguageDialog = showSecondaryAudioLanguageDialog,
         showAudioOutputChannelsDialog = showAudioOutputChannelsDialog,
         showDecoderPriorityDialog = showDecoderPriorityDialog,
-        showMpvHardwareDecodeModeDialog = showMpvHardwareDecodeModeDialog,
         showDv7HandlingModeDialog = showDv7HandlingModeDialog,
         showStreamAutoPlayModeDialog = showStreamAutoPlayModeDialog,
         showStreamAutoPlaySourceDialog = showStreamAutoPlaySourceDialog,
@@ -503,9 +496,6 @@ fun PlaybackSettingsContent(
         onSetDecoderPriority = { priority ->
             coroutineScope.launch { viewModel.setDecoderPriority(priority) }
         },
-        onSetMpvHardwareDecodeMode = { mode ->
-            coroutineScope.launch { viewModel.setMpvHardwareDecodeMode(mode) }
-        },
         onSetDv7HandlingMode = { mode ->
             coroutineScope.launch { viewModel.setDv7HandlingMode(mode) }
         },
@@ -534,7 +524,6 @@ fun PlaybackSettingsContent(
         onDismissSecondaryAudioLanguageDialog = ::dismissAllDialogs,
         onDismissAudioOutputChannelsDialog = ::dismissAllDialogs,
         onDismissDecoderPriorityDialog = ::dismissAllDialogs,
-        onDismissMpvHardwareDecodeModeDialog = ::dismissAllDialogs,
         onDismissDv7HandlingModeDialog = ::dismissAllDialogs,
         onDismissStreamAutoPlayModeDialog = ::dismissAllDialogs,
         onDismissStreamAutoPlaySourceDialog = ::dismissAllDialogs,

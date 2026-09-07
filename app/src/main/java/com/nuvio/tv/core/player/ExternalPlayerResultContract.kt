@@ -25,7 +25,7 @@ data class ExternalPlayerInput(
     val resumePositionMs: Long = 0L,
     val subtitles: List<SubtitleInput>? = null,
     // Pre-resolved intro/outro skip segments as a JSON array string
-    // (`[{"type","start","end"}]`, times in seconds). Read by mpvNova.
+    // (`[{"type","start","end"}]`, times in seconds). Read by players that support skip_segments.
     val skipSegmentsJson: String? = null
 )
 
@@ -43,10 +43,8 @@ data class ExternalPlayerResult(
  * ActivityResultContract that launches an external video player via ACTION_VIEW and parses the
  * playback result. Players disagree wildly on what they return, so [parseResult] is deliberately
  * lenient. Observed contracts (verified on-device):
- * - MX Player / mpvNova: position + duration (Int ms) + end_by.
+ * - MX Player: position + duration (Int ms) + end_by.
  * - Just Player: on completion returns ONLY end_by=playback_completion (no position/duration).
- * - mpv-android (vanilla is.xyz.mpv): position/duration (Int) only on a back-press; at EOF returns
- *   RESULT_OK with NO extras and no end_by (handled by the heuristic in [parseResult]).
  * - VLC: extra_position/extra_duration (Long ms), no end_by; duration is <= 0 for network streams
  *   (the tracker backfills it). Ignores our launch resume extras, so resume into VLC won't take.
  * - Vimu: position.
@@ -71,9 +69,9 @@ class ExternalPlayerResultContract : ActivityResultContract<ExternalPlayerInput,
                 }
             }
 
-            // Resume position — supported by MX Player, VLC, Just Player, mpv-android, Vimu
+            // Resume position — supported by MX Player, VLC, Just Player, Vimu
             if (input.resumePositionMs > 0L) {
-                putExtra("position", input.resumePositionMs.toInt())  // MX Player / Just Player / mpv (Int ms)
+                putExtra("position", input.resumePositionMs.toInt())  // MX Player / Just Player (Int ms)
                 putExtra("extra_position", input.resumePositionMs)    // VLC (Long ms)
                 putExtra("startfrom", input.resumePositionMs.toInt()) // Vimu Player (Int ms)
                 putExtra("forceresume", true)                         // Vimu: enable resume for network streams
@@ -84,7 +82,7 @@ class ExternalPlayerResultContract : ActivityResultContract<ExternalPlayerInput,
             // Required by MX Player; harmless for other players.
             putExtra("return_result", true)
 
-            // Pre-resolved intro/outro skip segments (mpvNova reads this; other players ignore it).
+            // Pre-resolved intro/outro skip segments; players that support skip_segments read it.
             input.skipSegmentsJson?.let { putExtra("skip_segments", it) }
 
             // Subtitle extras for external players
@@ -109,7 +107,7 @@ class ExternalPlayerResultContract : ActivityResultContract<ExternalPlayerInput,
                 }
                 setClipData(clipData)
 
-                // MX Player / mpv-android / Nova
+                // MX Player / Nova-style players
                 putExtra("subs", subtitleUris)
                 putExtra("subs.name", subtitleNames)
                 putExtra("subs.filename", subtitleFilenames)
@@ -138,25 +136,14 @@ class ExternalPlayerResultContract : ActivityResultContract<ExternalPlayerInput,
 
         val position = parsePosition(data)
         val duration = parseDuration(data)
-        // MX Player / Just Player / mpvNova report the end reason here (vanilla mpv-android and
-        // VLC do not).
+        // MX Player and Just Player report the end reason here; VLC and Vimu do not.
         val endBy = data.getStringExtra("end_by")
         val completedByEndReason = endBy == "playback_completion"
-
-        // Vanilla mpv-android (is.xyz.mpv) includes a position only on a back-press; at EOF it
-        // returns its result action with RESULT_OK and NO extras (no position/duration/end_by).
-        // Treat that exact shape as a completion so it still auto-advances + marks watched.
-        // mpvNova (the fork) sends full data and never hits this branch.
-        // WARNING: heuristic — if a future mpv-android build returned this shape for a non-EOF
-        // exit, it would be mis-counted as completed.
-        val mpvFinishedWithNoData = resultCode == android.app.Activity.RESULT_OK &&
-            data.action == "is.xyz.mpv.MPVActivity.result" &&
-            position == null && duration == null && endBy == null
 
         // Players that signal completion via end_by often reset the returned position to 0 at
         // EOF — don't discard those, or the episode never marks watched / auto-advances. Only
         // bail when there is genuinely nothing to act on: no position AND no completion signal.
-        if (position == null && !completedByEndReason && !mpvFinishedWithNoData) {
+        if (position == null && !completedByEndReason) {
             android.util.Log.d("ExtPlayerContract", "parseResult: no position and no completion signal; dropping")
             return null
         }
@@ -164,10 +151,10 @@ class ExternalPlayerResultContract : ActivityResultContract<ExternalPlayerInput,
         // On a bare completion signal with no/zero position, report the end position so the
         // 90%-of-duration completion check passes and progress is saved as watched (not 0%).
         val effectivePosition = position ?: duration ?: 0L
-        // Only an explicit "playback_completion" or the mpv EOF shape counts as a natural end.
+        // Only an explicit "playback_completion" counts as a natural end.
         // Absent end_by (VLC/Vimu) stays endedByUser=true and relies on the 90% rule, so a
         // genuine mid-video user exit is NOT treated as a completion.
-        val endedByUser = !mpvFinishedWithNoData && endBy != "playback_completion"
+        val endedByUser = endBy != "playback_completion"
 
         android.util.Log.d(
             "ExtPlayerContract",
@@ -184,7 +171,7 @@ class ExternalPlayerResultContract : ActivityResultContract<ExternalPlayerInput,
 
     // Robust against key + type variants across players:
     // - VLC: extra_position (Long)
-    // - MX Player / Just Player / mpv-android / Nova: position (Int)
+    // - MX Player / Just Player / Nova: position (Int)
     private fun parsePosition(data: Intent): Long? =
         firstPositiveExtra(data, "extra_position", "position")
 

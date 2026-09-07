@@ -3,7 +3,6 @@ package com.nuvio.tv.core.di
 import android.content.Context
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.LocaleCache
-import com.nuvio.tv.core.diagnostics.SentryNetworkBreadcrumbInterceptor
 import com.nuvio.tv.core.network.IPv4FirstDns
 import com.nuvio.tv.core.tmdb.TmdbRateLimitInterceptor
 import com.nuvio.tv.data.remote.api.AniSkipApi
@@ -123,7 +122,6 @@ object NetworkModule {
                     .build()
                 chain.proceed(request)
             }
-            .addInterceptor(SentryNetworkBreadcrumbInterceptor())
             // Prevent OkHttp from caching error responses (4xx/5xx).
             .addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())

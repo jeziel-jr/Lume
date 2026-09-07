@@ -384,23 +384,8 @@
     <string name="network_connection_offline">Hors ligne</string>
     <string name="advanced_section_performance">Performance et navigation</string>
     <string name="advanced_section_diagnostics">Diagnostics</string>
-    <string name="advanced_sentry_reports">Rapports de plantage Sentry</string>
-    <string name="advanced_sentry_reports_subtitle">Envoyer les rapports de plantage et d’ANR avec un contexte sûr. Activé par défaut.</string>
     <string name="advanced_playback_issue_reports">Rapports de problèmes de lecture</string>
     <string name="advanced_playback_issue_reports_subtitle">Affiche des boutons de signalement pendant la lecture, les chargements longs et les erreurs de lecture</string>
-    <string name="sentry_enable_dialog_title">Activer les rapports de plantage ?</string>
-    <string name="sentry_enable_dialog_subtitle">Les rapports de plantage aident à identifier les défaillances spécifiques à un appareil sans vous demander de reproduire le problème avec des journaux ADB.</string>
-    <string name="sentry_disable_dialog_title">Désactiver les rapports de plantage ?</string>
-    <string name="sentry_disable_dialog_subtitle">Les futurs plantages et les ANR actuels de cet appareil ne seront pas signalés. Cela peut rendre les bugs spécifiques à l’appareil bien plus difficiles à corriger.</string>
-    <string name="sentry_help_title">En quoi c’est utile</string>
-    <string name="sentry_help_body">Les rapports sont regroupés par version de l’app, modèle d’appareil, version d’Android et trace de la pile, afin que les plantages réels les plus fréquents soient corrigés en premier.</string>
-    <string name="sentry_sent_title">Envoyé</string>
-    <string name="sentry_sent_body">Plantages, ANR actuels, traces de la pile, version de l’app, type de build, variante, métadonnées de l’appareil et de l’OS, ainsi que des fils d’Ariane réseau sûrs avec méthode, hôte, chemin, statut, durée et type d’exception.</string>
-    <string name="sentry_not_sent_title">Non envoyé</string>
-    <string name="sentry_not_sent_body">Mots de passe, jetons d’accès, jetons de rafraîchissement, corps de requête, corps de réponse, en-têtes, cookies, captures d’écran, hiérarchie des vues, relecture de session, diagnostics bruts, et valeurs de requête ou de fragment des URL de flux.</string>
-    <string name="sentry_keep_enabled">Garder activé</string>
-    <string name="sentry_turn_off">Désactiver</string>
-    <string name="sentry_turn_on">Activer</string>
     <string name="advanced_section_cache">Cache</string>
     <string name="advanced_section_dv_diagnostics">Diagnostics DV</string>
     <string name="advanced_fast_horizontal_navigation">Navigation horizontale rapide</string>
@@ -507,9 +492,6 @@
     <string name="playback_player_ask">Demander à chaque fois</string>
     <string name="playback_internal_player_engine">Moteur interne</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (bêta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Changement auto du moteur en cas d’erreur au démarrage</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Si le démarrage du flux échoue, bascule automatiquement entre ExoPlayer et libmpv.</string>
     <string name="playback_external_forward_subtitles">Transférer les sous-titres au lecteur externe</string>
     <string name="playback_external_forward_subtitles_sub">Récupère les sous-titres dans votre langue préférée depuis les addons et les transmet au lecteur externe.</string>
     <string name="playback_external_send_skip_segments">Envoyer les horodatages d’intro et d’outro</string>
@@ -541,7 +523,6 @@
     <string name="playback_player_auto">Auto (meilleur pour le contenu)</string>
     <string name="playback_player_auto_desc">ExoPlayer pour les films et séries · MPV pour les animés</string>
     <string name="playback_engine_exoplayer_desc">Meilleure compatibilité avec les fonctionnalités actuelles de Nuvio.</string>
-    <string name="playback_engine_mvplayer_desc">Utilise libmpv avec les contrôles OSD de Nuvio. Expérimental.</string>
 
     <!-- PlaybackAudioSettings -->
     <string name="video_section">Vidéo</string>
@@ -569,18 +550,6 @@
     <string name="audio_tunneled_sub">Synchronisation audio/vidéo au niveau matériel. Peut améliorer la lecture sur certains appareils Android TV</string>
     <string name="audio_force_optical_passthrough">Forcer le transcodage AC-3 (optique/SPDIF)</string>
     <string name="audio_force_optical_passthrough_sub">Transcode les formats multicanaux (TrueHD, DTS, AAC, etc.) en Dolby Digital 5.1 en temps réel pour les connexions optiques/SPDIF.</string>
-    <string name="audio_mpv_hwdec_title">Décodage matériel (MPV uniquement)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Choisissez comment libmpv doit utiliser les décodeurs matériels.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Ancien mode (direct -&gt; copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Comportement précédent par défaut : essaie d’abord le matériel direct, puis le copy-back.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Auto (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Mode automatique plus sûr avec repli quand certains décodeurs matériels échouent.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Matériel (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Utilise le décodage matériel avec copie vers la mémoire logicielle.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Matériel (direct) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Utilise le décodage matériel direct. Le chemin le plus rapide sur les appareils compatibles.</string>
-    <string name="audio_mpv_hwdec_disabled">Désactivé (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Désactive le décodage matériel et utilise uniquement le décodage logiciel.</string>
     <string name="audio_decoder_device_only_desc">Utiliser uniquement les décodeurs matériels intégrés. Plus compatible, mais ne prend pas en charge tous les formats.</string>
     <string name="audio_decoder_prefer_device_desc">Utiliser les décodeurs matériels si disponibles, sinon FFmpeg. Recommandé pour la plupart des appareils.</string>
     <string name="audio_decoder_prefer_app_desc">Utiliser les décodeurs FFmpeg si disponibles. Meilleure prise en charge des formats, mais consommation CPU plus élevée.</string>
@@ -1748,7 +1717,6 @@
     <string name="cd_subtitles">Sous-titres</string>
     <string name="cd_audio_tracks">Pistes audio</string>
     <string name="cd_sources">Sources</string>
-    <string name="cd_switch_player_engine">Changer le moteur de lecture</string>
     <string name="cd_episodes">Épisodes</string>
     <string name="cd_playback_speed">Vitesse de lecture</string>
     <string name="cd_aspect_ratio">Format d’image</string>
@@ -2198,8 +2166,6 @@
     <string name="player_error_decoder">Erreur de décodeur</string>
     <string name="player_error_unsupported_format">Ce flux utilise un format que votre appareil ne prend peut-être pas en charge. Essayez une autre source. [%1$s]</string>
     <string name="player_error_initialize_failed">Échec de l’initialisation du lecteur</string>
-    <string name="player_error_mpv_surface_failed">Échec de l’initialisation de la surface libmpv</string>
-    <string name="player_error_mpv_playback_failed">Échec de l’initialisation de la lecture libmpv</string>
     <string name="player_error_torrent">Erreur de torrent&#160;: %1$s</string>
     <string name="player_error_playback_fallback">Erreur de lecture</string>
     <!-- Sous-titres&#160;: récupération horloge -->

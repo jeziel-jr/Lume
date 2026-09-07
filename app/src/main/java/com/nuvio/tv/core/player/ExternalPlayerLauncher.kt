@@ -25,7 +25,7 @@ object ExternalPlayerLauncher {
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(Uri.parse(url), "video/*")
 
-                // Pre-resolved intro/outro skip segments (mpvNova reads this; others ignore it).
+                // Pre-resolved intro/outro skip segments; players that support skip_segments read it.
                 skipSegmentsJson?.let { putExtra("skip_segments", it) }
 
                 title?.let {
@@ -66,7 +66,7 @@ object ExternalPlayerLauncher {
                     }
                     setClipData(clipData)
 
-                    // MX Player / mpv-android / Nova
+                    // MX Player / Nova-style players
                     putExtra("subs", subtitleUris)
                     putExtra("subs.name", subtitleNames)
                     putExtra("subs.filename", subtitleFilenames)

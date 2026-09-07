@@ -19738,10 +19738,6 @@ Lcom/nuvio/tv/data/local/MoreLikeThisSourcePreference;
 HSPLcom/nuvio/tv/data/local/MoreLikeThisSourcePreference;->$values()[Lcom/nuvio/tv/data/local/MoreLikeThisSourcePreference;
 HSPLcom/nuvio/tv/data/local/MoreLikeThisSourcePreference;-><clinit>()V
 HSPLcom/nuvio/tv/data/local/MoreLikeThisSourcePreference;-><init>(Ljava/lang/String;I)V
-Lcom/nuvio/tv/data/local/MpvHardwareDecodeMode;
-HSPLcom/nuvio/tv/data/local/MpvHardwareDecodeMode;->$values()[Lcom/nuvio/tv/data/local/MpvHardwareDecodeMode;
-HSPLcom/nuvio/tv/data/local/MpvHardwareDecodeMode;-><clinit>()V
-HSPLcom/nuvio/tv/data/local/MpvHardwareDecodeMode;-><init>(Ljava/lang/String;I)V
 Lcom/nuvio/tv/data/local/NextEpisodeThresholdMode;
 HSPLcom/nuvio/tv/data/local/NextEpisodeThresholdMode;->$values()[Lcom/nuvio/tv/data/local/NextEpisodeThresholdMode;
 HSPLcom/nuvio/tv/data/local/NextEpisodeThresholdMode;-><clinit>()V
@@ -19752,7 +19748,6 @@ HSPLcom/nuvio/tv/data/local/PlayerPreference;-><clinit>()V
 HSPLcom/nuvio/tv/data/local/PlayerPreference;-><init>(Ljava/lang/String;I)V
 Lcom/nuvio/tv/data/local/PlayerSettings;
 HSPLcom/nuvio/tv/data/local/PlayerSettings;-><clinit>()V
-HSPLcom/nuvio/tv/data/local/PlayerSettings;-><init>(Lcom/nuvio/tv/data/local/PlayerPreference;Lcom/nuvio/tv/data/local/InternalPlayerEngine;ZZLcom/nuvio/tv/data/local/LibassRenderType;Lcom/nuvio/tv/data/local/SubtitleStyleSettings;Lcom/nuvio/tv/data/local/BufferSettings;IZLcom/nuvio/tv/data/local/AudioOutputChannels;ZZZZIIZZLjava/lang/String;Ljava/lang/String;ZZZZZZLjava/util/Set;ZZLcom/nuvio/tv/data/local/Dv7HandlingMode;IZLcom/nuvio/tv/data/local/MpvHardwareDecodeMode;Lcom/nuvio/tv/data/local/FrameRateMatchingMode;ZLcom/nuvio/tv/data/local/StreamAutoPlayMode;Lcom/nuvio/tv/data/local/StreamAutoPlaySource;Ljava/util/Set;Ljava/util/Set;Ljava/lang/String;ZZZIZILcom/nuvio/tv/data/local/NextEpisodeThresholdMode;FFZIZLcom/nuvio/tv/data/local/SubtitleOrganizationMode;ZZZZZLcom/nuvio/tv/data/local/VodCacheSizeMode;IZIILcom/nuvio/tv/data/local/AddonSubtitleStartupMode;ZI)V
 HSPLcom/nuvio/tv/data/local/PlayerSettings;->access$getDEFAULT_VOD_CACHE_SIZE_MODE$cp()Lcom/nuvio/tv/data/local/VodCacheSizeMode;
 HSPLcom/nuvio/tv/data/local/PlayerSettings;->access$getSTREAM_AUTOPLAY_TIMEOUT_VALUES$cp()Ljava/util/List;
 HSPLcom/nuvio/tv/data/local/PlayerSettings;->getStreamAutoPlayPreferBingeGroupForNextEpisode()Z
@@ -19809,7 +19804,6 @@ HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$getMigrationTargetB
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$getMigrationTargetBufferSizeReducedDoneKey$p(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;)Landroidx/datastore/preferences/core/Preferences$Key;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$getMigrationVodCacheSplitDoneKey$p(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;)Landroidx/datastore/preferences/core/Preferences$Key;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$getMinBufferMsKey$p(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;)Landroidx/datastore/preferences/core/Preferences$Key;
-HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$getMpvHardwareDecodeModeKey$p(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;)Landroidx/datastore/preferences/core/Preferences$Key;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$getNextEpisodeThresholdMinutesBeforeEndKey$p(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;)Landroidx/datastore/preferences/core/Preferences$Key;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$getNextEpisodeThresholdMinutesBeforeEndLegacyKey$p(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;)Landroidx/datastore/preferences/core/Preferences$Key;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$getNextEpisodeThresholdModeKey$p(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;)Landroidx/datastore/preferences/core/Preferences$Key;
@@ -19872,7 +19866,6 @@ HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$normalizeHalfStep(L
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$normalizeSelectableLanguageCode(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;Ljava/lang/String;)Ljava/lang/String;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$normalizeSubtitlePreferredLanguageForRead(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$parseAddonSubtitleStartupMode(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;Ljava/lang/String;)Lcom/nuvio/tv/data/local/AddonSubtitleStartupMode;
-HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$parseMpvHardwareDecodeMode(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;Ljava/lang/String;)Lcom/nuvio/tv/data/local/MpvHardwareDecodeMode;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->access$parseSubtitleOrganizationMode(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;Ljava/lang/String;)Lcom/nuvio/tv/data/local/SubtitleOrganizationMode;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->getPlayerSettings()Lkotlinx/coroutines/flow/Flow;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->migrateProfile(ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
@@ -19880,7 +19873,6 @@ HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->normalizeHalfStep(FFF)F
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->normalizeSelectableLanguageCode(Ljava/lang/String;)Ljava/lang/String;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->normalizeSubtitlePreferredLanguageForRead(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->parseAddonSubtitleStartupMode(Ljava/lang/String;)Lcom/nuvio/tv/data/local/AddonSubtitleStartupMode;
-HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->parseMpvHardwareDecodeMode(Ljava/lang/String;)Lcom/nuvio/tv/data/local/MpvHardwareDecodeMode;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore;->parseSubtitleOrganizationMode(Ljava/lang/String;)Lcom/nuvio/tv/data/local/SubtitleOrganizationMode;
 Lcom/nuvio/tv/data/local/PlayerSettingsDataStore$1;
 HSPLcom/nuvio/tv/data/local/PlayerSettingsDataStore$1;-><init>(Lcom/nuvio/tv/data/local/PlayerSettingsDataStore;Lkotlin/coroutines/Continuation;)V

@@ -549,11 +549,7 @@
     <string name="playback_player_ask">السؤال في كل مرة</string>
     <string name="playback_internal_player_engine">محرك التشغيل الداخلي</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (تجريبي)</string>
-    <string name="playback_auto_switch_internal_player_on_error">التبديل التلقائي لمحرك التشغيل عند خطأ بالتشغيل</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">إذا فشل بدء التشغيل، سيتم التبديل بين ExoPlayer و libmpv تلقائياً.</string>
     <string name="playback_engine_exoplayer_desc">أفضل توافق مع ميزات Nuvio الحالية.</string>
-    <string name="playback_engine_mvplayer_desc">يستخدم libmpv مع عناصر تحكم Nuvio (OSD). تجريبي.</string>
     <string name="playback_section_audio">الصوت والفيديو</string>
     <string name="playback_section_audio_desc">ضبط الصوت وتوافق الفيديو.</string>
     <string name="playback_section_subtitles">الترجمة</string>
@@ -638,18 +634,6 @@
     <string name="dv7_libdovi_mode_3_sub" translatable="false">Convert Profile 5 (DV5) streams to Profile 8.1. Same conversion the Convert DV5 to DV8.1 toggle uses.</string>
     <string name="dv7_libdovi_mode_4_title" translatable="false">Mode 4 — 8.4 (static)</string>
     <string name="dv7_libdovi_mode_4_sub" translatable="false">Convert to static profile 8.4.</string>
-    <string name="audio_mpv_hwdec_title">فك التشفير العتادي (الجهاز) (MPV فقط)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">إختر كيف ينبغي لـ libmpv استخدام أدوات فك التشفير بالجهاز.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">قديم (مباشر -&gt; نسخ)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">السلوك الافتراضي السابق: تجربة الفك بالعتاد أولاً، ثم النسخ العكسي.</string>
-    <string name="audio_mpv_hwdec_auto_safe">تلقائي (آمن تلقائياً)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">وضع تلقائي أكثر أماناً مع بديل عند فشل بعض أدوات فك التشفير العتادية.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">عتادي (نسخ) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">يستخدم فك التشفير العتادي مع النسخ العكسي إلى ذاكرة البرامج.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">عتادي (مباشر) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">يستخدم فك التشفير العتادي المباشر. أسرع مسار على الأجهزة المتوافقة.</string>
-    <string name="audio_mpv_hwdec_disabled">معطل (لا)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">يعطل فك التشفير العتادي ويستخدم فك التشفير البرمجي فقط.</string>
     <string name="audio_decoder_device_only_desc">Only use built-in hardware decoders. Most compatible but may not support all formats.</string>
     <string name="audio_decoder_prefer_device_desc">Use hardware decoders when available, fall back to FFmpeg. Recommended for most devices.</string>
     <string name="audio_decoder_prefer_app_desc">Use FFmpeg decoders when available. Better format support but higher CPU usage.</string>
@@ -1972,7 +1956,6 @@
     <string name="cd_subtitles">الترجمات</string>
     <string name="cd_audio_tracks">المسارات الصوتية</string>
     <string name="cd_sources">المصادر</string>
-    <string name="cd_switch_player_engine">تبديل محرك المشغل</string>
     <string name="cd_episodes">الحلقات</string>
     <string name="cd_playback_speed">سرعة التشغيل</string>
     <string name="cd_aspect_ratio">نسبة العرض</string>
@@ -2344,8 +2327,6 @@
     <string name="player_error_decoder">خطأ في فك التكويد (Decoder)</string>
     <string name="player_error_unsupported_format">يستخدم هذا البث تنسيقاً قد لا يدعمه جهازك. يرجى اختيار مصدر آخر. [%1$s]</string>
     <string name="player_error_initialize_failed">فشل تهيئة المشغل</string>
-    <string name="player_error_mpv_surface_failed">فشل تهيئة واجهة libmpv</string>
-    <string name="player_error_mpv_playback_failed">فشل تهيئة تشغيل libmpv</string>
     <string name="player_error_torrent">خطأ في التورنت: %1$s</string>
     <string name="player_error_playback_fallback">خطأ في التشغيل</string>
     <!-- Subtitle timing recovery -->

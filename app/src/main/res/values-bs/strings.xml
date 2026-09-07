@@ -366,9 +366,6 @@
     <string name="playback_player_ask">Pitaj svaki put</string>
     <string name="playback_internal_player_engine">Interni Engine</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Automatski promijeni engine u slučaju greške</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Ako pokretanje streama ne uspije, automatski se prebaci između ExoPlayer i libmpv.</string>
     <string name="playback_section_audio">Zvuk i video</string>
     <string name="playback_section_audio_desc">Kontrole zvuka i kompatibilnost videa.</string>
     <string name="playback_section_subtitles">Titlovi</string>
@@ -386,7 +383,6 @@
     <string name="playback_player_external_desc">Uvijek otvaraj streamove u vanjskoj aplikaciji</string>
     <string name="playback_player_ask_desc">Odaberi player svaki put</string>
     <string name="playback_engine_exoplayer_desc">Najbolja kompatibilnost sa trenutnim Nuvio funkcijama.</string>
-    <string name="playback_engine_mvplayer_desc">Koristi libmpv sa Nuvio OSD kontrolama. Eksperimentalno.</string>
 
     <!-- PlaybackAudioSettings -->
     <string name="audio_trailer_section">Trailer</string>
@@ -409,18 +405,6 @@
     <string name="audio_decoder_priority">Prioritet Dekodera</string>
     <string name="audio_tunneled">Tunneled Playback</string>
     <string name="audio_tunneled_sub">Sinhronizacija zvuka/videa na hardverskom nivou. Može poboljšati reprodukciju na nekim Android TV uređajima.</string>
-    <string name="audio_mpv_hwdec_title">Hardware Decoding (Samo MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Odaberite kako bi libmpv trebao koristiti hardware dekodere.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Legacy (direct -&gt; copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Prethodno zadano ponašanje: prvo pokušaj direct hardware, zatim copy-back.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Auto (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Sigurniji automatski mod sa fallback opcijom kada neki hardware decoderi zakažu.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardware (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Koristi hardware decoding sa copy-back u softversku memoriju.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardware (direct) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Koristi direct hardware decoding. Najbrži način na kompatibilnim uređajima.</string>
-    <string name="audio_mpv_hwdec_disabled">Onemogućeno (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Onemogućava hardware decoding i koristi samo software decoding.</string>
     <string name="audio_decoder_device_only_desc">Koristi samo ugrađene hardware decodere. Najkompatibilnije, ali možda ne podržava sve formate.</string>
     <string name="audio_decoder_prefer_device_desc">Koristi hardware decodere kad su dostupni, a fallback je FFmpeg. Preporučeno za većinu uređaja.</string>
     <string name="audio_decoder_prefer_app_desc">Koristi FFmpeg decodere kad su dostupni. Bolja podrška za formate, ali veća potrošnja CPU-a.</string>
@@ -1407,7 +1391,6 @@
     <string name="cd_subtitles">Titlovi</string>
     <string name="cd_audio_tracks">Audio kanali</string>
     <string name="cd_sources">Izvori</string>
-    <string name="cd_switch_player_engine">Promijeni player engine</string>
     <string name="cd_episodes">Epizode</string>
     <string name="cd_playback_speed">Brzina reprodukcije</string>
     <string name="cd_aspect_ratio">Omjer slike</string>

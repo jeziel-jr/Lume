@@ -115,7 +115,6 @@ internal fun PlaybackSettingsSections(
     onShowSecondaryAudioLanguageDialog: () -> Unit,
     onShowAudioOutputChannelsDialog: () -> Unit,
     onShowDecoderPriorityDialog: () -> Unit,
-    onShowMpvHardwareDecodeModeDialog: () -> Unit,
     onShowLanguageDialog: () -> Unit,
     onShowSecondaryLanguageDialog: () -> Unit,
     onShowSubtitleStartupModeDialog: () -> Unit,
@@ -130,7 +129,6 @@ internal fun PlaybackSettingsSections(
     onSetStreamAutoPlayNextEpisodeEnabled: (Boolean) -> Unit,
     onSetStreamAutoPlayPreferBingeGroupForNextEpisode: (Boolean) -> Unit,
     onSetStreamAutoPlayReuseBingeGroup: (Boolean) -> Unit,
-    onSetAutoSwitchInternalPlayerOnError: (Boolean) -> Unit,
     onSetExternalPlayerForwardSubtitles: (Boolean) -> Unit,
     onSetExternalPlayerSendSkipSegments: (Boolean) -> Unit,
     onSetNextEpisodeThresholdPercent: (Float) -> Unit,
@@ -266,7 +264,6 @@ internal fun PlaybackSettingsSections(
         },
         internalEngineLabel = when (playerSettings.internalPlayerEngine) {
             InternalPlayerEngine.EXOPLAYER -> stringResource(R.string.playback_engine_exoplayer)
-            InternalPlayerEngine.MVP_PLAYER -> stringResource(R.string.playback_engine_mvplayer)
             InternalPlayerEngine.AUTO -> stringResource(R.string.playback_player_auto)
         }
     )
@@ -479,18 +476,6 @@ internal fun PlaybackSettingsSections(
                 )
             }
 
-            item(key = "stream_auto_switch_internal_player_on_error") {
-                ToggleSettingsItem(
-                    icon = Icons.Default.SwapHoriz,
-                    title = stringResource(R.string.playback_auto_switch_internal_player_on_error),
-                    subtitle = stringResource(R.string.playback_auto_switch_internal_player_on_error_sub),
-                    isChecked = playerSettings.autoSwitchInternalPlayerOnError,
-                    onCheckedChange = onSetAutoSwitchInternalPlayerOnError,
-                    onFocused = { focusedSection = PlaybackSection.STREAM_SELECTION },
-                    enabled = playerSettings.playerPreference != PlayerPreference.EXTERNAL
-                )
-            }
-
             autoPlaySettingsItems(
                 playerSettings = playerSettings,
                 onShowModeDialog = onShowStreamAutoPlayModeDialog,
@@ -537,7 +522,6 @@ internal fun PlaybackSettingsSections(
                 onShowSecondaryAudioLanguageDialog = onShowSecondaryAudioLanguageDialog,
                 onShowAudioOutputChannelsDialog = onShowAudioOutputChannelsDialog,
                 onShowDecoderPriorityDialog = onShowDecoderPriorityDialog,
-                onShowMpvHardwareDecodeModeDialog = onShowMpvHardwareDecodeModeDialog,
                 onShowDv7HandlingModeDialog = onShowDv7HandlingModeDialog,
                 onSetDownmixEnabled = onSetDownmixEnabled,
                 onSetMaintainOriginalAudioOnDownmix = onSetMaintainOriginalAudioOnDownmix,
@@ -935,7 +919,6 @@ internal fun PlaybackSettingsDialogsHost(
     showSecondaryAudioLanguageDialog: Boolean,
     showAudioOutputChannelsDialog: Boolean,
     showDecoderPriorityDialog: Boolean,
-    showMpvHardwareDecodeModeDialog: Boolean,
     showDv7HandlingModeDialog: Boolean,
     showStreamAutoPlayModeDialog: Boolean,
     showStreamAutoPlaySourceDialog: Boolean,
@@ -956,7 +939,6 @@ internal fun PlaybackSettingsDialogsHost(
     onSetSecondaryPreferredAudioLanguage: (String?) -> Unit,
     onSetAudioOutputChannels: (AudioOutputChannels) -> Unit,
     onSetDecoderPriority: (Int) -> Unit,
-    onSetMpvHardwareDecodeMode: (com.nuvio.tv.data.local.MpvHardwareDecodeMode) -> Unit,
     onSetDv7HandlingMode: (Dv7HandlingMode) -> Unit,
     onSetStreamAutoPlayMode: (com.nuvio.tv.data.local.StreamAutoPlayMode) -> Unit,
     onSetStreamAutoPlaySource: (com.nuvio.tv.data.local.StreamAutoPlaySource) -> Unit,
@@ -973,7 +955,6 @@ internal fun PlaybackSettingsDialogsHost(
     onDismissSecondaryAudioLanguageDialog: () -> Unit,
     onDismissAudioOutputChannelsDialog: () -> Unit,
     onDismissDecoderPriorityDialog: () -> Unit,
-    onDismissMpvHardwareDecodeModeDialog: () -> Unit,
     onDismissDv7HandlingModeDialog: () -> Unit,
     onDismissStreamAutoPlayModeDialog: () -> Unit,
     onDismissStreamAutoPlaySourceDialog: () -> Unit,
@@ -1030,25 +1011,21 @@ internal fun PlaybackSettingsDialogsHost(
         showSecondaryAudioLanguageDialog = showSecondaryAudioLanguageDialog,
         showAudioOutputChannelsDialog = showAudioOutputChannelsDialog,
         showDecoderPriorityDialog = showDecoderPriorityDialog,
-        showMpvHardwareDecodeModeDialog = showMpvHardwareDecodeModeDialog,
         showDv7HandlingModeDialog = showDv7HandlingModeDialog,
         selectedLanguage = playerSettings.preferredAudioLanguage,
         selectedSecondaryLanguage = playerSettings.secondaryPreferredAudioLanguage,
         selectedAudioOutputChannels = playerSettings.audioOutputChannels,
         selectedPriority = playerSettings.decoderPriority,
-        selectedMpvHardwareDecodeMode = playerSettings.mpvHardwareDecodeMode,
         selectedDv7HandlingMode = playerSettings.dv7HandlingMode,
         onSetPreferredAudioLanguage = onSetPreferredAudioLanguage,
         onSetSecondaryPreferredAudioLanguage = onSetSecondaryPreferredAudioLanguage,
         onSetAudioOutputChannels = onSetAudioOutputChannels,
         onSetDecoderPriority = onSetDecoderPriority,
-        onSetMpvHardwareDecodeMode = onSetMpvHardwareDecodeMode,
         onSetDv7HandlingMode = onSetDv7HandlingMode,
         onDismissAudioLanguageDialog = onDismissAudioLanguageDialog,
         onDismissSecondaryAudioLanguageDialog = onDismissSecondaryAudioLanguageDialog,
         onDismissAudioOutputChannelsDialog = onDismissAudioOutputChannelsDialog,
         onDismissDecoderPriorityDialog = onDismissDecoderPriorityDialog,
-        onDismissMpvHardwareDecodeModeDialog = onDismissMpvHardwareDecodeModeDialog,
         onDismissDv7HandlingModeDialog = onDismissDv7HandlingModeDialog
     )
 
@@ -1106,11 +1083,6 @@ private fun InternalPlayerEngineDialog(
             InternalPlayerEngine.EXOPLAYER,
             stringResource(R.string.playback_engine_exoplayer),
             stringResource(R.string.playback_engine_exoplayer_desc)
-        ),
-        SettingsPickerOption(
-            InternalPlayerEngine.MVP_PLAYER,
-            stringResource(R.string.playback_engine_mvplayer),
-            stringResource(R.string.playback_engine_mvplayer_desc)
         ),
         SettingsPickerOption(
             InternalPlayerEngine.AUTO,

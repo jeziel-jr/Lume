@@ -17,9 +17,7 @@ import coil3.request.allowRgb565
 import coil3.bitmapFactoryMaxParallelism
 
 import okio.Path.Companion.toOkioPath
-import com.nuvio.tv.core.diagnostics.SentryInitializer
 import com.nuvio.tv.core.sync.androidtv.AndroidTvChannelSyncService
-import com.nuvio.tv.data.local.SentrySettingsDataStore
 import com.nuvio.tv.core.network.IPv4FirstDns
 import dagger.hilt.android.HiltAndroidApp
 import okhttp3.Cookie
@@ -33,7 +31,6 @@ import javax.inject.Inject
 class NuvioApplication : Application(), SingletonImageLoader.Factory {
 
     @Inject lateinit var androidTvChannelSyncService: AndroidTvChannelSyncService
-    @Inject lateinit var sentrySettingsDataStore: SentrySettingsDataStore
 
     companion object {
         /**
@@ -62,7 +59,6 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
-        SentryInitializer.start(this, sentrySettingsDataStore)
         androidTvChannelSyncService.start()
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).

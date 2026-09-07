@@ -213,7 +213,6 @@ enum class AudioOutputChannels(
 data class PlayerSettings(
     val playerPreference: PlayerPreference = PlayerPreference.INTERNAL,
     val internalPlayerEngine: InternalPlayerEngine = InternalPlayerEngine.EXOPLAYER,
-    val autoSwitchInternalPlayerOnError: Boolean = false,
     val useLibass: Boolean = false,
     val libassRenderType: LibassRenderType = LibassRenderType.OVERLAY_OPEN_GL,
     val subtitleStyle: SubtitleStyleSettings = SubtitleStyleSettings(),
@@ -250,7 +249,6 @@ data class PlayerSettings(
     // Only honored when dv7HandlingMode is OFF or DV81_LIBDOVI.
     val dv7LibdoviModeOverride: Int = -1,
     val stripHdr10PlusSei: Boolean = false,
-    val mpvHardwareDecodeMode: MpvHardwareDecodeMode = MpvHardwareDecodeMode.AUTO_SAFE,
     // Display settings
     val frameRateMatchingMode: FrameRateMatchingMode = FrameRateMatchingMode.OFF,
     val resolutionMatchingEnabled: Boolean = false,
@@ -366,10 +364,6 @@ enum class AddonSubtitleStartupMode {
     FAST_STARTUP, PREFERRED_ONLY, ALL_SUBTITLES
 }
 
-enum class MpvHardwareDecodeMode {
-    LEGACY_DIRECT_COPY, AUTO_SAFE, HARDWARE_COPY, HARDWARE_DIRECT, DISABLED
-}
-
 enum class AutoSkipSegmentType(val storedValue: String) {
     INTRO("intro"),
     RECAP("recap"),
@@ -394,7 +388,6 @@ enum class PlayerPreference {
 
 enum class InternalPlayerEngine {
     EXOPLAYER,
-    MVP_PLAYER,
     AUTO
 }
 
@@ -455,8 +448,8 @@ class PlayerSettingsDataStore @Inject constructor(
     // Keys
     private val playerPreferenceKey = stringPreferencesKey("player_preference")
     private val internalPlayerEngineKey = stringPreferencesKey("internal_player_engine")
-    private val autoSwitchInternalPlayerOnErrorKey = booleanPreferencesKey("auto_switch_internal_player_on_error")
     private val useLibassKey = booleanPreferencesKey("use_libass")
+
     private val libassRenderTypeKey = stringPreferencesKey("libass_render_type")
     private val decoderPriorityKey = intPreferencesKey("decoder_priority")
     private val downmixEnabledKey = booleanPreferencesKey("downmix_enabled")
@@ -493,7 +486,6 @@ class PlayerSettingsDataStore @Inject constructor(
     private val legacyMapDv7ToHevcKey = booleanPreferencesKey("map_dv7_to_hevc")
     private val dv7LibdoviModeOverrideKey = intPreferencesKey("dv7_libdovi_mode_override")
     private val stripHdr10PlusSeiKey = booleanPreferencesKey("strip_hdr10plus_sei")
-    private val mpvHardwareDecodeModeKey = stringPreferencesKey("mpv_hardware_decode_mode")
     private val frameRateMatchingKey = booleanPreferencesKey("frame_rate_matching")
     private val frameRateMatchingModeKey = stringPreferencesKey("frame_rate_matching_mode")
     private val resolutionMatchingEnabledKey = booleanPreferencesKey("resolution_matching_enabled")
@@ -785,7 +777,6 @@ class PlayerSettingsDataStore @Inject constructor(
                 internalPlayerEngine = prefs[internalPlayerEngineKey]?.let {
                     runCatching { InternalPlayerEngine.valueOf(it) }.getOrDefault(InternalPlayerEngine.EXOPLAYER)
                 } ?: InternalPlayerEngine.EXOPLAYER,
-                autoSwitchInternalPlayerOnError = prefs[autoSwitchInternalPlayerOnErrorKey] ?: false,
                 useLibass = prefs[useLibassKey] ?: false,
                 libassRenderType = prefs[libassRenderTypeKey]?.let {
                     try { LibassRenderType.valueOf(it) } catch (e: Exception) { LibassRenderType.OVERLAY_OPEN_GL }
@@ -842,7 +833,6 @@ class PlayerSettingsDataStore @Inject constructor(
                 },
                 dv7LibdoviModeOverride = (prefs[dv7LibdoviModeOverrideKey] ?: -1).coerceIn(-1, 4),
                 stripHdr10PlusSei = prefs[stripHdr10PlusSeiKey] ?: false,
-                mpvHardwareDecodeMode = parseMpvHardwareDecodeMode(prefs[mpvHardwareDecodeModeKey]),
                 frameRateMatchingMode = prefs[frameRateMatchingModeKey]?.let {
                     runCatching { FrameRateMatchingMode.valueOf(it) }.getOrNull()
                 } ?: if (prefs[frameRateMatchingKey] == true) FrameRateMatchingMode.START_STOP else FrameRateMatchingMode.OFF,
@@ -989,12 +979,6 @@ class PlayerSettingsDataStore @Inject constructor(
     suspend fun setInternalPlayerEngine(engine: InternalPlayerEngine) {
         store().edit { prefs ->
             prefs[internalPlayerEngineKey] = engine.name
-        }
-    }
-
-    suspend fun setAutoSwitchInternalPlayerOnError(enabled: Boolean) {
-        store().edit { prefs ->
-            prefs[autoSwitchInternalPlayerOnErrorKey] = enabled
         }
     }
 
@@ -1326,10 +1310,6 @@ class PlayerSettingsDataStore @Inject constructor(
         return when (value) { "PREFERRED_ONLY" -> AddonSubtitleStartupMode.PREFERRED_ONLY; "FAST_STARTUP" -> AddonSubtitleStartupMode.FAST_STARTUP; else -> AddonSubtitleStartupMode.ALL_SUBTITLES }
     }
 
-    private fun parseMpvHardwareDecodeMode(value: String?): MpvHardwareDecodeMode {
-        return when (value) { "HARDWARE_COPY" -> MpvHardwareDecodeMode.HARDWARE_COPY; "HARDWARE_DIRECT" -> MpvHardwareDecodeMode.HARDWARE_DIRECT; "DISABLED" -> MpvHardwareDecodeMode.DISABLED; "LEGACY_DIRECT_COPY" -> MpvHardwareDecodeMode.LEGACY_DIRECT_COPY; else -> MpvHardwareDecodeMode.AUTO_SAFE }
-    }
-
     private fun normalizeSelectableLanguageCode(language: String): String {
         val code = language.trim().lowercase()
         return when (code) { "pt-br", "pt_br", "br", "pob" -> "pt-br"; "pt-pt", "pt_pt", "por" -> "pt"; "forced", "force", "forc" -> SUBTITLE_LANGUAGE_FORCED; else -> code }
@@ -1358,12 +1338,6 @@ class PlayerSettingsDataStore @Inject constructor(
             ?.let(::normalizeSelectableLanguageCode)
             ?.takeUnless { it == SUBTITLE_LANGUAGE_FORCED || it == "none" }
             ?: "en"
-    }
-
-    suspend fun setMpvHardwareDecodeMode(mode: MpvHardwareDecodeMode) {
-        store().edit { prefs ->
-            prefs[mpvHardwareDecodeModeKey] = mode.name
-        }
     }
 
     /**

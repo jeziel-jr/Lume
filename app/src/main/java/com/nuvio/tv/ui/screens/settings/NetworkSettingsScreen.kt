@@ -379,7 +379,6 @@ fun AdvancedSettingsContent(
 
     val networkListState = rememberLazyListState()
     var showExperienceModeConfirmation by remember { mutableStateOf(false) }
-    var showSentryDialog by remember { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         state = networkListState,
@@ -488,17 +487,6 @@ fun AdvancedSettingsContent(
                 color = NuvioTheme.colors.TextTertiary,
                 modifier = Modifier.padding(top = NuvioTheme.spacing.xs)
             )
-        }
-
-        item(key = "sentry_reports") {
-            SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
-                SettingsToggleRow(
-                    title = stringResource(R.string.advanced_sentry_reports),
-                    subtitle = stringResource(R.string.advanced_sentry_reports_subtitle),
-                    checked = uiState.sentryEnabled,
-                    onToggle = { showSentryDialog = true }
-                )
-            }
         }
 
         item(key = "speed_test") {
@@ -780,18 +768,6 @@ fun AdvancedSettingsContent(
             targetMode = ExperienceMode.ESSENTIAL,
             onConfirm = { experienceModeViewModel.setMode(ExperienceMode.ESSENTIAL) },
             onDismiss = { showExperienceModeConfirmation = false }
-        )
-    }
-
-    if (showSentryDialog) {
-        SentrySettingsDialog(
-            enabled = uiState.sentryEnabled,
-            onConfirm = {
-                viewModel.onEvent(
-                    AdvancedSettingsEvent.SetSentryEnabled(!uiState.sentryEnabled)
-                )
-            },
-            onDismiss = { showSentryDialog = false }
         )
     }
 }

@@ -524,9 +524,6 @@
     <string name="playback_player_ask">Perguntar sempre</string>
     <string name="playback_internal_player_engine">Motor interno</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Mudar automaticamente de motor em caso de erro ao iniciar</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Se o início do stream falhar, alterna entre o ExoPlayer e a libmpv automaticamente.</string>
     <string name="playback_external_forward_subtitles">Enviar legendas para o leitor externo</string>
     <string name="playback_external_forward_subtitles_sub">Obtém legendas no teu idioma preferido a partir dos addons e envia-as para o leitor externo.</string>
     <string name="playback_section_audio">Áudio e vídeo</string>
@@ -556,7 +553,6 @@
     <string name="playback_player_auto">Auto (Melhor para o Conteúdo)</string>
     <string name="playback_player_auto_desc">ExoPlayer para Filmes e Séries · MPV para Anime</string>
     <string name="playback_engine_exoplayer_desc">Melhor compatibilidade com as funcionalidades atuais do Nuvio.</string>
-    <string name="playback_engine_mvplayer_desc">Utiliza a libmpv com os controlos OSD do Nuvio. Experimental.</string>
     <string name="video_section">Vídeo</string>
     <string name="audio_trailer_section">Trailer</string>
     <string name="audio_autoplay_trailers">Reproduzir trailers automaticamente</string>
@@ -615,18 +611,6 @@
     <string name="dv7_libdovi_mode_3_sub" translatable="false">Converte streams Profile 5 (DV5) para Profile 8.1. É a mesma conversão utilizada pela opção Converter DV5 para DV8.1.</string>
     <string name="dv7_libdovi_mode_4_title" translatable="false">Modo 4 — 8.4 (estático)</string>
     <string name="dv7_libdovi_mode_4_sub" translatable="false">Converte para Profile 8.4 estático.</string>
-    <string name="audio_mpv_hwdec_title">Descodificação por Hardware (Apenas MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Seleciona como a libmpv deve utilizar os descodificadores por hardware.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Legado (direto -&gt; cópia)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Comportamento predefinido anterior: tenta primeiro o hardware direto e depois o copy-back.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Auto (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Modo automático mais seguro com alternativa quando alguns descodificadores por hardware falham.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardware (cópia) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Utiliza descodificação por hardware com cópia de retorno (copy-back) para a memória de software.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardware (direto) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Utiliza descodificação por hardware direta. O caminho mais rápido em dispositivos compatíveis.</string>
-    <string name="audio_mpv_hwdec_disabled">Desativado (não)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Desativa a descodificação por hardware e utiliza apenas descodificação por software.</string>
     <string name="audio_decoder_device_only_desc">Utilizar apenas descodificadores integrados de hardware. Mais compatível, mas pode não suportar todos os formatos.</string>
     <string name="audio_decoder_prefer_device_desc">Utilizar descodificadores por hardware quando disponíveis, alternando para o FFmpeg em caso de falha. Recomendado para a maioria dos dispositivos.</string>
     <string name="audio_decoder_prefer_app_desc">Utilizar descodificadores FFmpeg quando disponíveis. Melhor suporte de formatos, mas maior utilização do CPU.</string>
@@ -1868,7 +1852,6 @@
     <string name="cd_subtitles">Legendas</string>
     <string name="cd_audio_tracks">Faixas de áudio</string>
     <string name="cd_sources">Fontes</string>
-    <string name="cd_switch_player_engine">Alterar motor do leitor</string>
     <string name="cd_episodes">Episódios</string>
     <string name="cd_playback_speed">Velocidade de reprodução</string>
     <string name="cd_aspect_ratio">Proporção do ecrã</string>
@@ -2231,8 +2214,6 @@
     <string name="player_error_decoder">Erro de descodificador</string>
     <string name="player_error_unsupported_format">Este stream utiliza um formato que o teu dispositivo pode não suportar. Tenta uma fonte diferente. [%1$s]</string>
     <string name="player_error_initialize_failed">Falha ao inicializar o leitor</string>
-    <string name="player_error_mpv_surface_failed">Falha ao inicializar a superfície libmpv</string>
-    <string name="player_error_mpv_playback_failed">Falha ao inicializar a reprodução libmpv</string>
     <string name="player_error_torrent">Erro de torrent: %1$s</string>
     <string name="player_error_playback_fallback">Erro de reprodução</string>
     <!-- Subtitle timing recovery -->

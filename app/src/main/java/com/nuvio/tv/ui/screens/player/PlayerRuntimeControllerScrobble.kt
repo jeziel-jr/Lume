@@ -1,6 +1,5 @@
 package com.nuvio.tv.ui.screens.player
 
-import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -11,12 +10,6 @@ internal fun PlayerRuntimeController.preparePlaybackBeforeStart(
     headers: Map<String, String>,
     loadSavedProgress: Boolean
 ) {
-    logSwitchTrace(
-        stage = "prepare-playback-before-start",
-        message = "urlHash=${url.hashCode().toUInt().toString(16)} loadSavedProgress=$loadSavedProgress " +
-            "clearPendingSwitchPref=true"
-    )
-    clearPendingEngineSwitchTrackPreference()
     playbackPreparationJob?.cancel()
 
     playbackPreparationJob = scope.launch {
@@ -26,11 +19,6 @@ internal fun PlayerRuntimeController.preparePlaybackBeforeStart(
         if (persistedTrackPreference == null) {
             contentId?.let { id ->
                 val loaded = trackPreferenceDataStore.load(id)?.toTrackPreference()
-                logSwitchTrace(
-                    stage = "track-pref-load",
-                    message = "contentId=$id loadedAudio=${loaded?.audio?.language}/${loaded?.audio?.name} " +
-                        "loadedSubtitle=${loaded?.subtitle?.javaClass?.simpleName ?: "none"}"
-                )
                 Log.d(
                     PlayerRuntimeController.TAG,
                     "TRACK_PREF load: contentId=$id S${currentSeason}E${currentEpisode} " +
@@ -59,12 +47,6 @@ internal fun PlayerRuntimeController.preparePlaybackBeforeStart(
                 "TRACK_PREF load: skipped (persistedTrackPreference already set: " +
                     "audio=${persistedTrackPreference?.audio?.language}/${persistedTrackPreference?.audio?.name} " +
                     "subtitle=${persistedTrackPreference?.subtitle?.javaClass?.simpleName})"
-            )
-            logSwitchTrace(
-                stage = "track-pref-load",
-                message = "skipped=true reason=persisted-already-set " +
-                    "audio=${persistedTrackPreference?.audio?.language}/${persistedTrackPreference?.audio?.name} " +
-                    "subtitle=${persistedTrackPreference?.subtitle?.javaClass?.simpleName ?: "none"}"
             )
         }
         // Load saved watch progress BEFORE player init.

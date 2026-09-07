@@ -453,23 +453,8 @@
     <string name="network_connection_offline">Offline</string>
     <string name="advanced_section_performance">Performance &amp; navigation</string>
     <string name="advanced_section_diagnostics">Diagnostics</string>
-    <string name="advanced_sentry_reports">Sentry crash reports</string>
-    <string name="advanced_sentry_reports_subtitle">Send crash and ANR reports with safe context. On by default.</string>
     <string name="advanced_playback_issue_reports">Playback issue reports</string>
     <string name="advanced_playback_issue_reports_subtitle">Show report buttons during playback, long loading, and playback errors</string>
-    <string name="sentry_enable_dialog_title">Turn on crash reports?</string>
-    <string name="sentry_enable_dialog_subtitle">Crash reports help identify device-specific failures without asking you to reproduce the issue with ADB logs.</string>
-    <string name="sentry_disable_dialog_title">Turn off crash reports?</string>
-    <string name="sentry_disable_dialog_subtitle">Future crashes and current ANRs from this device will not be reported. This can make device-specific bugs much harder to fix.</string>
-    <string name="sentry_help_title">How it helps</string>
-    <string name="sentry_help_body">Reports are grouped by app version, device model, Android version, and stack trace so the most common real crashes can be fixed first.</string>
-    <string name="sentry_sent_title">Sent</string>
-    <string name="sentry_sent_body">Crashes, current ANRs, stack traces, app version, build type, flavor, device and OS metadata, plus safe network breadcrumbs with method, host, path, status, duration, and exception type.</string>
-    <string name="sentry_not_sent_title">Not sent</string>
-    <string name="sentry_not_sent_body">Passwords, access tokens, refresh tokens, request bodies, response bodies, headers, cookies, screenshots, view hierarchy, session replay, raw diagnostics, and stream URL query or fragment values.</string>
-    <string name="sentry_keep_enabled">Keep on</string>
-    <string name="sentry_turn_off">Turn off</string>
-    <string name="sentry_turn_on">Turn on</string>
     <string name="advanced_section_cache">Cache</string>
     <string name="advanced_section_dv_diagnostics" translatable="false">DV Diagnostics</string>
     <string name="advanced_fast_horizontal_navigation">Fast Horizontal Navigation</string>
@@ -599,9 +584,6 @@
     <string name="playback_player_ask">Ask every time</string>
     <string name="playback_internal_player_engine">Internal Engine</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Auto-switch engine on startup error</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">If stream startup fails, switch between ExoPlayer and libmpv automatically.</string>
     <string name="playback_external_forward_subtitles">Forward subtitles to external player</string>
     <string name="playback_external_forward_subtitles_sub">Fetch subtitles in your preferred language from addons and pass them to the external player.</string>
     <string name="playback_external_send_skip_segments">Send intro and outro timestamps</string>
@@ -633,7 +615,6 @@
     <string name="playback_player_auto">Auto (Best for Content)</string>
     <string name="playback_player_auto_desc">ExoPlayer for Movies &amp; TV Shows · MPV for Anime</string>
     <string name="playback_engine_exoplayer_desc">Best compatibility with current Nuvio features.</string>
-    <string name="playback_engine_mvplayer_desc">Uses libmpv with Nuvio OSD controls. Experimental.</string>
 
     <string name="video_section">Video</string>
     <string name="audio_trailer_section">Trailer</string>
@@ -697,18 +678,6 @@
     <string name="dv7_libdovi_mode_3_sub" translatable="false">Convert Profile 5 (DV5) streams to Profile 8.1. Same conversion the Convert DV5 to DV8.1 toggle uses.</string>
     <string name="dv7_libdovi_mode_4_title" translatable="false">Mode 4 — 8.4 (static)</string>
     <string name="dv7_libdovi_mode_4_sub" translatable="false">Convert to static profile 8.4.</string>
-    <string name="audio_mpv_hwdec_title">Hardware Decoding (MPV-only)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Select how libmpv should use hardware decoders.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Legacy (direct -&gt; copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Previous default behavior: try direct hardware first, then copy-back.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Auto (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Safer automatic mode with fallback when some hardware decoders fail.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardware (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Uses hardware decoding with copy-back to software memory.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardware (direct) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Uses direct hardware decoding. Fastest path on compatible devices.</string>
-    <string name="audio_mpv_hwdec_disabled">Disabled (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Disables hardware decoding and uses software decoding only.</string>
     <string name="audio_decoder_device_only_desc">Only use built-in hardware decoders. Most compatible but may not support all formats.</string>
     <string name="audio_decoder_prefer_device_desc">Use hardware decoders when available, fall back to FFmpeg. Recommended for most devices.</string>
     <string name="audio_decoder_prefer_app_desc">Use FFmpeg decoders when available. Better format support but higher CPU usage.</string>
@@ -2078,7 +2047,6 @@
     <string name="cd_subtitles">Subtitles</string>
     <string name="cd_audio_tracks">Audio tracks</string>
     <string name="cd_sources">Sources</string>
-    <string name="cd_switch_player_engine">Switch player engine</string>
     <string name="cd_episodes">Episodes</string>
     <string name="cd_playback_speed">Playback speed</string>
     <string name="cd_aspect_ratio">Aspect ratio</string>
@@ -2449,8 +2417,6 @@
     <string name="player_error_decoder">Decoder error</string>
     <string name="player_error_unsupported_format">This stream uses a format your device may not support. Try a different source. [%1$s]</string>
     <string name="player_error_initialize_failed">Failed to initialize player</string>
-    <string name="player_error_mpv_surface_failed">Failed to initialize libmpv surface</string>
-    <string name="player_error_mpv_playback_failed">Failed to initialize libmpv playback</string>
     <string name="player_error_torrent">Torrent error: %1$s</string>
     <string name="player_error_playback_fallback">Playback error</string>
     <!-- Subtitle timing recovery -->

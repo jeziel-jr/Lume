@@ -511,9 +511,6 @@
 <string name="playback_player_ask">Pokaždé se zeptat</string>
 <string name="playback_internal_player_engine">Interní engine</string>
 <string name="playback_engine_exoplayer">ExoPlayer</string>
-<string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-<string name="playback_auto_switch_internal_player_on_error">Automaticky přepnout engine při chybě spuštění</string>
-<string name="playback_auto_switch_internal_player_on_error_sub">Pokud spuštění streamu selže, automaticky přepnout mezi ExoPlayer a libmpv.</string>
 <string name="playback_section_audio">Audio a video</string>
 <string name="playback_section_audio_desc">Ovládání zvuku a kompatibilita videa.</string>
 <string name="playback_section_subtitles">Titulky</string>
@@ -541,25 +538,12 @@
 <string name="playback_player_auto">Auto (Nejlepší pro obsah)</string>
 <string name="playback_player_auto_desc">ExoPlayer pro filmy a seriály · MPV pro anime</string>
 <string name="playback_engine_exoplayer_desc">Nejlepší kompatibilita s aktuálními funkcemi Nuvio.</string>
-<string name="playback_engine_mvplayer_desc">Používá libmpv s OSD ovládacími prvky Nuvio. Experimentální.</string>
 
 <!-- PlaybackAudioSettings -->
 <string name="audio_lang_original">Původní jazyk</string>
 <string name="audio_lang_original_hint">Vyžaduje povolené obohacení TMDB</string>
 <string name="audio_remember_delay_per_device">Pamatovat si zpoždění zvuku podle zařízení</string>
 <string name="audio_remember_delay_per_device_sub">Uložit a obnovit zpoždění zvuku v přehrávači pro aktuální trasu zvukového výstupu</string>
-<string name="audio_mpv_hwdec_title">Hardwarové dekódování (pouze MPV)</string>
-<string name="audio_mpv_hwdec_dialog_subtitle">Vyberte, jak má libmpv používat hardwarové dekodéry.</string>
-<string name="audio_mpv_hwdec_legacy_direct_copy">Starší (přímé -> kopírování)</string>
-<string name="audio_mpv_hwdec_legacy_direct_copy_desc">Předchozí výchozí chování: zkusit nejprve přímý hardware, poté kopírování zpět.</string>
-<string name="audio_mpv_hwdec_auto_safe">Auto (auto-safe)</string>
-<string name="audio_mpv_hwdec_auto_safe_desc">Bezpečnější automatický režim s náhradním řešením, když některé hardwarové dekodéry selžou.</string>
-<string name="audio_mpv_hwdec_hardware_copy">Hardware (kopírování) (mediacodec-copy)</string>
-<string name="audio_mpv_hwdec_hardware_copy_desc">Používá hardwarové dekódování s kopírováním zpět do softwarové paměti.</string>
-<string name="audio_mpv_hwdec_hardware_direct">Hardware (přímé) (mediacodec)</string>
-<string name="audio_mpv_hwdec_hardware_direct_desc">Používá přímé hardwarové dekódování. Nejrychlejší cesta na kompatibilních zařízeních.</string>
-<string name="audio_mpv_hwdec_disabled">Zakázáno (ne)</string>
-<string name="audio_mpv_hwdec_disabled_desc">Zakáže hardwarové dekódování a použije pouze softwarové dekódování.</string>
 
 <!-- PlaybackSubtitleSettings -->
 <string name="sub_section">Titulky</string>
@@ -1641,7 +1625,6 @@
     <string name="cd_subtitles">Titulky</string>
     <string name="cd_audio_tracks">Zvukové stopy</string>
     <string name="cd_sources">Zdroje</string>
-    <string name="cd_switch_player_engine">Přepnout engine přehrávače</string>
     <string name="cd_episodes">Epizody</string>
     <string name="cd_playback_speed">Rychlost přehrávání</string>
     <string name="cd_aspect_ratio">Poměr stran</string>

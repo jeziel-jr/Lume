@@ -541,9 +541,6 @@
     <string name="playback_player_ask">Spørg hver gang</string>
     <string name="playback_internal_player_engine">Intern motor</string>
     <string name="playback_engine_exoplayer">ExoPlayer</string>
-    <string name="playback_engine_mvplayer">Libmpv (Beta)</string>
-    <string name="playback_auto_switch_internal_player_on_error">Skift motor automatisk ved opstartsfejl</string>
-    <string name="playback_auto_switch_internal_player_on_error_sub">Hvis stream-opstart fejler, skift automatisk mellem ExoPlayer og libmpv.</string>
     <string name="playback_external_forward_subtitles">Videresend undertekster til ekstern afspiller</string>
     <string name="playback_external_forward_subtitles_sub">Hent undertekster på dit foretrukne sprog fra addons og send dem til den eksterne afspiller.</string>
     <string name="playback_section_audio">Lyd &amp; video</string>
@@ -573,7 +570,6 @@
     <string name="playback_player_auto">Auto (bedst til indhold)</string>
     <string name="playback_player_auto_desc">ExoPlayer til film &amp; TV-serier · MPV til anime</string>
     <string name="playback_engine_exoplayer_desc">Bedst kompatibilitet med nuværende Nuvio-funktioner.</string>
-    <string name="playback_engine_mvplayer_desc">Bruger libmpv med Nuvio OSD-kontrol. Eksperimentel.</string>
 
     <string name="video_section">Video</string>
     <string name="audio_trailer_section">Trailer</string>
@@ -637,18 +633,6 @@
     <string name="dv7_libdovi_mode_3_sub" translatable="false">Convert Profile 5 (DV5) streams to Profile 8.1. Same conversion the Convert DV5 to DV8.1 toggle uses.</string>
     <string name="dv7_libdovi_mode_4_title" translatable="false">Mode 4 — 8.4 (static)</string>
     <string name="dv7_libdovi_mode_4_sub" translatable="false">Convert to static profile 8.4.</string>
-    <string name="audio_mpv_hwdec_title">Hardwaredekodning (kun MPV)</string>
-    <string name="audio_mpv_hwdec_dialog_subtitle">Vælg hvordan libmpv skal bruge hardwaredecoder.</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy">Legacy (direct -&gt; copy)</string>
-    <string name="audio_mpv_hwdec_legacy_direct_copy_desc">Tidligere standardadfærd: prøv direkte hardware først, derefter copy-back.</string>
-    <string name="audio_mpv_hwdec_auto_safe">Automatisk (auto-safe)</string>
-    <string name="audio_mpv_hwdec_auto_safe_desc">Sikrere automatisk tilstand med fallback når nogle hardwaredecoder fejler.</string>
-    <string name="audio_mpv_hwdec_hardware_copy">Hardware (copy) (mediacodec-copy)</string>
-    <string name="audio_mpv_hwdec_hardware_copy_desc">Bruger hardwaredekodning med copy-back til softwarehukommelse.</string>
-    <string name="audio_mpv_hwdec_hardware_direct">Hardware (direct) (mediacodec)</string>
-    <string name="audio_mpv_hwdec_hardware_direct_desc">Bruger direkte hardwaredekodning. Hurtigste sti på kompatible enheder.</string>
-    <string name="audio_mpv_hwdec_disabled">Deaktiveret (no)</string>
-    <string name="audio_mpv_hwdec_disabled_desc">Deaktiverer hardwaredekodning og bruger kun softwaredekodning.</string>
     <string name="audio_decoder_device_only_desc">Brug kun indbyggede hardwaredecoder. Mest kompatibel, men understøtter muligvis ikke alle formater.</string>
     <string name="audio_decoder_prefer_device_desc">Brug hardwaredecoder når tilgængelig, fald tilbage til FFmpeg. Anbefalet til de fleste enheder.</string>
     <string name="audio_decoder_prefer_app_desc">Brug FFmpeg-decoder når tilgængelig. Bedre formatunderstøttelse men højere CPU-forbrug.</string>
@@ -1960,7 +1944,6 @@
     <string name="cd_subtitles">Undertekster</string>
     <string name="cd_audio_tracks">Lydspor</string>
     <string name="cd_sources">Kilder</string>
-    <string name="cd_switch_player_engine">Skift afspiller-engine</string>
     <string name="cd_episodes">Episoder</string>
     <string name="cd_playback_speed">Afspilningshastighed</string>
     <string name="cd_aspect_ratio">Billedformat</string>
@@ -2331,8 +2314,6 @@
     <string name="player_error_decoder">Decoder-fejl</string>
     <string name="player_error_unsupported_format">Denne stream bruger et format, som din enhed muligvis ikke understøtter. Prøv en anden kilde. [%1$s]</string>
     <string name="player_error_initialize_failed">Kunne ikke initialisere afspiller</string>
-    <string name="player_error_mpv_surface_failed">Kunne ikke initialisere libmpv-overflade</string>
-    <string name="player_error_mpv_playback_failed">Kunne ikke initialisere libmpv-afspilning</string>
     <string name="player_error_torrent">Torrent-fejl: %1$s</string>
     <string name="player_error_playback_fallback">Afspilningsfejl</string>
     <!-- Subtitle timing recovery -->
