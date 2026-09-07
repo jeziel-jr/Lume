@@ -176,7 +176,7 @@ class StreamAutoPlaySelectorTest {
     }
 
     @Test
-    fun `manual mode remains manual even with matching bingeGroup`() {
+    fun `binge group match auto-plays in MANUAL mode unless bingeGroupOnly is set`() {
         val matched = stream(
             addonName = "AddonA",
             url = "https://example.com/match.m3u8",
@@ -195,7 +195,30 @@ class StreamAutoPlaySelectorTest {
             preferBingeGroupInSelection = true
         )
 
-        assertNull(selected)
+        // Persisted binge groups (next-episode continuity) auto-play even in MANUAL
+        // mode; bingeGroupOnly is what forces the stream picker instead.
+        assertEquals(matched, selected)
+
+        // bingeGroupOnly: when no binge-group match exists, do not fall back to
+        // FIRST_STREAM — return null so the caller shows the picker.
+        val other = stream(
+            addonName = "AddonA",
+            url = "https://example.com/other.m3u8",
+            bingeGroup = "other-group"
+        )
+        val noFallback = StreamAutoPlaySelector.selectAutoPlayStream(
+            streams = listOf(other),
+            mode = StreamAutoPlayMode.FIRST_STREAM,
+            regexPattern = "",
+            source = StreamAutoPlaySource.ALL_SOURCES,
+            installedAddonNames = setOf("AddonA"),
+            selectedAddons = emptySet(),
+            selectedPlugins = emptySet(),
+            preferredBingeGroup = "same-group",
+            preferBingeGroupInSelection = true,
+            bingeGroupOnly = true
+        )
+        assertNull(noFallback)
     }
 
     @Test

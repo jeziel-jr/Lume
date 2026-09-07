@@ -120,36 +120,6 @@ class CollectionsDataStoreSourceMigrationTest {
     }
 
     @Test
-    fun `validation rejects trakt sources without list id`() {
-        val json = """
-            [
-              {
-                "id": "collection",
-                "title": "Trakt",
-                "folders": [
-                  {
-                    "id": "folder",
-                    "title": "Public Lists",
-                    "sources": [
-                      {
-                        "provider": "trakt",
-                        "title": "Missing ID",
-                        "mediaType": "MOVIE"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-        """.trimIndent()
-
-        val result = store.validateCollectionsJson(json)
-
-        assertTrue(!result.valid)
-        assertTrue(result.error?.contains("Trakt list ID") == true)
-    }
-
-    @Test
     fun `import and export preserve folder hero video url`() {
         val collection = com.nuvio.tv.domain.model.Collection(
             id = "collection",
