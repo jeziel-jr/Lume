@@ -83,6 +83,8 @@ jobs:
         run: |
           if [ -n "$LOCAL_PROPERTIES_BASE64" ]; then
             printf '%s' "$LOCAL_PROPERTIES_BASE64" | base64 --decode > local.properties
+            # Stale developer sdk.dir must not override ANDROID_HOME on self-hosted runners.
+            sed -i '/^sdk.dir=/d' local.properties
           fi
           if [ -n "$LOCAL_DEV_PROPERTIES_BASE64" ]; then
             printf '%s' "$LOCAL_DEV_PROPERTIES_BASE64" | base64 --decode > local.dev.properties

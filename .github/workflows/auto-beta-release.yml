@@ -68,6 +68,9 @@ jobs:
         run: |
           if [ -n "$LOCAL_PROPERTIES_BASE64" ]; then
             printf '%s' "$LOCAL_PROPERTIES_BASE64" | base64 --decode > local.properties
+            # Runner images set ANDROID_HOME themselves; a stale sdk.dir from the
+            # developer's local.properties (Mac path) must not win on self-hosted runners.
+            sed -i '/^sdk.dir=/d' local.properties
           else
             echo "::error::Missing secret LOCAL_PROPERTIES_BASE64 (base64 of local.properties with TMDB_API_KEY and XTREAM_BASE_URL)." >&2
             exit 1
