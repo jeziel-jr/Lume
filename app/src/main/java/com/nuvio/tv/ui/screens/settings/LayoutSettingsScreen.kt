@@ -4,9 +4,11 @@ package com.nuvio.tv.ui.screens.settings
 
 import com.nuvio.tv.ui.theme.NuvioTheme
 
+import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image as BitmapImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -51,7 +53,10 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
@@ -83,7 +88,6 @@ import com.nuvio.tv.ui.components.GridLayoutPreview
 import com.nuvio.tv.ui.components.ModernLayoutPreview
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.components.cardDepthVisual
-import com.nuvio.tv.ui.screens.addon.QrCodeOverlay
 
 @Composable
 fun LayoutSettingsScreen(
@@ -303,37 +307,6 @@ fun LayoutSettingsContent(
                             },
                             onFocused = { focusedSection = LayoutSettingsSection.HOME_LAYOUT }
                         )
-                    }
-
-                    if (uiState.heroSectionEnabled && uiState.availableCatalogs.isNotEmpty() && uiState.selectedLayout != HomeLayout.MODERN) {
-                        Text(
-                            text = stringResource(R.string.layout_hero_catalogs),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = NuvioTheme.colors.TextSecondary
-                        )
-                        Text(
-                            text = stringResource(R.string.layout_hero_catalogs_sub),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = NuvioTheme.colors.TextTertiary
-                        )
-                        LazyRow(
-                            contentPadding = PaddingValues(end = NuvioTheme.spacing.sm),
-                            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
-                        ) {
-                            items(
-                                items = uiState.availableCatalogs,
-                                key = { it.key }
-                            ) { catalog ->
-                                CatalogChip(
-                                    catalogInfo = catalog,
-                                    isSelected = catalog.key in uiState.heroCatalogKeys,
-                                    onClick = {
-                                        viewModel.onEvent(LayoutSettingsEvent.ToggleHeroCatalog(catalog.key))
-                                    },
-                                    onFocused = { focusedSection = LayoutSettingsSection.HOME_LAYOUT }
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -903,7 +876,7 @@ fun LayoutSettingsContent(
         }
 
         if (streamBadgeUiState.isQrModeActive) {
-            QrCodeOverlay(
+            StreamBadgeQrOverlay(
                 qrBitmap = streamBadgeUiState.qrCodeBitmap,
                 serverUrl = streamBadgeUiState.serverUrl,
                 instruction = stringResource(R.string.stream_badge_qr_instruction),
@@ -1303,18 +1276,52 @@ private fun LayoutPreviewPlaceholder() {
 }
 
 @Composable
-private fun CatalogChip(
-    catalogInfo: CatalogInfo,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    onFocused: () -> Unit
+private fun StreamBadgeQrOverlay(
+    qrBitmap: Bitmap?,
+    serverUrl: String?,
+    instruction: String,
+    onClose: () -> Unit,
+    qrSize: Dp
 ) {
-    SettingsChoiceChip(
-        label = catalogInfo.name,
-        selected = isSelected,
-        onClick = onClick,
-        onFocused = onFocused
-    )
+    NuvioDialog(
+        onDismiss = onClose,
+        title = stringResource(R.string.settings_stream_badge_urls_title),
+        subtitle = instruction,
+        width = 460.dp,
+        usePlatformDefaultWidth = false
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
+        ) {
+            val bitmap = qrBitmap
+            if (bitmap != null) {
+                BitmapImage(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = stringResource(R.string.cd_qr_code),
+                    modifier = Modifier.size(qrSize)
+                )
+            }
+            val url = serverUrl
+            if (url != null) {
+                Text(
+                    text = url,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NuvioTheme.colors.TextSecondary,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            }
+            SettingsDialogActionRow {
+                SettingsDialogActionButton(
+                    text = stringResource(R.string.action_close),
+                    onClick = onClose,
+                    primary = true
+                )
+            }
+        }
+    }
 }
 
 @Composable

@@ -81,7 +81,6 @@ import coil3.request.transformations
 import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.ui.components.FocusMarqueeText
-import com.nuvio.tv.ui.components.ImdbRatingSourceLabel
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.theme.NuvioTheme
 import com.nuvio.tv.domain.model.CardDepthSurface
@@ -252,7 +251,6 @@ fun EpisodesRow(
     episodes: List<Video>,
     playbackAvailability: Map<Pair<Int, Int>, PlaybackAvailabilityState> = emptyMap(),
     episodeProgressMap: Map<Pair<Int, Int>, com.nuvio.tv.domain.model.WatchProgress> = emptyMap(),
-    episodeRatings: Map<Pair<Int, Int>, Double> = emptyMap(),
     watchedEpisodes: Set<Pair<Int, Int>> = emptySet(),
     episodeWatchedPendingKeys: Set<String> = emptySet(),
     blurUnwatchedEpisodes: Boolean = false,
@@ -266,8 +264,6 @@ fun EpisodesRow(
     onMarkSeasonUnwatched: (Int) -> Unit = {},
     isSeasonFullyWatched: Boolean = false,
     selectedSeason: Int = 1,
-    onOpenEpisodeComments: (Video) -> Unit = {},
-    showOpenEpisodeComments: Boolean = false,
     onMarkPreviousEpisodesWatched: (Video) -> Unit = {},
     upFocusRequester: FocusRequester,
     downFocusRequester: FocusRequester? = null,
@@ -348,7 +344,6 @@ fun EpisodesRow(
             val availability = seasonEp?.let { playbackAvailability[it] }
                 ?: PlaybackAvailabilityState.CHECKING
             val progress = remember(seasonEp, episodeProgressMap) { seasonEp?.let { episodeProgressMap[it] } }
-            val imdbRating = remember(seasonEp, episodeRatings) { seasonEp?.let { episodeRatings[it] } }
             val isMarkedWatched = remember(seasonEp, watchedEpisodes) { seasonEp?.let { watchedEpisodes.contains(it) } ?: false }
             val episodeFocusRequester = remember(episode.id) { episodeFocusRequesters.getOrPut(episode.id) { FocusRequester() } }
             val episodeOnClick = remember(episode.id, availability) {
@@ -379,7 +374,6 @@ fun EpisodesRow(
                 episode = episode,
                 playbackAvailability = availability,
                 watchProgress = progress,
-                imdbRating = imdbRating,
                 isMarkedWatched = isMarkedWatched,
                 blurUnwatched = blurUnwatchedEpisodes,
                 cardMetrics = cardMetrics,
@@ -437,11 +431,6 @@ fun EpisodesRow(
                 onEpisodeStartFromBeginningClick(selectedEpisode)
                 optionsEpisode = null
             },
-            onOpenEpisodeComments = {
-                onOpenEpisodeComments(selectedEpisode)
-                optionsEpisode = null
-            },
-            showOpenEpisodeComments = showOpenEpisodeComments,
             onPlayManually = {
                 onEpisodeManualPlayClick(selectedEpisode)
                 optionsEpisode = null
@@ -473,7 +462,6 @@ private fun EpisodeCard(
     episode: Video,
     playbackAvailability: PlaybackAvailabilityState,
     watchProgress: com.nuvio.tv.domain.model.WatchProgress? = null,
-    imdbRating: Double? = null,
     isMarkedWatched: Boolean = false,
     blurUnwatched: Boolean = false,
     cardMetrics: EpisodeCardMetrics,
@@ -492,9 +480,6 @@ private fun EpisodeCard(
     }
     val runtimeLabel = remember(episode.runtime) {
         episode.runtime?.takeIf { it > 0 }?.let(::formatEpisodeRuntime)
-    }
-    val ratingLabel = remember(imdbRating) {
-        imdbRating?.takeIf { it > 0.0 }?.let { String.format(Locale.US, "%.1f", it) }
     }
     val description = remember(episode.overview) { episode.overview?.trim().orEmpty() }
     val isWatched = remember(watchProgress, isMarkedWatched) { watchProgress?.isCompleted() == true || isMarkedWatched }
@@ -567,12 +552,6 @@ private fun EpisodeCard(
     val textSecondary = NuvioTheme.colors.TextSecondary
     val metaLabelStyle = remember(typography, textSecondary) {
         typography.labelSmall.copy(color = textSecondary)
-    }
-    val ratingStyle = remember(typography) {
-        typography.labelSmall.copy(
-            color = Color(0xFFF5C518),
-            fontWeight = FontWeight.SemiBold
-        )
     }
     val badgeBgColor = remember { Color.Black.copy(alpha = 0.42f) }
     val badgeShape = remember(cardMetrics.episodeBadgeCornerRadius) { RoundedCornerShape(cardMetrics.episodeBadgeCornerRadius) }
@@ -776,7 +755,7 @@ private fun EpisodeCard(
                     )
                 }
 
-                if (runtimeLabel != null || ratingLabel != null || formattedDate.isNotBlank()) {
+                if (runtimeLabel != null || formattedDate.isNotBlank()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
@@ -796,26 +775,6 @@ private fun EpisodeCard(
                                 Text(
                                     text = runtime,
                                     style = metaLabelStyle,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-
-                        ratingLabel?.let { rating ->
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xs),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                ImdbRatingSourceLabel(
-                                    logoModifier = Modifier
-                                        .width(cardMetrics.imdbLogoWidth)
-                                        .height(cardMetrics.imdbLogoHeight),
-                                    textStyle = metaLabelStyle,
-                                    textColor = textSecondary
-                                )
-                                Text(
-                                    text = rating,
-                                    style = ratingStyle,
                                     maxLines = 1
                                 )
                             }
@@ -945,8 +904,6 @@ private fun EpisodeOptionsDialog(
     onDismiss: () -> Unit,
     onPlay: () -> Unit,
     onStartFromBeginning: () -> Unit = {},
-    onOpenEpisodeComments: () -> Unit = {},
-    showOpenEpisodeComments: Boolean = false,
     onPlayManually: () -> Unit = {},
     showPlayManually: Boolean = false,
     onToggleWatched: () -> Unit,
@@ -1022,19 +979,6 @@ private fun EpisodeOptionsDialog(
                     PlaybackAvailabilityState.ERROR -> stringResource(R.string.action_retry)
                 }
             )
-        }
-
-        if (showOpenEpisodeComments) {
-            Button(
-                onClick = onOpenEpisodeComments,
-                colors = ButtonDefaults.colors(
-                    containerColor = NuvioTheme.colors.BackgroundCard,
-                    contentColor = NuvioTheme.colors.TextPrimary
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.episodes_open_comments))
-            }
         }
 
         if (showPlayManually) {
@@ -1132,8 +1076,6 @@ private data class EpisodeCardMetrics(
     val descriptionLineHeight: androidx.compose.ui.unit.TextUnit,
     val descriptionMaxLines: Int,
     val metadataIconSize: Dp,
-    val imdbLogoWidth: Dp,
-    val imdbLogoHeight: Dp,
     val progressBarHeight: Dp,
     val statusBadgeSize: Dp,
     val statusIconSize: Dp,
@@ -1162,8 +1104,6 @@ private fun rememberEpisodeCardMetrics(): EpisodeCardMetrics {
                 descriptionLineHeight = 22.sp,
                 descriptionMaxLines = 4,
                 metadataIconSize = NuvioTheme.spacing.lg,
-                imdbLogoWidth = 28.dp,
-                imdbLogoHeight = 14.dp,
                 progressBarHeight = NuvioTheme.spacing.xs,
                 statusBadgeSize = NuvioTheme.spacing.xxl,
                 statusIconSize = 20.dp,
@@ -1187,8 +1127,6 @@ private fun rememberEpisodeCardMetrics(): EpisodeCardMetrics {
                 descriptionLineHeight = 20.sp,
                 descriptionMaxLines = 4,
                 metadataIconSize = 15.dp,
-                imdbLogoWidth = 26.dp,
-                imdbLogoHeight = 13.dp,
                 progressBarHeight = NuvioTheme.spacing.xs,
                 statusBadgeSize = 28.dp,
                 statusIconSize = 18.dp,
@@ -1212,8 +1150,6 @@ private fun rememberEpisodeCardMetrics(): EpisodeCardMetrics {
                 descriptionLineHeight = 18.sp,
                 descriptionMaxLines = 3,
                 metadataIconSize = 14.dp,
-                imdbLogoWidth = NuvioTheme.spacing.xl,
-                imdbLogoHeight = NuvioTheme.spacing.md,
                 progressBarHeight = NuvioTheme.spacing.xs,
                 statusBadgeSize = NuvioTheme.spacing.xl,
                 statusIconSize = NuvioTheme.spacing.lg,
@@ -1237,8 +1173,6 @@ private fun rememberEpisodeCardMetrics(): EpisodeCardMetrics {
                 descriptionLineHeight = 16.sp,
                 descriptionMaxLines = 3,
                 metadataIconSize = 13.dp,
-                imdbLogoWidth = 22.dp,
-                imdbLogoHeight = 11.dp,
                 progressBarHeight = NuvioTheme.spacing.xs,
                 statusBadgeSize = 22.dp,
                 statusIconSize = 14.dp,

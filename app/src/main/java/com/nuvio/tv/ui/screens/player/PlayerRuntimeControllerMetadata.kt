@@ -1,14 +1,10 @@
 package com.nuvio.tv.ui.screens.player
 
-import com.nuvio.tv.R
-import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.data.local.AutoSkipSegmentType
 import com.nuvio.tv.data.repository.SkipInterval
 import com.nuvio.tv.domain.model.ContentType
-import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.Stream
 import com.nuvio.tv.domain.model.Video
-import com.nuvio.tv.domain.model.resolveContentLanguage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -59,50 +55,14 @@ internal fun PlayerRuntimeController.fetchMetaDetails(id: String?, type: String?
 
     val requestKey = metadataRequestKey(id = id, type = type)
     scope.launch {
-        val result = try {
-            metaRepository.getMetaFromAllAddons(type = type, id = id)
-                .first { it !is NetworkResult.Loading }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Exception) {
-            null
-        }
-
-        when (result) {
-            is NetworkResult.Success -> {
-                applyMetaDetails(result.data)
-                fetchTmdbSeriesVideosIfNeeded(
-                    id = id,
-                    type = type,
-                    legacyVideos = result.data.videos,
-                    requestKey = requestKey,
-                )
-            }
-            is NetworkResult.Error -> {
-                fetchTmdbSeriesVideosIfNeeded(
-                    id = id,
-                    type = type,
-                    legacyVideos = emptyList(),
-                    requestKey = requestKey,
-                )
-            }
-            NetworkResult.Loading -> {
-                fetchTmdbSeriesVideosIfNeeded(
-                    id = id,
-                    type = type,
-                    legacyVideos = emptyList(),
-                    requestKey = requestKey,
-                )
-            }
-            null -> {
-                fetchTmdbSeriesVideosIfNeeded(
-                    id = id,
-                    type = type,
-                    legacyVideos = emptyList(),
-                    requestKey = requestKey,
-                )
-            }
-        }
+        // Series episode lists come straight from TMDB (the addon meta layer that
+        // previously supplied them has been removed).
+        fetchTmdbSeriesVideosIfNeeded(
+            id = id,
+            type = type,
+            legacyVideos = emptyList(),
+            requestKey = requestKey,
+        )
     }
 
     scope.launch {
@@ -160,37 +120,6 @@ private fun PlayerRuntimeController.currentMetadataRequestKey(): PlayerMetadataR
     val id = contentId ?: return null
     val type = contentType ?: return null
     return metadataRequestKey(id = id, type = type)
-}
-
-internal fun PlayerRuntimeController.applyMetaDetails(meta: Meta) {
-    metaVideos = meta.videos
-    metaGenres = meta.genres
-    metaCountry = meta.country
-    // Fill in content language from meta if not provided via navigation args.
-    if (contentLanguage == null) {
-        contentLanguage = meta.resolveContentLanguage()
-    }
-    val description = resolveDescription(meta)
-
-    _uiState.update { state ->
-        state.copy(
-            description = description ?: state.description,
-            castMembers = if (meta.castMembers.isNotEmpty()) meta.castMembers else state.castMembers
-        )
-    }
-    recomputeNextEpisode(resetVisibility = false)
-}
-
-internal fun PlayerRuntimeController.resolveDescription(meta: Meta): String? {
-    val type = contentType
-    if (type in listOf("series", "tv") && currentSeason != null && currentEpisode != null) {
-        val episodeOverview = meta.videos.firstOrNull { video ->
-            video.season == currentSeason && video.episode == currentEpisode
-        }?.overview
-        if (!episodeOverview.isNullOrBlank()) return episodeOverview
-    }
-
-    return meta.description
 }
 
 internal fun PlayerRuntimeController.updateEpisodeDescription() {
@@ -274,7 +203,7 @@ private suspend fun PlayerRuntimeController.enrichDescriptionFromTmdb(id: String
         }
     }
 
-    // Enrich cast from TMDB if addon didn't provide any.
+    // Enrich cast from TMDB when the description fetch did not supply any.
     if (settings.useBasicInfo && enrichment.castMembers.isNotEmpty()) {
         _uiState.update { state ->
             if (state.castMembers.isEmpty()) state.copy(castMembers = enrichment.castMembers)
@@ -298,6 +227,7 @@ internal fun PlayerRuntimeController.recomputeNextEpisode(resetVisibility: Boole
         val currentId = currentVideoId
         val idx = if (currentId != null) metaVideos.indexOfFirst { it.id == currentId } else -1
         val resolvedNext = if (idx >= 0 && idx < metaVideos.size - 1) metaVideos[idx + 1] else null
+
         nextEpisodeVideo = resolvedNext
         if (resolvedNext == null) {
             clearNextEpisodeAndCancelPostPlay()
@@ -526,67 +456,3 @@ internal fun PlayerRuntimeController.updateActiveSkipInterval(positionMs: Long) 
 
 private fun SkipInterval.autoSkipKey(): String =
     "$provider:$type:$startTime:$endTime"
-
-internal fun PlayerRuntimeController.tryShowParentalGuide() {
-    val state = _uiState.value
-    if (!state.parentalGuideHasShown && state.parentalWarnings.isNotEmpty() && !playbackStartedForParentalGuide) {
-        playbackStartedForParentalGuide = true
-        _uiState.update { it.copy(showParentalGuide = true, parentalGuideHasShown = true) }
-    }
-}
-
-internal fun PlayerRuntimeController.fetchParentalGuide(id: String?, type: String?, season: Int?, episode: Int?) {
-    if (isLivePlayback) return
-    if (!parentalGuideEnabled) return
-    if (id.isNullOrBlank()) return
-
-    val imdbId = id.split(":").firstOrNull()?.takeIf { it.startsWith("tt") } ?: return
-
-    scope.launch {
-        val guide = parentalGuideRepository.getParentalGuide(imdbId) ?: return@launch
-
-        val labels = mapOf(
-            "nudity" to context.getString(R.string.parental_nudity),
-            "violence" to context.getString(R.string.parental_violence),
-            "profanity" to context.getString(R.string.parental_profanity),
-            "alcohol" to context.getString(R.string.parental_alcohol),
-            "frightening" to context.getString(R.string.parental_frightening)
-        )
-        val severityOrder = mapOf(
-            "severe" to 0, "moderate" to 1, "mild" to 2
-        )
-
-        val entries = listOfNotNull(
-            guide.nudity?.let { "nudity" to it },
-            guide.violence?.let { "violence" to it },
-            guide.profanity?.let { "profanity" to it },
-            guide.alcohol?.let { "alcohol" to it },
-            guide.frightening?.let { "frightening" to it }
-        )
-
-        val warnings = entries
-            .sortedBy { severityOrder[it.second.lowercase()] ?: 3 }
-            .map {
-                val localizedSeverity = when (it.second.lowercase()) {
-                    "severe" -> context.getString(R.string.parental_severity_severe)
-                    "moderate" -> context.getString(R.string.parental_severity_moderate)
-                    "mild" -> context.getString(R.string.parental_severity_mild)
-                    else -> it.second
-                }
-                ParentalWarning(label = labels[it.first] ?: it.first, severity = localizedSeverity)
-            }
-            .take(5)
-
-        _uiState.update {
-            it.copy(
-                parentalWarnings = warnings,
-                showParentalGuide = false,
-                parentalGuideHasShown = false
-            )
-        }
-
-        if (_uiState.value.isPlaying) {
-            tryShowParentalGuide()
-        }
-    }
-}

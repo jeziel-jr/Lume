@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.exoplayer.ExoPlayer
 import com.nuvio.tv.core.debrid.DirectDebridResolver
 import com.nuvio.tv.core.debrid.DirectDebridStreamPreparer
-import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.torrent.TorrentService
 import com.nuvio.tv.core.torrent.TorrentSettings
 import com.nuvio.tv.data.local.AudioDelayRouteDataStore
@@ -15,14 +14,9 @@ import com.nuvio.tv.data.local.PlayerSettingsDataStore
 import com.nuvio.tv.data.local.DeviceLocalPlayerPreferences
 import com.nuvio.tv.data.local.StreamLinkCacheDataStore
 import com.nuvio.tv.data.local.StreamBadgeSettingsDataStore
-import com.nuvio.tv.data.repository.ParentalGuideRepository
 import com.nuvio.tv.data.repository.SkipIntroRepository
-import com.nuvio.tv.data.repository.TraktEpisodeMappingService
-import com.nuvio.tv.data.repository.TraktScrobbleService
 import com.nuvio.tv.domain.model.EpgProgram
-import com.nuvio.tv.domain.repository.AddonRepository
 import com.nuvio.tv.domain.repository.LiveTvRepository
-import com.nuvio.tv.domain.repository.MetaRepository
 import com.nuvio.tv.domain.repository.StreamRepository
 import com.nuvio.tv.domain.repository.WatchProgressRepository
 import com.nuvio.tv.core.tmdb.TmdbService
@@ -41,14 +35,7 @@ import javax.inject.Inject
 class PlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val watchProgressRepository: WatchProgressRepository,
-    private val metaRepository: MetaRepository,
     private val streamRepository: StreamRepository,
-    private val addonRepository: AddonRepository,
-    private val pluginManager: PluginManager,
-    private val subtitleRepository: com.nuvio.tv.domain.repository.SubtitleRepository,
-    private val parentalGuideRepository: ParentalGuideRepository,
-    private val traktScrobbleService: TraktScrobbleService,
-    private val traktEpisodeMappingService: TraktEpisodeMappingService,
     private val skipIntroRepository: SkipIntroRepository,
     private val playerSettingsDataStore: PlayerSettingsDataStore,
     private val deviceLocalPlayerPreferences: DeviceLocalPlayerPreferences,
@@ -69,10 +56,8 @@ class PlayerViewModel @Inject constructor(
     private val directDebridResolver: DirectDebridResolver,
     private val directDebridStreamPreparer: DirectDebridStreamPreparer,
     private val streamBadgePresentation: com.nuvio.tv.core.streams.StreamBadgePresentation,
-    private val playbackIssueReportRepository: com.nuvio.tv.data.repository.PlaybackIssueReportRepository,
     private val xtreamServerHealthMonitor: XtreamServerHealthMonitor,
     private val externalPlaybackTracker: com.nuvio.tv.core.player.ExternalPlaybackTracker,
-    private val subtitleFileCache: com.nuvio.tv.core.player.SubtitleFileCache,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -85,14 +70,7 @@ class PlayerViewModel @Inject constructor(
     private val controller = PlayerRuntimeController(
         context = context,
         watchProgressRepository = watchProgressRepository,
-        metaRepository = metaRepository,
         streamRepository = streamRepository,
-        addonRepository = addonRepository,
-        pluginManager = pluginManager,
-        subtitleRepository = subtitleRepository,
-        parentalGuideRepository = parentalGuideRepository,
-        traktScrobbleService = traktScrobbleService,
-        traktEpisodeMappingService = traktEpisodeMappingService,
         skipIntroRepository = skipIntroRepository,
         playerSettingsDataStore = playerSettingsDataStore,
         deviceLocalPlayerPreferences = deviceLocalPlayerPreferences,
@@ -111,7 +89,6 @@ class PlayerViewModel @Inject constructor(
         directDebridResolver = directDebridResolver,
         directDebridStreamPreparer = directDebridStreamPreparer,
         streamBadgePresentation = streamBadgePresentation,
-        playbackIssueReportRepository = playbackIssueReportRepository,
         xtreamServerHealthMonitor = xtreamServerHealthMonitor,
         savedStateHandle = savedStateHandle,
         scope = viewModelScope
@@ -227,31 +204,15 @@ class PlayerViewModel @Inject constructor(
             year = controller.year
         )
 
-        // Pass already-loaded addon subtitles if forward setting is enabled
-        val subtitleInputs = if (controller.uiState.value.subtitleStyle.preferredLanguage.trim().lowercase() != "none") {
-            val addonSubtitles = controller.uiState.value.addonSubtitles
-            if (addonSubtitles.isNotEmpty()) {
-                addonSubtitles.map {
-                    com.nuvio.tv.core.player.SubtitleInput(
-                        url = it.url,
-                        name = "${it.getDisplayLanguage()} - ${it.addonName}",
-                        lang = it.lang
-                    )
-                }
-            } else null
-        } else null
-
-        // Cache subtitle files locally and launch player in background
+        // Launch player in background
         viewModelScope.launch {
-            val cachedSubtitles = subtitleInputs?.let { subtitleFileCache.cacheSubtitles(it) }
-
             externalPlaybackTracker.launchPlayer(
                 metadata = metadata,
                 url = url,
                 title = metadata.buildPlayerTitle(),
                 headers = controller.getCurrentHeaders(),
                 resumePositionMs = resumePositionMs,
-                subtitles = cachedSubtitles,
+                subtitles = null,
                 nextEpisodeSnapshot = controller.metaVideos
                     .takeIf { it.isNotEmpty() }
                     ?.let { videos ->

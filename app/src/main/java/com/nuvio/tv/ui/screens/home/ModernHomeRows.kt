@@ -1036,7 +1036,7 @@ private fun ModernCarouselCard(
         // Outside landscape we always pick up the enriched URL so manual artwork
         // updates land instantly. Inside landscape we still adopt the enriched
         // URL when there was no logo to begin with — otherwise the card would
-        // permanently fall back to the title text whenever the addon manifest
+        // permanently fall back to the title text whenever the catalog
         // ships items without a logo even
         // though TMDB has one. Once we have any non-blank value we keep it
         // frozen to avoid mid-scroll flicker on enrichment refresh.

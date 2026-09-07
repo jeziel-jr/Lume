@@ -1,7 +1,6 @@
 package com.nuvio.tv.ui.screens.search
 
 import androidx.compose.runtime.Immutable
-import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.model.MetaPreview
@@ -15,7 +14,6 @@ data class SearchUiState(
     val error: String? = null,
     val catalogRows: List<CatalogRow> = emptyList(),
     val catalogAvailability: Map<String, CatalogPlaybackAvailability> = emptyMap(),
-    val installedAddons: List<Addon> = emptyList(),
     val discoverLocation: DiscoverLocation = DiscoverLocation.IN_SEARCH,
     val discoverInitialized: Boolean = false,
     val discoverLoading: Boolean = false,
@@ -23,7 +21,6 @@ data class SearchUiState(
     val discoverCatalogs: List<DiscoverCatalog> = emptyList(),
     val selectedDiscoverType: String = "movie",
     val selectedDiscoverCatalogKey: String? = null,
-    val selectedDiscoverGenre: String? = null,
     val discoverResults: List<MetaPreview> = emptyList(),
     val pendingDiscoverResults: List<MetaPreview> = emptyList(),
     val discoverHasMore: Boolean = true,
@@ -47,7 +44,4 @@ data class DiscoverCatalog(
     val catalogId: String,
     val catalogName: String,
     val type: String,
-    val genres: List<String>,
-    val supportsSkip: Boolean,
-    val skipStep: Int
 )

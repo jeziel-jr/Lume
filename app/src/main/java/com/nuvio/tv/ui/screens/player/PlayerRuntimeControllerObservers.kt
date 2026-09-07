@@ -1,13 +1,10 @@
 package com.nuvio.tv.ui.screens.player
 
 import android.util.Log
-import com.nuvio.tv.core.player.OpenSubtitlesHasher
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.nuvio.tv.data.local.FrameRateMatchingMode
-import com.nuvio.tv.domain.model.Subtitle
-import com.nuvio.tv.domain.model.enabledAddons
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -18,202 +15,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.yield
-
-internal data class SubtitleFetchRequest(
-    val type: String,
-    val id: String,
-    val videoId: String?
-)
-
-internal fun PlayerRuntimeController.buildSubtitleFetchRequest(): SubtitleFetchRequest? {
-    val id = contentId ?: return null
-    val type = contentType ?: return null
-    if (type.lowercase() == "channel") return null
-    return SubtitleFetchRequest(
-        type = type.lowercase(),
-        id = id,
-        videoId = currentVideoId
-    )
-}
-
-internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
-    onProgress: ((completed: Int, total: Int, addonName: String?) -> Unit)? = null
-): List<Subtitle> {
-    val request = buildSubtitleFetchRequest() ?: return emptyList()
-    val installedAddonOrder = addonRepository.getInstalledAddons().firstOrNull()
-        ?.enabledAddons()
-        ?.map { it.displayName }
-        .orEmpty()
-    _uiState.update { it.copy(installedSubtitleAddonOrder = installedAddonOrder) }
-
-    // Compute hash lazily for providers that support OpenSubtitles-style matching.
-    if (currentVideoHash == null && currentStreamUrl.isNotBlank()) {
-        val result = OpenSubtitlesHasher.compute(currentStreamUrl, currentHeaders)
-        if (result != null) {
-            currentVideoHash = result.hash
-            if (currentVideoSize == null) currentVideoSize = result.fileSize
-            // Update cache now that we have the computed hash.
-            // For torrent streams we cache the torrent identity (infoHash + fileIdx
-            // + sources) instead of the localhost URL — the URL is ephemeral and
-            // won't survive an app restart, but the identity is enough to
-            // re-establish the stream from scratch on next launch.
-            val key = streamCacheKey
-            if (key != null) {
-                val state = _uiState.value
-                val torrentInfoHash = currentInfoHash
-                if (isTorrentStream && torrentInfoHash != null) {
-                    streamLinkCacheDataStore.save(
-                        contentKey = key,
-                        url = "",
-                        streamName = state.currentStreamName ?: title,
-                        headers = emptyMap(),
-                        filename = currentFilename,
-                        videoHash = currentVideoHash,
-                        videoSize = currentVideoSize,
-                        infoHash = torrentInfoHash,
-                        fileIdx = currentFileIdx,
-                        sources = currentTorrentSources,
-                        bingeGroup = currentStreamBingeGroup,
-                        contentLanguage = contentLanguage,
-                        year = year
-                    )
-                } else if (currentStreamUrl.isNotBlank()) {
-                    streamLinkCacheDataStore.save(
-                        contentKey = key,
-                        url = currentStreamUrl,
-                        streamName = state.currentStreamName ?: title,
-                        headers = currentHeaders,
-                        filename = currentFilename,
-                        videoHash = currentVideoHash,
-                        videoSize = currentVideoSize,
-                        bingeGroup = currentStreamBingeGroup,
-                        contentLanguage = contentLanguage,
-                        year = year
-                    )
-                }
-            }
-        }
-    }
-
-    return subtitleRepository.getSubtitles(
-        type = request.type,
-        id = request.id,
-        videoId = request.videoId,
-        videoHash = currentVideoHash,
-        videoSize = currentVideoSize,
-        filename = currentFilename,
-        onProgress = onProgress
-    )
-}
-
-internal fun PlayerRuntimeController.fetchAddonSubtitles() {
-    if (buildSubtitleFetchRequest() == null) return
-
-    scope.launch {
-        _uiState.update { it.copy(isLoadingAddonSubtitles = true, addonSubtitlesError = null) }
-
-        try {
-            val subtitles = fetchAddonSubtitlesNow()
-            val visibleSubtitles = filterToVisibleAddonSubtitles(subtitles)
-            Log.d(PlayerRuntimeController.TAG, "fetchAddonSubtitles done: ${subtitles.size} subs, visible=${visibleSubtitles.size}, persistedPref=${persistedTrackPreference?.subtitle?.javaClass?.simpleName}")
-            _uiState.update {
-                it.copy(
-                    addonSubtitles = visibleSubtitles,
-                    isLoadingAddonSubtitles = false
-                )
-            }
-            val pendingAddon = pendingRestoredAddonSubtitle
-            if (pendingAddon != null) {
-                val match = visibleSubtitles.firstOrNull { it.id == pendingAddon.id }
-                    ?: visibleSubtitles.firstOrNull { PlayerSubtitleUtils.matchesLanguageCode(it.lang, pendingAddon.lang) }
-                if (match != null) {
-                    autoSubtitleSelected = true
-                    selectAddonSubtitle(match)
-                    _uiState.update { it.copy(selectedAddonSubtitle = match, selectedSubtitleTrackIndex = -1) }
-                    return@launch
-                }
-            }
-            applyPersistedTrackPreference(
-                audioTracks = _uiState.value.audioTracks,
-                subtitleTracks = _uiState.value.subtitleTracks
-            )
-            tryAutoSelectPreferredSubtitleFromAvailableTracks()
-        } catch (e: Exception) {
-            _uiState.update {
-                it.copy(
-                    isLoadingAddonSubtitles = false,
-                    addonSubtitlesError = e.message
-                )
-            }
-        }
-    }
-}
-
-internal fun PlayerRuntimeController.refreshSubtitlesForCurrentEpisode() {
-    autoSubtitleSelected = false
-    subtitleDisabledByPersistedPreference = false
-    subtitleAddonRestoredByPersistedPreference = false
-    pendingRestoredAddonSubtitle = null
-    hasScannedTextTracksOnce = false
-    pendingAddonSubtitleLanguage = null
-    pendingAddonSubtitleTrackId = null
-    pendingAudioSelectionAfterSubtitleRefresh = null
-    resetSubtitleAutoSyncState()
-    attachedAddonSubtitleKeys = emptySet()
-    _uiState.update {
-        it.copy(
-            addonSubtitles = emptyList(),
-            selectedAddonSubtitle = null,
-            selectedSubtitleTrackIndex = -1,
-            isLoadingAddonSubtitles = true,
-            addonSubtitlesError = null
-        )
-    }
-    fetchAddonSubtitles()
-}
-
-internal fun PlayerRuntimeController.filterToVisibleAddonSubtitles(
-    subtitles: List<Subtitle>
-): List<Subtitle> {
-    val style = _uiState.value.subtitleStyle
-    if (!style.showOnlyPreferredLanguages) return subtitles
-
-    val preferredTargets = when (PlayerSubtitleUtils.normalizeLanguageCode(style.preferredLanguage)) {
-        "none" -> listOfNotNull(
-            style.secondaryPreferredLanguage?.takeIf { it.isNotBlank() },
-            if (style.useForcedSubtitles) {
-                selectedAudioTrackForSubtitleMatching(_uiState.value)
-                    ?.takeIf { selectedAudioMatchesResolvedPreferredAudio(it) }
-                    ?.let { selectedAudioLanguageTarget(it) }
-            } else {
-                null
-            }
-        )
-        else -> listOfNotNull(
-            style.preferredLanguage,
-            style.secondaryPreferredLanguage?.takeIf { it.isNotBlank() }
-        )
-    }.map { PlayerSubtitleUtils.normalizeLanguageCode(it) }
-        .distinct()
-
-    if (preferredTargets.isEmpty()) {
-        return if (
-            style.useForcedSubtitles &&
-            PlayerSubtitleUtils.normalizeLanguageCode(style.preferredLanguage) == "none" &&
-            selectedAudioTrackForSubtitleMatching(_uiState.value) == null
-        ) {
-            subtitles
-        } else {
-            emptyList()
-        }
-    }
-
-    return subtitles.filter { subtitle ->
-        preferredTargets.any { target ->
-            PlayerSubtitleUtils.matchesLanguageCode(subtitle.lang, target)
-        }
-    }
-}
 
 internal fun PlayerRuntimeController.observeBlurUnwatchedEpisodes() {
     scope.launch {
@@ -243,10 +44,7 @@ internal fun PlayerRuntimeController.observeEpisodeWatchProgress() {
 internal fun PlayerRuntimeController.observeSubtitleSettings() {
     scope.launch {
         playerSettingsDataStore.playerSettings.collect { settings ->
-            currentPlayerSettingsForReport = settings
             val currentState = _uiState.value
-            val showOnlyPreferredLanguagesChanged =
-                currentState.subtitleStyle.showOnlyPreferredLanguages != settings.subtitleStyle.showOnlyPreferredLanguages
             val wasRememberingAudioDelayPerDevice = rememberAudioDelayPerDeviceEnabled
             rememberAudioDelayPerDeviceEnabled = settings.rememberAudioDelayPerDevice
             val resolvedInternalPlayerEngine =
@@ -287,13 +85,7 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
                     subtitleStyle = settings.subtitleStyle,
                     loadingOverlayEnabled = settings.loadingOverlayEnabled,
                     showPlayerLoadingStatus = settings.showPlayerLoadingStatus,
-                    playbackIssueReportsEnabled = settings.playbackIssueReportsEnabled,
                     showLoadingOverlay = shouldShowOverlay,
-                    loadingIssueReportVisible = if (settings.playbackIssueReportsEnabled) {
-                        state.loadingIssueReportVisible
-                    } else {
-                        false
-                    },
                     pauseOverlayEnabled = settings.pauseOverlayEnabled,
                     osdClockEnabled = settings.osdClockEnabled,
                     internalPlayerEngine = resolvedInternalPlayerEngine,
@@ -398,40 +190,17 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
                     lastSubtitleSecondaryLanguage != settings.subtitleStyle.secondaryPreferredLanguage ||
                     lastUseForcedSubtitles != settings.subtitleStyle.useForcedSubtitles
             if (subtitlePreferenceChanged) {
-                if (!subtitleDisabledByPersistedPreference && !subtitleAddonRestoredByPersistedPreference) autoSubtitleSelected = false
+                if (!subtitleDisabledByPersistedPreference) autoSubtitleSelected = false
                 lastSubtitlePreferredLanguage = settings.subtitleStyle.preferredLanguage
                 lastSubtitleSecondaryLanguage = settings.subtitleStyle.secondaryPreferredLanguage
                 lastUseForcedSubtitles = settings.subtitleStyle.useForcedSubtitles
                 tryAutoSelectPreferredSubtitleFromAvailableTracks()
             }
 
-            if (showOnlyPreferredLanguagesChanged) {
-                if (settings.subtitleStyle.showOnlyPreferredLanguages) {
-                    _uiState.update { state ->
-                        val visibleSubtitles = filterToVisibleAddonSubtitles(state.addonSubtitles)
-                        state.copy(
-                            addonSubtitles = visibleSubtitles,
-                            selectedAddonSubtitle = state.selectedAddonSubtitle?.takeIf { selected ->
-                                visibleSubtitles.any { it.id == selected.id }
-                            }
-                        )
-                    }
-                } else if (_uiState.value.addonSubtitles.isNotEmpty() || _uiState.value.selectedAddonSubtitle != null) {
-                    fetchAddonSubtitles()
-                }
-            }
-
             val wasEnabled = skipIntroEnabled
             skipIntroEnabled = settings.skipIntroEnabled
-            parentalGuideEnabled = settings.parentalGuideEnabled
             autoSkipSegmentTypes = settings.autoSkipSegmentTypes
             playerSettingsInitialized = true
-
-            // Fetch parental guide on first settings emission (after we know
-            // whether the feature is enabled). Subsequent emissions skip this.
-            if (settings.parentalGuideEnabled && _uiState.value.parentalWarnings.isEmpty()) {
-                fetchParentalGuide(contentId, contentType, currentSeason, currentEpisode)
-            }
 
             if (!skipIntroEnabled) {
                 if (skipIntervals.isNotEmpty() || _uiState.value.activeSkipInterval != null) {

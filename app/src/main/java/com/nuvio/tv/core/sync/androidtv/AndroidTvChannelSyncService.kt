@@ -6,7 +6,6 @@ import com.nuvio.tv.data.local.CachedInProgressItem
 import com.nuvio.tv.data.local.CachedNextUpItem
 import com.nuvio.tv.data.local.ContinueWatchingEnrichmentCache
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
-import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.core.recommendations.TvRecommendationManager
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.ui.screens.home.ContinueWatchingItem
@@ -44,7 +43,6 @@ class AndroidTvChannelSyncService @Inject constructor(
     private val manager: AndroidTvChannelManager,
     private val cwEnrichmentCache: ContinueWatchingEnrichmentCache,
     private val layoutPreferenceDataStore: LayoutPreferenceDataStore,
-    private val traktSettingsDataStore: TraktSettingsDataStore,
     private val tvRecommendationManager: TvRecommendationManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -84,8 +82,8 @@ class AndroidTvChannelSyncService @Inject constructor(
             combine(
                 cwEnrichmentCache.snapshotVersion
                     .dropWhile { it == 0 },
-                traktSettingsDataStore.continueWatchingDaysCap,
-                traktSettingsDataStore.dismissedNextUpKeys,
+                layoutPreferenceDataStore.continueWatchingDaysCap,
+                layoutPreferenceDataStore.dismissedNextUpKeys,
                 layoutPreferenceDataStore.useEpisodeThumbnailsInCw
             ) { _, daysCap, dismissed, useEpisodeThumbnails ->
                 ChannelSettingsSnapshot(daysCap, dismissed, useEpisodeThumbnails)
@@ -108,8 +106,8 @@ class AndroidTvChannelSyncService @Inject constructor(
      */
     suspend fun reconcileFromCache(settings: ChannelSettingsSnapshot? = null) {
         val resolvedSettings = settings ?: run {
-            val daysCap = traktSettingsDataStore.continueWatchingDaysCap.first()
-            val dismissed = traktSettingsDataStore.dismissedNextUpKeys.first()
+            val daysCap = layoutPreferenceDataStore.continueWatchingDaysCap.first()
+            val dismissed = layoutPreferenceDataStore.dismissedNextUpKeys.first()
             val useEpisodeThumbnails = layoutPreferenceDataStore.useEpisodeThumbnailsInCw.first()
             ChannelSettingsSnapshot(daysCap, dismissed, useEpisodeThumbnails)
         }
@@ -128,7 +126,7 @@ class AndroidTvChannelSyncService @Inject constructor(
         )
         manager.reconcile(channelItems)
 
-        val cutoffMs = if (resolvedSettings.daysCap == TraktSettingsDataStore.CONTINUE_WATCHING_DAYS_CAP_ALL) {
+        val cutoffMs = if (resolvedSettings.daysCap == LayoutPreferenceDataStore.CONTINUE_WATCHING_DAYS_CAP_ALL) {
             null
         } else {
             val windowMs = resolvedSettings.daysCap.toLong() * 24L * 60L * 60L * 1000L
@@ -159,7 +157,7 @@ class AndroidTvChannelSyncService @Inject constructor(
         nextUp: List<CachedNextUpItem>,
         settings: ChannelSettingsSnapshot
     ): List<WatchProgress> {
-        val cutoffMs = if (settings.daysCap == TraktSettingsDataStore.CONTINUE_WATCHING_DAYS_CAP_ALL) {
+        val cutoffMs = if (settings.daysCap == LayoutPreferenceDataStore.CONTINUE_WATCHING_DAYS_CAP_ALL) {
             null
         } else {
             val windowMs = settings.daysCap.toLong() * 24L * 60L * 60L * 1000L

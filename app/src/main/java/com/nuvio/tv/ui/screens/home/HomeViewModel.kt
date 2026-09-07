@@ -12,35 +12,23 @@ import com.nuvio.tv.core.tmdb.TmdbMetadataService
 import com.nuvio.tv.core.tmdb.TmdbCatalogService
 import com.nuvio.tv.core.tmdb.TmdbPlayableCatalogLoader
 import com.nuvio.tv.core.tmdb.TmdbService
-import com.nuvio.tv.data.local.AuthSessionNoticeDataStore
 import com.nuvio.tv.data.local.CollectionsDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.PlayerSettingsDataStore
-import com.nuvio.tv.data.local.StartupAuthNotice
-import com.nuvio.tv.data.local.MDBListSettingsDataStore
 import com.nuvio.tv.data.local.TmdbSettingsDataStore
-import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.data.local.WatchedItemsPreferences
 import com.nuvio.tv.data.local.ContinueWatchingEnrichmentCache
 import com.nuvio.tv.data.trailer.TrailerService
 import com.nuvio.tv.data.xtream.XtreamPlaybackService
 import com.nuvio.tv.data.xtream.XtreamCatalogState
-import com.nuvio.tv.domain.model.Addon
-import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.Collection
 import com.nuvio.tv.domain.model.ContinueWatchingSortMode
-import com.nuvio.tv.domain.model.LibraryEntryInput
 import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.catalogRowStableKey
-import com.nuvio.tv.data.repository.MDBListRepository
-import com.nuvio.tv.domain.model.MDBListSettings
 import com.nuvio.tv.domain.model.TmdbSettings
-import com.nuvio.tv.domain.repository.AddonRepository
-import com.nuvio.tv.domain.repository.CatalogRepository
 import com.nuvio.tv.domain.repository.LibraryRepository
-import com.nuvio.tv.domain.repository.MetaRepository
 import com.nuvio.tv.domain.repository.WatchProgressRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -68,23 +56,16 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     @ApplicationContext internal val appContext: Context,
-    internal val addonRepository: AddonRepository,
-    internal val catalogRepository: CatalogRepository,
     internal val watchProgressRepository: WatchProgressRepository,
     internal val libraryRepository: LibraryRepository,
-    internal val metaRepository: MetaRepository,
     internal val collectionsDataStore: CollectionsDataStore,
     internal val layoutPreferenceDataStore: LayoutPreferenceDataStore,
     internal val playerSettingsDataStore: PlayerSettingsDataStore,
     internal val tmdbSettingsDataStore: TmdbSettingsDataStore,
-    internal val mdbListSettingsDataStore: MDBListSettingsDataStore,
-    internal val traktSettingsDataStore: TraktSettingsDataStore,
-    internal val authSessionNoticeDataStore: AuthSessionNoticeDataStore,
     internal val tmdbService: TmdbService,
     internal val tmdbMetadataService: TmdbMetadataService,
     internal val tmdbCatalogService: TmdbCatalogService,
     private val tmdbPlayableCatalogLoader: TmdbPlayableCatalogLoader,
-    internal val mdbListRepository: MDBListRepository,
     internal val trailerService: TrailerService,
     private val xtreamPlaybackService: XtreamPlaybackService,
     internal val watchedItemsPreferences: WatchedItemsPreferences,
@@ -178,19 +159,13 @@ class HomeViewModel @Inject constructor(
     internal val catalogsMap = linkedMapOf<String, CatalogRow>()
     internal val catalogItemKeyIndex = mutableMapOf<String, MutableSet<String>>()
     internal val catalogOrder = mutableListOf<String>()
-    internal var addonsCache: List<Addon> = emptyList()
     internal var collectionsCache: List<Collection> = emptyList()
-    internal var homeCatalogOrderKeys: List<String> = emptyList()
-    internal var disabledHomeCatalogKeys: Set<String> = emptySet()
-    internal var followAddonsOrderEnabled: Boolean = false
-    internal var customCatalogTitles: Map<String, String> = emptyMap()
     internal var currentHeroCatalogKeys: List<String> = emptyList()
     internal var catalogUpdateJob: Job? = null
     internal var hasRenderedFirstCatalog = false
     internal val catalogLoadSemaphore = Semaphore(MAX_CATALOG_LOAD_CONCURRENCY)
     internal var pendingCatalogLoads = 0
     internal val activeCatalogLoadJobs = mutableSetOf<Job>()
-    internal var activeCatalogLoadSignature: String? = null
     internal var catalogLoadGeneration: Long = 0L
     internal var catalogsLoadInProgress: Boolean = false
     internal data class TruncatedRowCacheEntry(
@@ -206,16 +181,11 @@ class HomeViewModel @Inject constructor(
     internal var trailerPreviewRequestVersion: Long = 0L
     internal var trailerPreviewJob: Job? = null
     internal var currentTmdbSettings: TmdbSettings = TmdbSettings()
-    internal var currentMdbListSettings: MDBListSettings = MDBListSettings()
     internal var heroEnrichmentJob: Job? = null
     internal var lastHeroEnrichmentSignature: String? = null
     internal var lastHeroEnrichedItems: List<MetaPreview> = emptyList()
     internal var heroItemOrder: List<String> = emptyList()
     internal val modernCarouselRowBuildCache = ModernCarouselRowBuildCache()
-    internal val prefetchedExternalMetaIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
-    internal val externalMetaPrefetchInFlightIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
-    internal var externalMetaPrefetchJob: Job? = null
-    internal var pendingExternalMetaPrefetchItemId: String? = null
     internal val prefetchedTmdbIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
     internal val cwMetaCache = Collections.synchronizedMap(mutableMapOf<String, CwMetaSummary?>())
     internal val cwMetaNegativeCacheTimestamps = ConcurrentHashMap<String, Long>()
@@ -251,38 +221,19 @@ class HomeViewModel @Inject constructor(
     internal var movieWatchedBatchJob: Job? = null
     internal var lastMovieWatchedItemKeys: Set<String> = emptySet()
     internal var seriesWatchedObserverJob: Job? = null
-    internal var libraryTabsObserverJob: Job? = null
-    internal var activePosterListPickerInput: LibraryEntryInput? = null
-    @Volatile
-    internal var externalMetaPrefetchEnabled: Boolean = false
     @Volatile
     internal var continueWatchingSortMode: ContinueWatchingSortMode = ContinueWatchingSortMode.DEFAULT
     internal val startupStartedAtMs: Long = SystemClock.elapsedRealtime()
     @Volatile
     internal var startupGracePeriodActive: Boolean = true
-    internal var startupAuthNoticeJob: Job? = null
 
     // Lazy catalog loading
-    internal val eagerCatalogLoadCount: Int = 4
     internal val lazyLoadRequestedKeys: MutableSet<String> = ConcurrentHashMap.newKeySet()
-    internal val pendingLazyCatalogs = linkedMapOf<String, Pair<Addon, CatalogDescriptor>>()
     private val tmdbCatalogRows = linkedMapOf<String, CatalogRow>()
     private val tmdbPendingCatalogIds = mutableSetOf<String>()
     private val tmdbFailedCatalogIds = mutableSetOf<String>()
     private var hasLoggedFirstTmdbRow = false
     private var hasLoggedInitialTmdbGroup = false
-    /** All placeholder descriptors for homeRow construction. */
-    internal data class PlaceholderDescriptor(
-        val catalogKey: String,
-        val addonId: String,
-        val addonName: String,
-        val addonBaseUrl: String,
-        val catalogId: String,
-        val catalogName: String,
-        val apiType: String,
-        val displayTitle: String
-    )
-    internal val placeholderDescriptors = mutableListOf<PlaceholderDescriptor>()
     val trailerPreviewUrls: Map<String, String>
         get() = trailerPreviewUrlsState
     val trailerPreviewAudioUrls: Map<String, String>
@@ -305,18 +256,14 @@ class HomeViewModel @Inject constructor(
                 }
         }
 
-        observeStartupAuthNotice()
         viewModelScope.launch {
             profileManager.activeProfileReady.first { it }
             observeLayoutPreferences()
             observeModernHomePresentation()
             loadContinueWatching()
             watchedSeriesStateHolder.loadFromDisk()
-            observeExternalMetaPrefetchPreference()
             observeContinueWatchingSortMode()
-            observeLibraryState()
             observeBlurUnwatchedEpisodes()
-            observeProgressSourceChanges()
             observeTmdbCatalogAvailability()
             loadLumeCatalogs()
 
@@ -428,8 +375,6 @@ class HomeViewModel @Inject constructor(
 
     private fun observeModernHomePresentation() = observeModernHomePresentationPipeline()
 
-    private fun observeExternalMetaPrefetchPreference() = observeExternalMetaPrefetchPreferencePipeline()
-
     private fun observeContinueWatchingSortMode() {
         viewModelScope.launch {
             var initial = true
@@ -513,91 +458,10 @@ class HomeViewModel @Inject constructor(
 
     fun preloadAdjacentItem(item: MetaPreview) = preloadAdjacentItemPipeline(item)
 
-    private fun loadHomeCatalogOrderPreference() = loadHomeCatalogOrderPreferencePipeline()
-
-    private fun loadFollowAddonsOrder() = loadFollowAddonsOrderPipeline()
-
-    private fun loadDisabledHomeCatalogPreference() = loadDisabledHomeCatalogPreferencePipeline()
-
-    private fun loadCustomCatalogTitles() = loadCustomCatalogTitlesPipeline()
-
-    private fun observeTmdbSettings() = observeTmdbSettingsPipeline()
-
-    private fun observeMdbListSettings() {
-        viewModelScope.launch {
-            mdbListSettingsDataStore.settings
-                .distinctUntilChanged()
-                .collectLatest { settings ->
-                    currentMdbListSettings = settings
-                }
-        }
-    }
-
-    /**
-     * When the watch-progress source changes (e.g. Trakt login/logout, or
-     * switching between Trakt and Nuvio Sync), clear the CW disk cache and
-     * in-memory state so items from the old source don't leak into the new one.
-     */
-    private fun observeProgressSourceChanges() {
-        viewModelScope.launch {
-            var previousSource: com.nuvio.tv.data.local.WatchProgressSource? = null
-            traktSettingsDataStore.watchProgressSource
-                .distinctUntilChanged()
-                .collect { source ->
-                    if (previousSource != null && previousSource != source) {
-                        // Source changed — clear CW caches to prevent mixing.
-                        cwMetaCache.clear()
-                        cwEnrichedNextUpOverlay.clear()
-                        cwEnrichedInProgressOverlay.clear()
-                        discoveredOlderNextUpItems.clear()
-                        cwLastProcessedNextUpContentIds.clear()
-                        // Clear disk cache for current profile.
-                        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                            runCatching { cwEnrichmentCache.saveNextUpSnapshot(emptyList(), force = true) }
-                            runCatching { cwEnrichmentCache.saveInProgressSnapshot(emptyList(), force = true) }
-                        }
-                        // Reload CW from fresh source.
-                        loadContinueWatching()
-                    }
-                    previousSource = source
-                }
-        }
-    }
-
-    private fun observeStartupAuthNotice() {
-        viewModelScope.launch {
-            authSessionNoticeDataStore.pendingNotice.collect { notice ->
-                if (notice == null) return@collect
-                _uiState.update { state ->
-                    if (state.startupAuthNotice == notice) state else state.copy(startupAuthNotice = notice)
-                }
-                startupAuthNoticeJob?.cancel()
-                startupAuthNoticeJob = viewModelScope.launch {
-                    delay(3200)
-                    clearStartupAuthNotice(notice)
-                }
-                authSessionNoticeDataStore.consumeNotice(notice)
-            }
-        }
-    }
-
-    private fun clearStartupAuthNotice(notice: StartupAuthNotice) {
-        _uiState.update { state ->
-            if (state.startupAuthNotice == notice) {
-                state.copy(startupAuthNotice = null)
-            } else {
-                state
-            }
-        }
-    }
-
     fun onEvent(event: HomeEvent) {
         when (event) {
             is HomeEvent.OnItemClick -> navigateToDetail(event.itemId, event.itemType)
-            is HomeEvent.OnLoadMoreCatalog -> {
-                if (event.addonId == "tmdb") loadMoreLumeCatalog(event.catalogId)
-                else loadMoreCatalogItems(event.catalogId, event.addonId, event.type)
-            }
+            is HomeEvent.OnLoadMoreCatalog -> loadMoreLumeCatalog(event.catalogId)
             is HomeEvent.OnRemoveContinueWatching -> removeContinueWatching(
                 contentId = event.contentId,
                 season = event.season,
@@ -614,9 +478,9 @@ class HomeViewModel @Inject constructor(
             val cachedInProgress = runCatching { cwEnrichmentCache.getInProgressSnapshot() }.getOrDefault(emptyList())
             val cachedNextUp = runCatching { cwEnrichmentCache.getNextUpSnapshot() }.getOrDefault(emptyList())
             if (cachedInProgress.isEmpty() && cachedNextUp.isEmpty()) return@launch
-            val dismissedNextUp = traktSettingsDataStore.dismissedNextUpKeys.first()
-            // Render cached items immediately — don't wait for Trakt/allProgress.
-            // The pipeline will replace these with live data once it completes.
+            val dismissedNextUp = layoutPreferenceDataStore.dismissedNextUpKeys.first()
+            // Render cached items immediately — the pipeline will replace these
+            // with live data once it completes.
             val inProgressItems = cachedInProgress
                 .filter { !watchProgressRepository.isDroppedShow(it.contentId) }
                 .map { cached ->
@@ -702,10 +566,6 @@ class HomeViewModel @Inject constructor(
         episode = episode,
         isNextUp = isNextUp
     )
-
-    private fun observeCollections() = observeCollectionsPipeline()
-
-    private fun observeInstalledAddons() = observeInstalledAddonsPipeline()
 
     private fun loadLumeCatalogs() {
         viewModelScope.launch {
@@ -813,7 +673,6 @@ class HomeViewModel @Inject constructor(
                 catalogRows = rows,
                 homeRows = homeRows,
                 heroItems = rows.firstOrNull()?.items.orEmpty().take(12),
-                installedAddonsCount = 0,
                 isLoading = isInitialLoading && rows.isEmpty(),
                 error = null,
             )
@@ -853,15 +712,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadAllCatalogs(addons: List<Addon>, forceReload: Boolean = false) =
-        loadAllCatalogsPipeline(addons, forceReload)
-
-    private fun loadCatalog(addon: Addon, catalog: CatalogDescriptor, generation: Long) =
-        loadCatalogPipeline(addon, catalog, generation)
-
-    private fun loadMoreCatalogItems(catalogId: String, addonId: String, type: String) =
-        loadMoreCatalogItemsPipeline(catalogId, addonId, type)
-
     internal fun scheduleUpdateCatalogRows() {
         catalogUpdateJob?.cancel()
         catalogUpdateJob = viewModelScope.launch {
@@ -890,32 +740,13 @@ class HomeViewModel @Inject constructor(
     fun requestLazyCatalogLoad(catalogKey: String) {
         val tmdbDefinition = tmdbCatalogService.homeCatalogDefinitions.firstOrNull { definition ->
             catalogKey == "${TMDB_ADDON_ID}_${definition.contentType.toApiString()}_${definition.id}"
+        } ?: return
+        val shouldLoad = synchronized(catalogStateLock) {
+            tmdbDefinition.id in tmdbPendingCatalogIds && lazyLoadRequestedKeys.add(catalogKey)
         }
-        if (tmdbDefinition != null) {
-            val shouldLoad = synchronized(catalogStateLock) {
-                tmdbDefinition.id in tmdbPendingCatalogIds && lazyLoadRequestedKeys.add(catalogKey)
-            }
-            if (shouldLoad) {
-                viewModelScope.launch { loadTmdbCatalog(tmdbDefinition.id) }
-            }
-            return
+        if (shouldLoad) {
+            viewModelScope.launch { loadTmdbCatalog(tmdbDefinition.id) }
         }
-        if (catalogKey in lazyLoadRequestedKeys) {
-            return
-        }
-        val pair = synchronized(catalogStateLock) {
-            pendingLazyCatalogs.remove(catalogKey)
-        }
-        if (pair == null) {
-            return
-        }
-        if (!lazyLoadRequestedKeys.add(catalogKey)) {
-            return
-        }
-        val (addon, catalog) = pair
-        val generation = catalogLoadGeneration
-        pendingCatalogLoads = (pendingCatalogLoads + 1)
-        loadCatalogPipeline(addon, catalog, generation)
     }
 
     /**
@@ -930,20 +761,6 @@ class HomeViewModel @Inject constructor(
             val key = "${TMDB_ADDON_ID}_${definition.contentType.toApiString()}_${definition.id}"
             if (lazyLoadRequestedKeys.add(key)) {
                 viewModelScope.launch { loadTmdbCatalog(definition.id) }
-            }
-        }
-        val pending = synchronized(catalogStateLock) {
-            val copy = pendingLazyCatalogs.toMap()
-            pendingLazyCatalogs.clear()
-            copy
-        }
-        if (pending.isEmpty()) return
-        val generation = catalogLoadGeneration
-        pending.forEach { (key, pair) ->
-            if (lazyLoadRequestedKeys.add(key)) {
-                val (addon, catalog) = pair
-                pendingCatalogLoads = (pendingCatalogLoads + 1)
-                loadCatalogPipeline(addon, catalog, generation)
             }
         }
     }
@@ -1059,7 +876,6 @@ class HomeViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        startupAuthNoticeJob?.cancel()
         posterStatusReconcileJob?.cancel()
         movieWatchedBatchJob?.cancel()
         seriesWatchedObserverJob?.cancel()

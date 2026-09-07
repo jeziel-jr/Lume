@@ -4,11 +4,9 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.core.build.AppFeaturePolicy
-import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbEnrichment
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.HomeLayout
-import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.TmdbSettings
 import kotlinx.coroutines.Dispatchers
@@ -225,12 +223,10 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                     if (prefs.layout == HomeLayout.GRID) {
                         loadAllPendingLazyCatalogs()
                     }
-                    // When hero catalog keys change, load any hero catalogs
-                    // not yet in catalogsMap (e.g., after startup race or
-                    // when user changes hero selection in settings).
-                    if (heroKeysChanged && prefs.heroCatalogKeys.isNotEmpty()) {
-                        loadHeroCatalogsPipeline()
-                    } else {
+                    // When hero catalog keys change, hero rows react through the
+                    // published uiState.heroCatalogKeys; no legacy addon-catalog
+                    // hero loader exists anymore.
+                    if (!(heroKeysChanged && prefs.heroCatalogKeys.isNotEmpty())) {
                         scheduleUpdateCatalogRows()
                     }
                 }
@@ -307,21 +303,6 @@ internal fun HomeViewModel.observeModernHomePresentationPipeline() {
                     } else {
                         state.copy(modernHomePresentation = presentation)
                     }
-                }
-            }
-    }
-}
-
-internal fun HomeViewModel.observeExternalMetaPrefetchPreferencePipeline() {
-    viewModelScope.launch {
-        layoutPreferenceDataStore.preferExternalMetaAddonDetail
-            .distinctUntilChanged()
-            .collectLatest { enabled ->
-                externalMetaPrefetchEnabled = enabled
-                if (!enabled) {
-                    externalMetaPrefetchJob?.cancel()
-                    pendingExternalMetaPrefetchItemId = null
-                    externalMetaPrefetchInFlightIds.clear()
                 }
             }
     }
@@ -430,22 +411,15 @@ internal fun HomeViewModel.onItemFocusPipeline(item: MetaPreview) {
         deferredEnrichItem = item
         return
     }
-    if (item.id in prefetchedTmdbIds || item.id in prefetchedExternalMetaIds) {
-        // Even if TMDB enriched, re-enter when artwork is still missing and external addon can help.
-        val artworkStillNeeded = item.id !in prefetchedExternalMetaIds &&
-            externalMetaPrefetchEnabled &&
-            !currentTmdbSettings.useArtwork &&
-            item.logo.isNullOrBlank()
-        if (!artworkStillNeeded) {
-            // Ensure enrichedPreviews contains this item so the UI can display
-            // hero data immediately (e.g. when adjacent prefetch resolved it
-            // before the user focused on it).
-            if (item.id !in _enrichedPreviews.value) {
-                _enrichedPreviews.update { it + (item.id to item) }
-            }
-            if (_enrichingItemId.value == item.id) setEnrichingItemId(null)
-            return
+    if (item.id in prefetchedTmdbIds) {
+        // Ensure enrichedPreviews contains this item so the UI can display
+        // hero data immediately (e.g. when adjacent prefetch resolved it
+        // before the user focused on it).
+        if (item.id !in _enrichedPreviews.value) {
+            _enrichedPreviews.update { it + (item.id to item) }
         }
+        if (_enrichingItemId.value == item.id) setEnrichingItemId(null)
+        return
     }
     if (pendingTmdbEnrichItemId == item.id) return
 
@@ -456,9 +430,8 @@ internal fun HomeViewModel.onItemFocusPipeline(item: MetaPreview) {
 
     val tmdbEnabledForCurrentLayout = currentTmdbSettings.enabled &&
         (_uiState.value.homeLayout != HomeLayout.MODERN || currentTmdbSettings.modernHomeEnabled)
-    val willEnrich = tmdbEnabledForCurrentLayout || externalMetaPrefetchEnabled
 
-    if (willEnrich) setEnrichingItemId(item.id)
+    if (tmdbEnabledForCurrentLayout) setEnrichingItemId(item.id)
 
     pendingTmdbEnrichItemId = item.id
     tmdbEnrichFocusJob?.cancel()
@@ -468,20 +441,12 @@ internal fun HomeViewModel.onItemFocusPipeline(item: MetaPreview) {
             if (_enrichingItemId.value == item.id) setEnrichingItemId(null)
             return@launch
         }
-        if (item.id in prefetchedTmdbIds || item.id in prefetchedExternalMetaIds) {
-            val artworkStillNeeded = item.id !in prefetchedExternalMetaIds &&
-                externalMetaPrefetchEnabled &&
-                !currentTmdbSettings.useArtwork &&
-                item.logo.isNullOrBlank()
-            if (!artworkStillNeeded) {
-                if (_enrichingItemId.value == item.id) setEnrichingItemId(null)
-                return@launch
-            }
+        if (item.id in prefetchedTmdbIds) {
+            if (_enrichingItemId.value == item.id) setEnrichingItemId(null)
+            return@launch
         }
 
         try {
-            var tmdbEnriched = false
-
             if (tmdbEnabledForCurrentLayout) {
                 val tmdbId = runCatching { tmdbService.ensureTmdbId(item.id, item.apiType) }.getOrNull()
 
@@ -499,57 +464,15 @@ internal fun HomeViewModel.onItemFocusPipeline(item: MetaPreview) {
 
                 if (enrichment != null) {
                     prefetchedTmdbIds.add(item.id)
-                    // Only mark external meta as done if TMDB covered artwork too.
-                    if (currentTmdbSettings.useArtwork || !item.logo.isNullOrBlank()) {
-                        prefetchedExternalMetaIds.add(item.id)
-                    }
                     updateCatalogItemWithTmdb(item.id, enrichment)
-                    tmdbEnriched = true
-                }
-            }
-            // Fall through to external addon when:
-            // 1. TMDB didn't enrich at all, OR
-            // 2. TMDB enriched but useArtwork is off and the item still lacks a logo.
-            val artworkStillMissing = tmdbEnriched && !currentTmdbSettings.useArtwork &&
-                item.logo.isNullOrBlank()
-            val needsExternalAddon = !tmdbEnriched || artworkStillMissing
-            if (needsExternalAddon && externalMetaPrefetchEnabled &&
-                item.id !in prefetchedExternalMetaIds &&
-                externalMetaPrefetchInFlightIds.add(item.id)) {
-                try {
-                    val result = metaRepository.getMetaFromAllAddons(item.apiType, item.id, item.sourceAddonBaseUrl)
-                        .first { it is NetworkResult.Success || it is NetworkResult.Error }
-                    when {
-                        result is NetworkResult.Success -> {
-                            prefetchedExternalMetaIds.add(item.id)
-                            if (artworkStillMissing) {
-                                updateCatalogItemArtworkOnly(item.id, result.data)
-                            } else {
-                                updateCatalogItemWithMeta(item.id, result.data)
-                            }
-                        }
-                        result is NetworkResult.Error && result.code == NetworkResult.SOURCE_SUFFICIENT_CODE -> {
-                            // Catalog already has the best available meta from this addon —
-                            // mark as resolved without making any changes.
-                            prefetchedExternalMetaIds.add(item.id)
-                            // Also mark in enrichedPreviews so the finally-block doesn't
-                            // treat this item as a failed enrichment.
-                            _enrichedPreviews.update { it + (item.id to item) }
-                        }
-                        else -> { /* Error — leave unresolved */ }
-                    }
-                } finally {
-                    externalMetaPrefetchInFlightIds.remove(item.id)
-                    if (pendingTmdbEnrichItemId == item.id) pendingTmdbEnrichItemId = null
                 }
             }
         } finally {
             if (_enrichingItemId.value == item.id) {
                 setEnrichingItemId(null)
                 // If enrichment completed but no enriched data exists for this item,
-                // mark it as failed so the UI can show addon data immediately.
+                // mark it as failed so the UI can show catalog data immediately.
                 if (item.id !in _enrichedPreviews.value &&
-                    item.id !in prefetchedExternalMetaIds &&
                     item.id !in prefetchedTmdbIds) {
                     _failedEnrichmentIds.value = _failedEnrichmentIds.value + item.id
                 }
@@ -560,7 +483,7 @@ internal fun HomeViewModel.onItemFocusPipeline(item: MetaPreview) {
 
 internal fun HomeViewModel.preloadAdjacentItemPipeline(item: MetaPreview) {
     if (startupGracePeriodActive) return
-    if (item.id in prefetchedTmdbIds || item.id in prefetchedExternalMetaIds) return
+    if (item.id in prefetchedTmdbIds) return
     if (pendingTmdbEnrichItemId == item.id || pendingAdjacentPrefetchItemId == item.id) return
 
     pendingAdjacentPrefetchItemId = item.id
@@ -571,10 +494,9 @@ internal fun HomeViewModel.preloadAdjacentItemPipeline(item: MetaPreview) {
         delay(HomeViewModel.EXTERNAL_META_PREFETCH_ADJACENT_DEBOUNCE_MS)
         if (pendingAdjacentPrefetchItemId != item.id) return@launch
 
-        if (item.id in prefetchedTmdbIds || item.id in prefetchedExternalMetaIds) return@launch
+        if (item.id in prefetchedTmdbIds) return@launch
 
         try {
-            var tmdbEnriched = false
             if (tmdbEnabledForCurrentLayout) {
                 val tmdbId = runCatching { tmdbService.ensureTmdbId(item.id, item.apiType) }.getOrNull()
                 val enrichment = if (tmdbId != null) runCatching {
@@ -586,42 +508,8 @@ internal fun HomeViewModel.preloadAdjacentItemPipeline(item: MetaPreview) {
                 }.getOrNull() else null
                 if (enrichment != null) {
                     prefetchedTmdbIds.add(item.id)
-                    if (currentTmdbSettings.useArtwork || !item.logo.isNullOrBlank()) {
-                        prefetchedExternalMetaIds.add(item.id)
-                    }
                     updateCatalogItemWithTmdb(item.id, enrichment)
-                    tmdbEnriched = true
-                }
-            }
-            val artworkStillMissing = tmdbEnriched && !currentTmdbSettings.useArtwork &&
-                item.logo.isNullOrBlank()
-            val needsExternalAddon = !tmdbEnriched || artworkStillMissing
-            if (needsExternalAddon &&
-                externalMetaPrefetchEnabled &&
-                item.id !in prefetchedExternalMetaIds &&
-                externalMetaPrefetchInFlightIds.add(item.id)
-            ) {
-                try {
-                    val result = metaRepository.getMetaFromAllAddons(item.apiType, item.id, item.sourceAddonBaseUrl)
-                        .first { it is NetworkResult.Success || it is NetworkResult.Error }
-                    when {
-                        result is NetworkResult.Success -> {
-                            prefetchedExternalMetaIds.add(item.id)
-                            if (artworkStillMissing) {
-                                updateCatalogItemArtworkOnly(item.id, result.data)
-                            } else {
-                                updateCatalogItemWithMeta(item.id, result.data)
-                            }
-                            _enrichedPreviews.update { it + (item.id to item) }
-                        }
-                        result is NetworkResult.Error && result.code == NetworkResult.SOURCE_SUFFICIENT_CODE -> {
-                            prefetchedExternalMetaIds.add(item.id)
-                            _enrichedPreviews.update { it + (item.id to item) }
-                        }
-                        else -> { /* Error — leave unresolved */ }
-                    }
-                } finally {
-                    externalMetaPrefetchInFlightIds.remove(item.id)
+                    _enrichedPreviews.update { it + (item.id to item) }
                 }
             }
         } finally {
@@ -695,142 +583,17 @@ private fun HomeViewModel.updateCatalogItemWithTmdb(itemId: String, enrichment: 
     }
 }
 
-internal fun HomeViewModel.updateCatalogItemImdbRating(itemId: String, rating: Float) {
-    updateIndexedCatalogItem(itemId) { currentItem ->
-        currentItem.copy(imdbRating = rating)
-    }
-    _uiState.update { state ->
-        var changed = false
-        val updatedRows = state.catalogRows.map { row ->
-            val idx = row.items.indexOfFirst { it.id == itemId }
-            if (idx < 0) row
-            else {
-                val updated = row.items[idx].copy(imdbRating = rating)
-                if (updated == row.items[idx]) row
-                else {
-                    changed = true
-                    val mutableItems = row.items.toMutableList()
-                    mutableItems[idx] = updated
-                    row.copy(items = mutableItems)
-                }
-            }
-        }
-        if (changed) state.copy(catalogRows = updatedRows) else state
-    }
-}
-
-private fun HomeViewModel.updateCatalogItemWithMeta(itemId: String, meta: Meta) {
-    val incomingTrailerYtIds = meta.trailerYtIds
-    val seasonCount = meta.videos
-        .asSequence()
-        .mapNotNull { it.season }
-        .filter { it > 0 }
-        .distinct()
-        .count()
-        .takeIf { it > 0 }
-
-    fun mergeItem(currentItem: MetaPreview): MetaPreview = currentItem.copy(
-        background = meta.backdropUrl ?: currentItem.backdropUrl,
-        logo = meta.logo ?: currentItem.logo,
-        description = meta.description ?: currentItem.description,
-        imdbRating = meta.imdbRating ?: currentItem.imdbRating,
-        genres = if (meta.genres.isNotEmpty()) meta.genres else currentItem.genres,
-        runtime = meta.runtime ?: currentItem.runtime,
-        status = meta.status ?: currentItem.status,
-        ageRating = meta.ageRating ?: currentItem.ageRating,
-        language = meta.language ?: currentItem.language,
-        country = meta.country ?: currentItem.country,
-        seasonCount = seasonCount ?: currentItem.seasonCount,
-        trailerYtIds = if (incomingTrailerYtIds.isNotEmpty()) incomingTrailerYtIds else currentItem.trailerYtIds
-    )
-
-    updateIndexedCatalogItem(itemId, ::mergeItem)
-
-    _uiState.update { state ->
-        var changed = false
-        val updatedRows = state.catalogRows.map { row ->
-            val itemIndex = row.items.indexOfFirst { it.id == itemId }
-            if (itemIndex < 0) {
-                row
-            } else {
-                val mergedItem = mergeItem(row.items[itemIndex])
-                if (mergedItem == row.items[itemIndex]) {
-                    row
-                } else {
-                    changed = true
-                    val mutableItems = row.items.toMutableList()
-                    mutableItems[itemIndex] = mergedItem
-                    row.copy(items = mutableItems)
-                }
-            }
-        }
-        if (changed) state.copy(catalogRows = updatedRows) else state
-    }
-    findCatalogItemById(itemId)?.let { enriched ->
-        _lastEnrichedPreview.value = enriched
-        _enrichedPreviews.update { it + (itemId to enriched) }
-    }
-
-    // If external meta brought new trailerYtIds and the item has no trailer resolved yet, retry.
-    // Only retry if this item is currently focused — avoid prefetching trailers for adjacent items.
-    if (incomingTrailerYtIds.isNotEmpty() && !trailerPreviewUrlsState.containsKey(itemId) && activeTrailerPreviewItemId == itemId) {
-        trailerPreviewNegativeCache.remove(itemId)
-        trailerPreviewLoadingIds.remove(itemId)
-        // Bump version so any in-flight pipeline for this item treats itself as stale
-        // and won't overwrite the retry result with a negative cache entry.
-        trailerPreviewRequestVersion++
-        val currentItem = findCatalogItemById(itemId) ?: return
-        requestTrailerPreviewPipeline(currentItem)
-    }
-}
-
-private fun HomeViewModel.updateCatalogItemArtworkOnly(itemId: String, meta: Meta) {
-    fun mergeItem(currentItem: MetaPreview): MetaPreview = currentItem.copy(
-        background = meta.backdropUrl ?: currentItem.backdropUrl,
-        logo = meta.logo ?: currentItem.logo
-    )
-
-    updateIndexedCatalogItem(itemId, ::mergeItem)
-
-    _uiState.update { state ->
-        var changed = false
-        val updatedRows = state.catalogRows.map { row ->
-            val itemIndex = row.items.indexOfFirst { it.id == itemId }
-            if (itemIndex < 0) {
-                row
-            } else {
-                val mergedItem = mergeItem(row.items[itemIndex])
-                if (mergedItem == row.items[itemIndex]) {
-                    row
-                } else {
-                    changed = true
-                    val mutableItems = row.items.toMutableList()
-                    mutableItems[itemIndex] = mergedItem
-                    row.copy(items = mutableItems)
-                }
-            }
-        }
-        if (changed) state.copy(catalogRows = updatedRows) else state
-    }
-    findCatalogItemById(itemId)?.let { enriched ->
-        _lastEnrichedPreview.value = enriched
-        _enrichedPreviews.update { it + (itemId to enriched) }
-    }
-}
-
 internal suspend fun HomeViewModel.enrichHeroItemsPipeline(
     items: List<MetaPreview>,
     settings: TmdbSettings
 ): List<MetaPreview> {
     if (items.isEmpty()) return items
-    val mdbSettings = currentMdbListSettings
-    val mdbEnabled = mdbSettings.enabled && mdbSettings.apiKey.isNotBlank()
 
     return coroutineScope {
         items.map { item ->
             async(Dispatchers.IO) {
                 try {
-                    val tmdbDeferred = async {
+                    val enrichment = async {
                         val tmdbId = tmdbService.ensureTmdbId(item.id, item.apiType) ?: return@async null
                         tmdbId.toIntOrNull()?.let { numericId ->
                             runCatching { tmdbService.tmdbToImdb(numericId, item.apiType) }
@@ -840,13 +603,7 @@ internal suspend fun HomeViewModel.enrichHeroItemsPipeline(
                             contentType = item.type,
                             language = settings.language
                         )
-                    }
-                    val mdbDeferred = if (mdbEnabled) async {
-                        runCatching { mdbListRepository.getImdbRatingForItem(item.id, item.apiType) }.getOrNull()
-                    } else null
-
-                    val enrichment = tmdbDeferred.await() ?: return@async item
-                    val mdbImdbRating = mdbDeferred?.await()
+                    }.await() ?: return@async item
 
                     var enriched = item
 
@@ -862,8 +619,7 @@ internal suspend fun HomeViewModel.enrichHeroItemsPipeline(
                         enriched = enriched.copy(
                             name = enrichment.localizedTitle ?: enriched.name,
                             description = enrichment.description ?: enriched.description,
-                            genres = if (enrichment.genres.isNotEmpty()) enrichment.genres else enriched.genres,
-                            imdbRating = mdbImdbRating?.toFloat() ?: enriched.imdbRating
+                            genres = if (enrichment.genres.isNotEmpty()) enrichment.genres else enriched.genres
                         )
                     }
 

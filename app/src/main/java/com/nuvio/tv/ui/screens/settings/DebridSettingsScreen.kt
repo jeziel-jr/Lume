@@ -80,7 +80,6 @@ import com.nuvio.tv.domain.model.DebridStreamSortDirection
 import com.nuvio.tv.domain.model.DebridStreamSortKey
 import com.nuvio.tv.domain.model.DebridStreamVisualTag
 import com.nuvio.tv.ui.components.NuvioDialog
-import com.nuvio.tv.ui.screens.addon.QrCodeOverlay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
@@ -680,12 +679,53 @@ fun DebridSettingsContent(
     }
 
     if (uiState.isFormatterQrModeActive) {
-        QrCodeOverlay(
+        DebridFormatterQrOverlay(
             qrBitmap = uiState.formatterQrCodeBitmap,
             serverUrl = uiState.formatterServerUrl,
             instruction = stringResource(R.string.debrid_formatter_qr_instruction),
             onClose = { viewModel.stopFormatterQrMode() }
         )
+    }
+}
+
+@Composable
+private fun DebridFormatterQrOverlay(
+    qrBitmap: android.graphics.Bitmap?,
+    serverUrl: String?,
+    instruction: String,
+    onClose: () -> Unit
+) {
+    NuvioDialog(
+        onDismiss = onClose,
+        title = stringResource(R.string.debrid_formatter_title),
+        subtitle = instruction,
+        width = 640.dp,
+        suppressFirstKeyUp = false
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            if (qrBitmap != null) {
+                Image(
+                    bitmap = qrBitmap.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(340.dp)
+                )
+            }
+            if (serverUrl != null) {
+                Text(
+                    text = serverUrl,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NuvioTheme.colors.TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }
 

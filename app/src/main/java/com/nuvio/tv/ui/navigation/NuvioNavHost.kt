@@ -16,39 +16,28 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.nuvio.tv.BuildConfig
-import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.domain.model.ExperienceMode
 import com.nuvio.tv.ui.screens.CatalogSeeAllScreen
 import com.nuvio.tv.ui.screens.ExperienceModeSelectionScreen
 import com.nuvio.tv.ui.screens.LayoutSelectionScreen
 import com.nuvio.tv.ui.screens.detail.MetaDetailsScreen
 import com.nuvio.tv.ui.screens.home.HomeScreen
-import com.nuvio.tv.ui.screens.addon.AddonManagerScreen
-import com.nuvio.tv.ui.screens.addon.CatalogOrderScreen
 import com.nuvio.tv.ui.screens.library.LibraryScreen
 import com.nuvio.tv.ui.screens.live.LiveChannelsScreen
 import com.nuvio.tv.ui.screens.player.PlayerExitReason
 import com.nuvio.tv.ui.screens.player.PlayerScreen
-import com.nuvio.tv.ui.screens.plugin.PluginScreen
 import com.nuvio.tv.ui.screens.search.DiscoverScreen
 import com.nuvio.tv.ui.screens.search.SearchScreen
 import com.nuvio.tv.ui.screens.settings.AboutScreen
 import com.nuvio.tv.ui.screens.settings.LayoutSettingsScreen
 import com.nuvio.tv.ui.screens.settings.PlaybackSettingsScreen
 import com.nuvio.tv.ui.screens.settings.SettingsScreen
-import com.nuvio.tv.ui.screens.settings.SupportersContributorsScreen
 import com.nuvio.tv.ui.screens.settings.ThemeSettingsScreen
-import com.nuvio.tv.ui.screens.settings.TraktScreen
 import com.nuvio.tv.ui.screens.settings.TmdbSettingsScreen
 import com.nuvio.tv.ui.screens.xtream.XtreamSetupScreen
 import com.nuvio.tv.ui.screens.stream.StreamScreen
 import com.nuvio.tv.ui.screens.home.ContinueWatchingItem
-import com.nuvio.tv.ui.screens.account.AuthSignInScreen
-import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
 import com.nuvio.tv.ui.screens.cast.CastDetailScreen
-import com.nuvio.tv.ui.screens.profile.ProfileSelectionMode
-import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.ui.screens.tmdb.TmdbEntityBrowseScreen
 import com.nuvio.tv.ui.screens.home.HeroBackdropState
 
@@ -1090,34 +1079,17 @@ fun NuvioNavHost(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 showBuiltInHeader = !hideBuiltInHeaders,
-                onNavigateToTrakt = { navController.navigate(Screen.Trakt.route) },
-                onNavigateToAddons = { navController.navigate(Screen.AddonManager.route) },
-                onNavigateToPlugins = { navController.navigate(Screen.Plugins.route) },
-                onNavigateToAuthQrSignIn = { navController.navigate(Screen.AuthQrSignIn.route) },
                 onNavigateToXtreamSetup = { navController.navigate(Screen.XtreamSetup.route) },
-                onNavigateToManageProfiles = { navController.navigate(Screen.ManageProfiles.route) },
-                onNavigateToSupportersContributors = {
-                    navController.navigate(Screen.SupportersContributors.route)
-                }
-            )
-        }
-
-        composable(Screen.ManageProfiles.route) {
-            ProfileSelectionScreen(
-                onProfileSelected = {},
-                screenMode = ProfileSelectionMode.Management,
-                onBackPress = { navController.popBackStack() }
+                onNavigateToLayoutSettings = { navController.navigate(Screen.LayoutSettings.route) },
+                onNavigateToPlaybackSettings = { navController.navigate(Screen.PlaybackSettings.route) },
+                onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) },
+                onNavigateToTmdbSettings = { navController.navigate(Screen.TmdbSettings.route) },
+                onNavigateToAbout = { navController.navigate(Screen.About.route) }
             )
         }
 
         composable(Screen.XtreamSetup.route) {
             XtreamSetupScreen(onConfigured = { navController.popBackStack() })
-        }
-
-        composable(Screen.Trakt.route) {
-            TraktScreen(
-                onBackPress = { navController.popBackStack() }
-            )
         }
 
         composable(Screen.TmdbSettings.route) {
@@ -1140,55 +1112,7 @@ fun NuvioNavHost(
 
         composable(Screen.About.route) {
             AboutScreen(
-                onBackPress = { navController.popBackStack() },
-                onNavigateToSupportersContributors = {
-                    navController.navigate(Screen.SupportersContributors.route)
-                }
-            )
-        }
-
-        composable(Screen.SupportersContributors.route) {
-            SupportersContributorsScreen(
                 onBackPress = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.AddonManager.route) {
-            AddonManagerScreen(
-                showBuiltInHeader = !hideBuiltInHeaders,
-                onBackPress = { navController.popBackStack() },
-                onNavigateToCatalogOrder = { navController.navigate(Screen.CatalogOrder.route) },
-                onNavigateToCollections = { navController.navigate(Screen.Collections.route) }
-            )
-        }
-
-        composable(Screen.CatalogOrder.route) {
-            CatalogOrderScreen(
-                onBackPress = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.Collections.route) {
-            com.nuvio.tv.ui.screens.collection.CollectionManagementScreen(
-                onNavigateToEditor = { collectionId ->
-                    navController.navigate(Screen.CollectionEditor.createRoute(collectionId))
-                },
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(
-            route = Screen.CollectionEditor.route,
-            arguments = listOf(
-                navArgument("collectionId") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                }
-            )
-        ) {
-            com.nuvio.tv.ui.screens.collection.CollectionEditorScreen(
-                onBack = { navController.popBackStack() }
             )
         }
 
@@ -1205,40 +1129,6 @@ fun NuvioNavHost(
                     navController.navigate(Screen.Detail.createRoute(itemId, itemType, addonBaseUrl, heroBackdropUrl = heroBackdrop))
                 },
                 onBack = { navController.popBackStack() }
-            )
-        }
-
-        if (AppFeaturePolicy.pluginsEnabled) {
-            composable(Screen.Plugins.route) {
-                PluginScreen(
-                    onBackPress = { navController.popBackStack() }
-                )
-            }
-        }
-
-        composable(Screen.Account.route) {
-            AuthQrSignInScreen(
-                onBackPress = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.AuthSignIn.route) {
-            if (BuildConfig.SELF_HOSTED) {
-                AuthQrSignInScreen(
-                    onBackPress = { navController.popBackStack() }
-                )
-            } else {
-                AuthSignInScreen(
-                    onBackPress = { navController.popBackStack() },
-                    onNavigateToQrSignIn = { navController.navigate(Screen.AuthQrSignIn.route) },
-                    onSuccess = { navController.popBackStack() }
-                )
-            }
-        }
-
-        composable(Screen.AuthQrSignIn.route) {
-            AuthQrSignInScreen(
-                onBackPress = { navController.popBackStack() }
             )
         }
 

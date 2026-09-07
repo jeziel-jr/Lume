@@ -53,7 +53,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AspectRatio
-import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.Info
@@ -122,7 +121,6 @@ import com.nuvio.tv.data.local.LibassRenderType
 import com.nuvio.tv.data.local.SubtitleStyleSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.domain.model.EpgProgram
-import com.nuvio.tv.domain.model.Subtitle
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.theme.NuvioPrimitives
@@ -163,9 +161,6 @@ fun PlayerScreen(
     var skipButtonActuallyVisible by remember { mutableStateOf(false) }
     var restoreStreamInfoFocus by remember { mutableStateOf(false) }
     val nextEpisodeFocusRequester = remember { FocusRequester() }
-    var subtitleDelayAutoSyncFocused by remember { mutableStateOf(false) }
-    var subtitleTimingConsumeNextConfirmKeyUp by remember { mutableStateOf(false) }
-    var reportCodeVisible by remember { mutableStateOf(false) }
 
     val exitPlayer: () -> Unit = {
         val timeline = viewModel.playbackTimeline.value
@@ -221,20 +216,6 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(uiState.playbackIssueReportStatus, uiState.playbackIssueReportId) {
-        if (uiState.playbackIssueReportStatus == PlaybackIssueReportStatus.Sent &&
-            !uiState.playbackIssueReportId.isNullOrBlank()
-        ) {
-            reportCodeVisible = true
-            viewModel.scheduleHideControls()
-            viewModel.onUserInteraction()
-            delay(5000)
-            reportCodeVisible = false
-        } else if (uiState.playbackIssueReportStatus != PlaybackIssueReportStatus.Sent) {
-            reportCodeVisible = false
-        }
-    }
-
     val handleBackPress = {
         if (shouldConfirmNextEpisodeOnEnd) {
             returnToDetailsFromEndPrompt()
@@ -248,8 +229,6 @@ fun PlayerScreen(
             viewModel.onEvent(PlayerEvent.OnDismissPauseOverlay)
         } else if (uiState.showMoreDialog) {
             viewModel.onEvent(PlayerEvent.OnDismissMoreDialog)
-        } else if (uiState.showSubtitleTimingDialog) {
-            viewModel.onEvent(PlayerEvent.OnDismissSubtitleTimingDialog)
         } else if (uiState.showSubtitleDelayOverlay) {
             viewModel.onEvent(PlayerEvent.OnHideSubtitleDelayOverlay)
         } else if (uiState.showSubtitleStylePanel) {
@@ -407,7 +386,6 @@ fun PlayerScreen(
         uiState.showSourcesPanel,
         uiState.showSubtitleStylePanel,
         uiState.showSubtitleDelayOverlay,
-        uiState.showSubtitleTimingDialog,
         uiState.showAudioOverlay,
         uiState.showSubtitleOverlay,
         uiState.showSpeedDialog,
@@ -417,7 +395,6 @@ fun PlayerScreen(
         if (uiState.showControls && !uiState.showEpisodesPanel && !uiState.showSourcesPanel &&
             !uiState.showAudioOverlay && !uiState.showSubtitleOverlay &&
             !uiState.showSubtitleStylePanel && !uiState.showSubtitleDelayOverlay &&
-            !uiState.showSubtitleTimingDialog &&
             !uiState.showSpeedDialog
         ) {
             // Wait for AnimatedVisibility animation to complete before focusing play/pause button
@@ -445,14 +422,6 @@ fun PlayerScreen(
     // Initial focus on container - the LaunchedEffect above will handle focusing controls
     LaunchedEffect(Unit) {
         containerFocusRequester.requestFocus()
-    }
-    LaunchedEffect(uiState.showSubtitleDelayOverlay) {
-        subtitleDelayAutoSyncFocused = false
-    }
-    LaunchedEffect(uiState.showSubtitleTimingDialog) {
-        if (!uiState.showSubtitleTimingDialog) {
-            subtitleTimingConsumeNextConfirmKeyUp = false
-        }
     }
     LaunchedEffect(uiState.showStreamInfoOverlay, uiState.showControls, uiState.showMoreDialog) {
         if (!uiState.showStreamInfoOverlay && uiState.showControls && uiState.showMoreDialog && restoreStreamInfoFocus) {
@@ -499,7 +468,6 @@ fun PlayerScreen(
                     !uiState.showAudioOverlay &&
                     !uiState.showSubtitleOverlay &&
                     !uiState.showSubtitleStylePanel &&
-                    !uiState.showSubtitleTimingDialog &&
                     !uiState.showSpeedDialog
                 ) {
                     viewModel.onEvent(PlayerEvent.OnShowSubtitleOverlay)
@@ -507,62 +475,16 @@ fun PlayerScreen(
                 true
             }
             .onKeyEvent { keyEvent ->
-                if (subtitleTimingConsumeNextConfirmKeyUp &&
-                    keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_UP &&
-                    (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                        keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_ENTER)
-                ) {
-                    subtitleTimingConsumeNextConfirmKeyUp = false
-                    return@onKeyEvent true
-                }
                 if (uiState.showSubtitleDelayOverlay) {
                     if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
-                        if (subtitleDelayAutoSyncFocused) {
-                            when (keyEvent.nativeKeyEvent.keyCode) {
-                                KeyEvent.KEYCODE_DPAD_CENTER,
-                                KeyEvent.KEYCODE_ENTER -> {
-                                    subtitleDelayAutoSyncFocused = false
-                                    subtitleTimingConsumeNextConfirmKeyUp = true
-                                    viewModel.onEvent(PlayerEvent.OnShowSubtitleTimingDialog)
-                                    return@onKeyEvent true
-                                }
-                                KeyEvent.KEYCODE_DPAD_UP -> {
-                                    subtitleDelayAutoSyncFocused = false
-                                    return@onKeyEvent true
-                                }
-                                KeyEvent.KEYCODE_DPAD_DOWN,
-                                KeyEvent.KEYCODE_DPAD_LEFT,
-                                KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                                    return@onKeyEvent true
-                                }
+                        when (keyEvent.nativeKeyEvent.keyCode) {
+                            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                viewModel.onEvent(PlayerEvent.OnAdjustSubtitleDelay(-SUBTITLE_DELAY_STEP_MS))
                             }
-                        } else {
-                            when (keyEvent.nativeKeyEvent.keyCode) {
-                                KeyEvent.KEYCODE_DPAD_LEFT -> {
-                                    viewModel.onEvent(PlayerEvent.OnAdjustSubtitleDelay(-SUBTITLE_DELAY_STEP_MS))
-                                    return@onKeyEvent true
-                                }
-                                KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                                    viewModel.onEvent(PlayerEvent.OnAdjustSubtitleDelay(SUBTITLE_DELAY_STEP_MS))
-                                    return@onKeyEvent true
-                                }
-                                KeyEvent.KEYCODE_DPAD_DOWN -> {
-                                    subtitleDelayAutoSyncFocused = true
-                                    return@onKeyEvent true
-                                }
-                                KeyEvent.KEYCODE_DPAD_CENTER,
-                                KeyEvent.KEYCODE_ENTER,
-                                KeyEvent.KEYCODE_DPAD_UP -> {
-                                    return@onKeyEvent true
-                                }
+                            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                viewModel.onEvent(PlayerEvent.OnAdjustSubtitleDelay(SUBTITLE_DELAY_STEP_MS))
                             }
                         }
-                    }
-                    if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_UP &&
-                        (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
-                            keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)
-                    ) {
-                        return@onKeyEvent true
                     }
                     if (keyEvent.nativeKeyEvent.keyCode != KeyEvent.KEYCODE_BACK) {
                         // While open, consume all non-back keys to avoid accidental dismissal.
@@ -574,7 +496,7 @@ fun PlayerScreen(
                 val panelOrDialogOpen = uiState.showEpisodesPanel || uiState.showSourcesPanel ||
                         uiState.showAudioOverlay || uiState.showSubtitleOverlay ||
                         uiState.showSubtitleStylePanel || uiState.showSpeedDialog ||
-                        uiState.showSubtitleDelayOverlay || uiState.showSubtitleTimingDialog ||
+                        uiState.showSubtitleDelayOverlay ||
                         uiState.showMoreDialog ||
                         shouldConfirmNextEpisodeOnEnd ||
                         uiState.postPlayMode is PostPlayMode.StillWatching
@@ -732,24 +654,6 @@ fun PlayerScreen(
                 .zIndex(2f)
         )
 
-        if (uiState.playbackIssueReportsEnabled &&
-            uiState.showLoadingOverlay &&
-            uiState.error == null &&
-            uiState.loadingIssueReportVisible
-        ) {
-            LoadingIssueReportAction(
-                elapsedMs = uiState.loadingIssueElapsedMs,
-                reportStatus = uiState.playbackIssueReportStatus,
-                reportId = uiState.playbackIssueReportId,
-                reportError = uiState.playbackIssueReportError,
-                onReport = { viewModel.onEvent(PlayerEvent.OnReportPlaybackIssue) },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 72.dp)
-                    .zIndex(2.4f)
-            )
-        }
-
         PauseOverlay(
             visible = uiState.showPauseOverlay && uiState.error == null && !uiState.showLoadingOverlay,
             onClose = { viewModel.onEvent(PlayerEvent.OnDismissPauseOverlay) },
@@ -807,11 +711,6 @@ fun PlayerScreen(
                 message = uiState.error!!,
                 serverDiagnosisChecking = uiState.serverDiagnosisChecking,
                 serverDiagnosis = uiState.serverDiagnosis,
-                showReportAction = uiState.playbackIssueReportsEnabled,
-                reportStatus = uiState.playbackIssueReportStatus,
-                reportId = uiState.playbackIssueReportId,
-                reportError = uiState.playbackIssueReportError,
-                onReport = { viewModel.onEvent(PlayerEvent.OnReportPlaybackIssue) },
                 onBack = exitPlayerFromError
             )
         }
@@ -866,7 +765,6 @@ fun PlayerScreen(
                     !uiState.showSubtitleOverlay &&
                     !uiState.showSubtitleStylePanel &&
                     !uiState.showSubtitleDelayOverlay &&
-                    !uiState.showSubtitleTimingDialog &&
                     !uiState.showSpeedDialog &&
                     !uiState.showMoreDialog
             },
@@ -880,16 +778,6 @@ fun PlayerScreen(
                 .align(Alignment.BottomEnd)
                 .padding(end = 26.dp, bottom = if (uiState.showControls) 122.dp else 30.dp)
                 .zIndex(2.1f),
-        )
-
-        // Parental guide overlay (shows when video first starts playing)
-        ParentalGuideOverlay(
-            warnings = uiState.parentalWarnings,
-            isVisible = uiState.showParentalGuide,
-            onAnimationComplete = {
-                viewModel.onEvent(PlayerEvent.OnParentalGuideHide)
-            },
-            modifier = Modifier.align(Alignment.TopStart)
         )
 
         DisplayModeOverlay(
@@ -956,7 +844,6 @@ fun PlayerScreen(
                 playPauseFocusRequester = playPauseFocusRequester,
                 progressBarFocusRequester = progressBarFocusRequester,
                 streamInfoFocusRequester = streamInfoFocusRequester,
-                reportCodeVisible = reportCodeVisible,
                 isLive = uiState.contentType?.trim()?.lowercase() == "channel",
                 liveEpg = liveEpg,
                 progressBarUpFocusRequester = when {
@@ -979,7 +866,6 @@ fun PlayerScreen(
                     viewModel.onEvent(PlayerEvent.OnToggleAspectRatio)
                 },
                 onSwitchPlayerEngine = { viewModel.onEvent(PlayerEvent.OnSwitchInternalPlayerEngine) },
-                onReportPlaybackIssue = { viewModel.onEvent(PlayerEvent.OnReportPlaybackIssue) },
                 onToggleMoreActions = {
                     if (uiState.showMoreDialog) {
                         viewModel.onEvent(PlayerEvent.OnDismissMoreDialog)
@@ -1063,7 +949,6 @@ fun PlayerScreen(
                 !uiState.showSourcesPanel &&
                 !uiState.showAudioOverlay &&
                 !uiState.showSubtitleOverlay &&
-                !uiState.showSubtitleTimingDialog &&
                 !uiState.showSpeedDialog,
             enter = fadeIn(animationSpec = tween(120)),
             exit = fadeOut(animationSpec = tween(120)),
@@ -1073,21 +958,14 @@ fun PlayerScreen(
                 .zIndex(2.3f)
         ) {
             SubtitleDelayOverlay(
-                subtitleDelayMs = uiState.subtitleDelayMs,
-                isAutoSyncButtonFocused = subtitleDelayAutoSyncFocused,
-                isSliderFocused = !subtitleDelayAutoSyncFocused,
-                onOpenSyncByLine = {
-                    subtitleDelayAutoSyncFocused = false
-                    subtitleTimingConsumeNextConfirmKeyUp = true
-                    viewModel.onEvent(PlayerEvent.OnShowSubtitleTimingDialog)
-                }
+                subtitleDelayMs = uiState.subtitleDelayMs
             )
         }
 
         AnimatedVisibility(
             visible = uiState.showSeekOverlay && !uiState.showControls && uiState.error == null &&
                 !uiState.showLoadingOverlay && !uiState.showPauseOverlay &&
-                !uiState.showSubtitleDelayOverlay && !uiState.showSubtitleTimingDialog &&
+                !uiState.showSubtitleDelayOverlay &&
                 !uiState.showMoreDialog,
             enter = fadeIn(animationSpec = tween(150)),
             exit = fadeOut(animationSpec = tween(150)),
@@ -1250,14 +1128,9 @@ fun PlayerScreen(
             visible = uiState.showSubtitleOverlay,
             internalTracks = uiState.subtitleTracks,
             selectedInternalIndex = uiState.selectedSubtitleTrackIndex,
-            addonSubtitles = uiState.addonSubtitles,
-            selectedAddonSubtitle = uiState.selectedAddonSubtitle,
             subtitleStyle = uiState.subtitleStyle,
             subtitleDelayMs = uiState.subtitleDelayMs,
-            installedSubtitleAddonOrder = uiState.installedSubtitleAddonOrder,
-            isLoadingAddons = uiState.isLoadingAddonSubtitles,
             onInternalTrackSelected = { viewModel.onEvent(PlayerEvent.OnSelectSubtitleTrack(it)) },
-            onAddonSubtitleSelected = { viewModel.onEvent(PlayerEvent.OnSelectAddonSubtitle(it)) },
             onDisableSubtitles = { viewModel.onEvent(PlayerEvent.OnDisableSubtitles) },
             onEvent = { viewModel.onEvent(it) },
             onDismiss = { viewModel.onEvent(PlayerEvent.OnDismissTransientOverlay) },
@@ -1265,42 +1138,6 @@ fun PlayerScreen(
                 .fillMaxSize()
                 .zIndex(2.6f)
         )
-
-        PlayerOverlayScaffold(
-            visible = uiState.showSubtitleTimingDialog &&
-                uiState.error == null &&
-                !uiState.showLoadingOverlay &&
-                !uiState.showPauseOverlay &&
-                !uiState.showEpisodesPanel &&
-                !uiState.showSourcesPanel &&
-                !uiState.showAudioOverlay &&
-                !uiState.showSubtitleOverlay &&
-                !uiState.showSubtitleStylePanel &&
-                !uiState.showSubtitleDelayOverlay &&
-                !uiState.showSpeedDialog &&
-                !uiState.showMoreDialog,
-            onDismiss = { viewModel.onEvent(PlayerEvent.OnDismissSubtitleTimingDialog) },
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(2.35f),
-            captureKeys = false,
-            contentPadding = PaddingValues(top = 44.dp)
-        ) {
-            SubtitleTimingDialogHost(
-                viewModel = viewModel,
-                modifier = Modifier.align(Alignment.TopCenter),
-                selectedAddonSubtitle = uiState.selectedAddonSubtitle,
-                cues = uiState.subtitleAutoSyncCues,
-                capturedVideoMs = uiState.subtitleAutoSyncCapturedVideoMs,
-                statusMessage = uiState.subtitleAutoSyncStatus,
-                errorMessage = uiState.subtitleAutoSyncError,
-                isLoadingCues = uiState.subtitleAutoSyncLoading,
-                onCaptureNow = { viewModel.onEvent(PlayerEvent.OnCaptureSubtitleAutoSyncTime) },
-                onCueSelected = { cue ->
-                    viewModel.onEvent(PlayerEvent.OnApplySubtitleAutoSyncCue(cue.startTimeMs))
-                }
-            )
-        }
 
         if (uiState.showSpeedDialog) {
             SpeedSelectionDialog(
@@ -1609,7 +1446,6 @@ private fun PlayerControlsOverlay(
     progressBarFocusRequester: FocusRequester,
     streamInfoFocusRequester: FocusRequester,
     progressBarUpFocusRequester: FocusRequester? = null,
-    reportCodeVisible: Boolean,
     skipButtonVisible: Boolean = false,
     isLive: Boolean = false,
     liveEpg: List<EpgProgram> = emptyList(),
@@ -1625,7 +1461,6 @@ private fun PlayerControlsOverlay(
     onShowSpeedDialog: () -> Unit,
     onToggleAspectRatio: () -> Unit,
     onSwitchPlayerEngine: () -> Unit,
-    onReportPlaybackIssue: () -> Unit,
     onToggleMoreActions: () -> Unit,
     onOpenInExternalPlayer: () -> Unit,
     onShowStreamInfo: () -> Unit,
@@ -1787,7 +1622,7 @@ private fun PlayerControlsOverlay(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val hasEpisodeContext = uiState.currentSeason != null && uiState.currentEpisode != null
-                    val hasSubtitleControl = uiState.subtitleTracks.isNotEmpty() || uiState.addonSubtitles.isNotEmpty()
+                    val hasSubtitleControl = uiState.subtitleTracks.isNotEmpty()
                     val hasAudioControl = uiState.audioTracks.isNotEmpty()
                     val showNextEpisodeButton = uiState.nextEpisode?.hasAired == true &&
                         (uiState.postPlayMode as? PostPlayMode.AutoPlay)?.let {
@@ -1930,18 +1765,6 @@ private fun PlayerControlsOverlay(
                                 onDownKey = onHideControls,
                                 onFocused = onResetHideTimer
                             )
-                            if (uiState.playbackIssueReportsEnabled) {
-                                ReportControlButton(
-                                    reportId = uiState.playbackIssueReportId,
-                                    showReportId = reportCodeVisible,
-                                    onClick = onReportPlaybackIssue,
-                                    enabled = uiState.playbackIssueReportStatus != PlaybackIssueReportStatus.Sending &&
-                                        uiState.playbackIssueReportStatus != PlaybackIssueReportStatus.Sent,
-                                    upFocusRequester = progressBarFocusRequester,
-                                    onDownKey = onHideControls,
-                                    onFocused = onResetHideTimer
-                                )
-                            }
                         }
                     }
 
@@ -2012,47 +1835,6 @@ private fun PlayerControlsTimeTextHost(viewModel: PlayerViewModel) {
         style = MaterialTheme.typography.bodyMedium,
         color = Color.White.copy(alpha = 0.9f)
     )
-}
-
-@Composable
-private fun ReportControlButton(
-    reportId: String?,
-    showReportId: Boolean,
-    onClick: () -> Unit,
-    enabled: Boolean,
-    upFocusRequester: FocusRequester,
-    onDownKey: () -> Unit,
-    onFocused: () -> Unit
-) {
-    Box(contentAlignment = Alignment.Center) {
-        ControlButton(
-            icon = Icons.Default.BugReport,
-            contentDescription = stringResource(R.string.player_report_issue),
-            onClick = onClick,
-            enabled = enabled,
-            upFocusRequester = upFocusRequester,
-            onDownKey = onDownKey,
-            onFocused = onFocused
-        )
-        AnimatedVisibility(
-            visible = showReportId && !reportId.isNullOrBlank(),
-            enter = fadeIn(animationSpec = tween(NuvioMotion.tokens.durations.fast)),
-            exit = fadeOut(animationSpec = tween(NuvioMotion.tokens.durations.fast)),
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = (-30).dp)
-        ) {
-            Text(
-                text = reportId.orEmpty(),
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
-                maxLines = 1,
-                modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.78f), RoundedCornerShape(5.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
-            )
-        }
-    }
 }
 
 @Composable
@@ -2388,35 +2170,6 @@ private fun PlayerClockOverlayHost(viewModel: PlayerViewModel, playbackSpeed: Fl
 }
 
 @Composable
-private fun SubtitleTimingDialogHost(
-    viewModel: PlayerViewModel,
-    modifier: Modifier = Modifier,
-    selectedAddonSubtitle: Subtitle?,
-    cues: List<SubtitleSyncCue>,
-    capturedVideoMs: Long?,
-    statusMessage: String?,
-    errorMessage: String?,
-    isLoadingCues: Boolean,
-    onCaptureNow: () -> Unit,
-    onCueSelected: (SubtitleSyncCue) -> Unit
-) {
-    val playbackTimeline by viewModel.playbackTimeline.collectAsState()
-
-    SubtitleTimingDialog(
-        modifier = modifier,
-        currentPositionMs = playbackTimeline.currentPosition,
-        selectedAddonSubtitle = selectedAddonSubtitle,
-        cues = cues,
-        capturedVideoMs = capturedVideoMs,
-        statusMessage = statusMessage,
-        errorMessage = errorMessage,
-        isLoadingCues = isLoadingCues,
-        onCaptureNow = onCaptureNow,
-        onCueSelected = onCueSelected
-    )
-}
-
-@Composable
 private fun AspectRatioIndicator(text: String) {
     val customAspectPainter = rememberRawSvgPainter(R.raw.ic_player_aspect_ratio)
 
@@ -2526,14 +2279,11 @@ private fun PlayerEngineSwitchIndicator(
 
 @Composable
 private fun SubtitleDelayOverlay(
-    subtitleDelayMs: Int,
-    isAutoSyncButtonFocused: Boolean,
-    isSliderFocused: Boolean,
-    onOpenSyncByLine: () -> Unit
+    subtitleDelayMs: Int
 ) {
     val fraction = ((subtitleDelayMs - SUBTITLE_DELAY_MIN_MS).toFloat() /
         (SUBTITLE_DELAY_MAX_MS - SUBTITLE_DELAY_MIN_MS).toFloat()).coerceIn(0f, 1f)
-    val sliderAccent = if (isSliderFocused) Color(0xFF4AA3FF) else Color.White
+    val sliderAccent = Color(0xFF4AA3FF)
 
     Column(
         modifier = Modifier
@@ -2589,7 +2339,7 @@ private fun SubtitleDelayOverlay(
                         modifier = Modifier
                             .width(NuvioTheme.spacing.hairline)
                             .height(tickHeight)
-                            .background(sliderAccent.copy(alpha = if (isSliderFocused) 0.52f else 0.22f))
+                            .background(sliderAccent.copy(alpha = 0.52f))
                     )
                 }
             }
@@ -2606,26 +2356,6 @@ private fun SubtitleDelayOverlay(
         }
 
         Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
-
-        Card(
-            onClick = onOpenSyncByLine,
-            colors = CardDefaults.colors(
-                containerColor = if (isAutoSyncButtonFocused) {
-                    Color.White.copy(alpha = 0.22f)
-                } else {
-                    Color.White.copy(alpha = 0.11f)
-                },
-                focusedContainerColor = Color.White.copy(alpha = 0.22f)
-            ),
-            shape = CardDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md))
-        ) {
-            Text(
-                text = stringResource(R.string.player_sync_line),
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
-            )
-        }
     }
 }
 
@@ -2644,71 +2374,10 @@ private fun rememberRawSvgPainter(@RawRes iconRes: Int): Painter {
 }
 
 @Composable
-private fun LoadingIssueReportAction(
-    elapsedMs: Long,
-    reportStatus: PlaybackIssueReportStatus,
-    reportId: String?,
-    reportError: String?,
-    onReport: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val focusRequester = remember { FocusRequester() }
-    val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(NuvioTheme.radii.lg))
-            .background(Color.Black.copy(alpha = 0.72f))
-            .padding(horizontal = NuvioTheme.spacing.lg, vertical = NuvioTheme.spacing.md),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
-    ) {
-        val reportMessage = when (reportStatus) {
-            PlaybackIssueReportStatus.Sent -> stringResource(R.string.player_report_issue_sent, reportId.orEmpty())
-            PlaybackIssueReportStatus.Failed -> reportError ?: stringResource(R.string.player_report_issue_failed)
-            PlaybackIssueReportStatus.Sending -> stringResource(R.string.player_report_issue_sending)
-            PlaybackIssueReportStatus.Idle -> {
-                val elapsedSeconds = (elapsedMs / 1000L).coerceAtLeast(1L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-                context.resources.getQuantityString(
-                    R.plurals.player_report_loading_issue_prompt,
-                    elapsedSeconds,
-                    elapsedSeconds
-                )
-            }
-        }
-        Text(
-            text = reportMessage,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.86f),
-            textAlign = TextAlign.Center
-        )
-        DialogButton(
-            text = when (reportStatus) {
-                PlaybackIssueReportStatus.Sending -> stringResource(R.string.player_report_issue_sending_button)
-                PlaybackIssueReportStatus.Sent -> stringResource(R.string.player_report_issue_sent_button)
-                else -> stringResource(R.string.player_report_loading_issue)
-            },
-            onClick = onReport,
-            isPrimary = false,
-            enabled = reportStatus != PlaybackIssueReportStatus.Sending &&
-                reportStatus != PlaybackIssueReportStatus.Sent,
-            modifier = Modifier.focusRequester(focusRequester)
-        )
-    }
-}
-
-@Composable
 private fun ErrorOverlay(
     message: String,
     serverDiagnosisChecking: Boolean,
     serverDiagnosis: XtreamComponentHealth?,
-    showReportAction: Boolean,
-    reportStatus: PlaybackIssueReportStatus,
-    reportId: String?,
-    reportError: String?,
-    onReport: () -> Unit,
     onBack: () -> Unit
 ) {
     val exitFocusRequester = remember { FocusRequester() }
@@ -2773,49 +2442,12 @@ private fun ErrorOverlay(
 
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
 
-            val reportMessage = when (reportStatus) {
-                PlaybackIssueReportStatus.Idle -> null
-                PlaybackIssueReportStatus.Sending -> stringResource(R.string.player_report_issue_sending)
-                PlaybackIssueReportStatus.Sent -> stringResource(R.string.player_report_issue_sent, reportId.orEmpty())
-                PlaybackIssueReportStatus.Failed -> reportError ?: stringResource(R.string.player_report_issue_failed)
-            }
-            if (showReportAction && reportMessage != null) {
-                Text(
-                    text = reportMessage,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = when (reportStatus) {
-                        PlaybackIssueReportStatus.Sent -> NuvioTheme.colors.Secondary
-                        PlaybackIssueReportStatus.Failed -> Color(0xFFFF8A80)
-                        else -> Color.White.copy(alpha = 0.7f)
-                    },
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = NuvioTheme.spacing.xxl)
-                )
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg)
-            ) {
-                if (showReportAction) {
-                    DialogButton(
-                        text = when (reportStatus) {
-                            PlaybackIssueReportStatus.Sending -> stringResource(R.string.player_report_issue_sending_button)
-                            PlaybackIssueReportStatus.Sent -> stringResource(R.string.player_report_issue_sent_button)
-                            else -> stringResource(R.string.player_report_issue)
-                        },
-                        onClick = onReport,
-                        isPrimary = false,
-                        enabled = reportStatus != PlaybackIssueReportStatus.Sending &&
-                            reportStatus != PlaybackIssueReportStatus.Sent
-                    )
-                }
-                DialogButton(
-                    text = stringResource(R.string.player_go_back),
-                    onClick = onBack,
-                    isPrimary = true,
-                    modifier = Modifier.focusRequester(exitFocusRequester)
-                )
-            }
+            DialogButton(
+                text = stringResource(R.string.player_go_back),
+                onClick = onBack,
+                isPrimary = true,
+                modifier = Modifier.focusRequester(exitFocusRequester)
+            )
         }
     }
 }

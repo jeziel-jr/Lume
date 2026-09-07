@@ -125,8 +125,6 @@ internal fun PlaybackSettingsSections(
     onShowOutlineColorDialog: () -> Unit,
     onShowStreamAutoPlayModeDialog: () -> Unit,
     onShowStreamAutoPlaySourceDialog: () -> Unit,
-    onShowStreamAutoPlayAddonSelectionDialog: () -> Unit,
-    onShowStreamAutoPlayPluginSelectionDialog: () -> Unit,
     onShowStreamRegexDialog: () -> Unit,
     onShowNextEpisodeThresholdModeDialog: () -> Unit,
     onShowReuseLastLinkCacheDialog: () -> Unit,
@@ -147,7 +145,6 @@ internal fun PlaybackSettingsSections(
     onSetPauseOverlayEnabled: (Boolean) -> Unit,
     onSetOsdClockEnabled: (Boolean) -> Unit,
     onSetSkipIntroEnabled: (Boolean) -> Unit,
-    onSetParentalGuideEnabled: (Boolean) -> Unit,
     onSetAutoSkipSegmentTypeEnabled: (AutoSkipSegmentType, Boolean) -> Unit,
     onSetFrameRateMatchingMode: (FrameRateMatchingMode) -> Unit,
     onSetResolutionMatchingEnabled: (Boolean) -> Unit,
@@ -386,18 +383,6 @@ internal fun PlaybackSettingsSections(
                 )
             }
 
-            item(key = "general_parental_guide") {
-                ToggleSettingsItem(
-                    icon = Icons.Default.Info,
-                    title = stringResource(R.string.playback_parental_guide),
-                    subtitle = stringResource(R.string.playback_parental_guide_sub),
-                    isChecked = playerSettings.parentalGuideEnabled,
-                    onCheckedChange = onSetParentalGuideEnabled,
-                    onFocused = { focusedSection = PlaybackSection.GENERAL },
-                    enabled = !generalUi.isExternalPlayer
-                )
-            }
-
             item(key = "general_auto_skip_header") {
                 PlaybackSectionHeader(
                     title = stringResource(R.string.playback_auto_skip_segments),
@@ -526,8 +511,6 @@ internal fun PlaybackSettingsSections(
                 playerSettings = playerSettings,
                 onShowModeDialog = onShowStreamAutoPlayModeDialog,
                 onShowSourceDialog = onShowStreamAutoPlaySourceDialog,
-                onShowAddonSelectionDialog = onShowStreamAutoPlayAddonSelectionDialog,
-                onShowPluginSelectionDialog = onShowStreamAutoPlayPluginSelectionDialog,
                 onShowRegexDialog = onShowStreamRegexDialog,
                 onShowNextEpisodeThresholdModeDialog = onShowNextEpisodeThresholdModeDialog,
                 onShowReuseLastLinkCacheDialog = onShowReuseLastLinkCacheDialog,
@@ -987,8 +970,6 @@ private fun AfrCapabilityDisableButton(
 @Composable
 internal fun PlaybackSettingsDialogsHost(
     playerSettings: PlayerSettings,
-    installedAddonNames: List<String>,
-    enabledPluginNames: List<String>,
     showPlayerPreferenceDialog: Boolean,
     showInternalPlayerEngineDialog: Boolean,
     showLanguageDialog: Boolean,
@@ -1005,8 +986,6 @@ internal fun PlaybackSettingsDialogsHost(
     showDv7HandlingModeDialog: Boolean,
     showStreamAutoPlayModeDialog: Boolean,
     showStreamAutoPlaySourceDialog: Boolean,
-    showStreamAutoPlayAddonSelectionDialog: Boolean,
-    showStreamAutoPlayPluginSelectionDialog: Boolean,
     showStreamRegexDialog: Boolean,
     showNextEpisodeThresholdModeDialog: Boolean,
     showReuseLastLinkCacheDialog: Boolean,
@@ -1030,8 +1009,6 @@ internal fun PlaybackSettingsDialogsHost(
     onSetStreamAutoPlaySource: (com.nuvio.tv.data.local.StreamAutoPlaySource) -> Unit,
     onSetNextEpisodeThresholdMode: (com.nuvio.tv.data.local.NextEpisodeThresholdMode) -> Unit,
     onSetStreamAutoPlayRegex: (String) -> Unit,
-    onSetStreamAutoPlaySelectedAddons: (Set<String>) -> Unit,
-    onSetStreamAutoPlaySelectedPlugins: (Set<String>) -> Unit,
     onSetReuseLastLinkCacheHours: (Int) -> Unit,
     onDismissLanguageDialog: () -> Unit,
     onDismissSecondaryLanguageDialog: () -> Unit,
@@ -1048,8 +1025,6 @@ internal fun PlaybackSettingsDialogsHost(
     onDismissStreamAutoPlayModeDialog: () -> Unit,
     onDismissStreamAutoPlaySourceDialog: () -> Unit,
     onDismissStreamRegexDialog: () -> Unit,
-    onDismissStreamAutoPlayAddonSelectionDialog: () -> Unit,
-    onDismissStreamAutoPlayPluginSelectionDialog: () -> Unit,
     onDismissNextEpisodeThresholdModeDialog: () -> Unit,
     onDismissReuseLastLinkCacheDialog: () -> Unit
 ) {
@@ -1128,25 +1103,17 @@ internal fun PlaybackSettingsDialogsHost(
         showModeDialog = showStreamAutoPlayModeDialog,
         showSourceDialog = showStreamAutoPlaySourceDialog,
         showRegexDialog = showStreamRegexDialog,
-        showAddonSelectionDialog = showStreamAutoPlayAddonSelectionDialog,
-        showPluginSelectionDialog = showStreamAutoPlayPluginSelectionDialog,
         showNextEpisodeThresholdModeDialog = showNextEpisodeThresholdModeDialog,
         showReuseLastLinkCacheDialog = showReuseLastLinkCacheDialog,
         playerSettings = playerSettings,
-        installedAddonNames = installedAddonNames,
-        enabledPluginNames = enabledPluginNames,
         onSetMode = onSetStreamAutoPlayMode,
         onSetSource = onSetStreamAutoPlaySource,
         onSetNextEpisodeThresholdMode = onSetNextEpisodeThresholdMode,
         onSetRegex = onSetStreamAutoPlayRegex,
-        onSetSelectedAddons = onSetStreamAutoPlaySelectedAddons,
-        onSetSelectedPlugins = onSetStreamAutoPlaySelectedPlugins,
         onSetReuseLastLinkCacheHours = onSetReuseLastLinkCacheHours,
         onDismissModeDialog = onDismissStreamAutoPlayModeDialog,
         onDismissSourceDialog = onDismissStreamAutoPlaySourceDialog,
         onDismissRegexDialog = onDismissStreamRegexDialog,
-        onDismissAddonSelectionDialog = onDismissStreamAutoPlayAddonSelectionDialog,
-        onDismissPluginSelectionDialog = onDismissStreamAutoPlayPluginSelectionDialog,
         onDismissNextEpisodeThresholdModeDialog = onDismissNextEpisodeThresholdModeDialog,
         onDismissReuseLastLinkCacheDialog = onDismissReuseLastLinkCacheDialog
     )

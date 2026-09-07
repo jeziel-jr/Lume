@@ -8,15 +8,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nuvio.tv.core.profile.ProfileManager
-import com.nuvio.tv.core.sync.LocalHomeCatalogSettingsState
-import com.nuvio.tv.core.sync.SyncHomeCatalogPayload
-import com.nuvio.tv.core.sync.buildHomeCatalogSyncPayload
-import com.nuvio.tv.core.sync.homeCatalogKey
-import com.nuvio.tv.core.sync.homeCollectionKey
-import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CardDepthStyle
 import com.nuvio.tv.domain.model.CardDepthSurface
-import com.nuvio.tv.domain.model.Collection
 import com.nuvio.tv.domain.model.ContinueWatchingSortMode
 import com.nuvio.tv.domain.model.DEFAULT_CARD_DEPTH_EDGE_COVERAGE
 import com.nuvio.tv.domain.model.DEFAULT_CARD_DEPTH_EDGE_STRENGTH
@@ -43,6 +36,7 @@ class LayoutPreferenceDataStore @Inject constructor(
         private const val DEFAULT_POSTER_CARD_CORNER_RADIUS_DP = 12
         private const val DEFAULT_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS = 3
         private const val MIN_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS = 0
+        const val CONTINUE_WATCHING_DAYS_CAP_ALL = Int.MAX_VALUE
     }
 
     private fun store(profileId: Int = profileManager.activeProfileId.value) =
@@ -91,6 +85,8 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val nextUpFromFurthestEpisodeKey = booleanPreferencesKey("next_up_from_furthest_episode")
     private val blurContinueWatchingNextUpKey = booleanPreferencesKey("blur_continue_watching_next_up")
     private val continueWatchingSortModeKey = stringPreferencesKey("continue_watching_sort_mode")
+    private val dismissedNextUpKeysKey = stringPreferencesKey("dismissed_next_up_keys")
+    private val continueWatchingDaysCapKey = intPreferencesKey("continue_watching_days_cap")
     private val detailPageTrailerButtonEnabledKey = booleanPreferencesKey("detail_page_trailer_button_enabled")
     private val preferExternalMetaAddonDetailKey = booleanPreferencesKey("prefer_external_meta_addon_detail")
     private val modernHeroFullScreenBackdropKey = booleanPreferencesKey("modern_hero_full_screen_backdrop")
@@ -340,6 +336,37 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val followAddonsOrder: Flow<Boolean> = profileFlow { prefs ->
         prefs[followAddonsOrderKey] ?: false
+    }
+
+    val continueWatchingDaysCap: Flow<Int> = profileFlow { prefs ->
+        prefs[continueWatchingDaysCapKey] ?: CONTINUE_WATCHING_DAYS_CAP_ALL
+    }
+
+    val dismissedNextUpKeys: Flow<Set<String>> = profileFlow { prefs ->
+        parseDismissedNextUpKeys(prefs[dismissedNextUpKeysKey])
+    }
+
+    suspend fun addDismissedNextUpKey(key: String) {
+        store().edit { prefs ->
+            val current = parseDismissedNextUpKeys(prefs[dismissedNextUpKeysKey])
+            if (key in current) return@edit
+            prefs[dismissedNextUpKeysKey] = gson.toJson(current + key)
+        }
+    }
+
+    suspend fun setContinueWatchingDaysCap(days: Int) {
+        store().edit { prefs ->
+            prefs[continueWatchingDaysCapKey] = days
+        }
+    }
+
+    private fun parseDismissedNextUpKeys(json: String?): Set<String> {
+        if (json.isNullOrBlank()) return emptySet()
+        return runCatching {
+            val type = object : TypeToken<Set<String>>() {}.type
+            val parsed: Set<String>? = gson.fromJson(json, type)
+            parsed.orEmpty()
+        }.getOrDefault(emptySet())
     }
 
     val composeHighlighterEnabled: Flow<Boolean> = profileFlow { prefs ->
@@ -714,66 +741,6 @@ class LayoutPreferenceDataStore @Inject constructor(
                 prefs[customCatalogTitlesKey] = gson.toJson(filtered)
             }
         }
-    }
-
-    internal suspend fun getHomeCatalogSettingsState(): LocalHomeCatalogSettingsState {
-        return readHomeCatalogSettingsState(store().data.first())
-    }
-
-    internal suspend fun exportCatalogSettingsToSyncPayload(
-        addons: List<Addon>,
-        collections: List<Collection>
-    ): SyncHomeCatalogPayload {
-        return buildHomeCatalogSyncPayload(
-            addons = addons,
-            collections = collections,
-            localState = getHomeCatalogSettingsState()
-        )
-    }
-
-    suspend fun applyCatalogSettingsFromRemote(payload: SyncHomeCatalogPayload) {
-        val sortedItems = payload.items.sortedBy { it.order }
-        val orderKeys = sortedItems.map { item ->
-            if (item.isCollection) homeCollectionKey(item.collectionId)
-            else homeCatalogKey(item.addonId, item.type, item.catalogId)
-        }
-        val disabledKeys = sortedItems.filter { !it.enabled }.map { item ->
-            if (item.isCollection) homeCollectionKey(item.collectionId)
-            else homeCatalogKey(item.addonId, item.type, item.catalogId)
-        }
-        val titles = sortedItems.associate { item ->
-            val key = if (item.isCollection) homeCollectionKey(item.collectionId)
-            else homeCatalogKey(item.addonId, item.type, item.catalogId)
-            key to item.customTitle
-        }.filterValues { it.isNotBlank() }
-
-        store().edit { prefs ->
-            prefs[hideUnreleasedContentKey] = payload.hideUnreleasedContent
-            if (orderKeys.isNotEmpty()) {
-                prefs[homeCatalogOrderKeysKey] = gson.toJson(orderKeys)
-            } else {
-                prefs.remove(homeCatalogOrderKeysKey)
-            }
-            if (disabledKeys.isNotEmpty()) {
-                prefs[disabledHomeCatalogKeysKey] = gson.toJson(disabledKeys)
-            } else {
-                prefs.remove(disabledHomeCatalogKeysKey)
-            }
-            if (titles.isNotEmpty()) {
-                prefs[customCatalogTitlesKey] = gson.toJson(titles)
-            } else {
-                prefs.remove(customCatalogTitlesKey)
-            }
-        }
-    }
-
-    private fun readHomeCatalogSettingsState(prefs: Preferences): LocalHomeCatalogSettingsState {
-        return LocalHomeCatalogSettingsState(
-            orderKeys = parseCatalogKeys(prefs[homeCatalogOrderKeysKey]),
-            disabledKeys = parseCatalogKeys(prefs[disabledHomeCatalogKeysKey]).toSet(),
-            customTitles = parseCustomTitles(prefs[customCatalogTitlesKey]),
-            hideUnreleasedContent = prefs[hideUnreleasedContentKey] ?: false
-        )
     }
 }
 

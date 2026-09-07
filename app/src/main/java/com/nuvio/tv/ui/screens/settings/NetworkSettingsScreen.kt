@@ -490,25 +490,13 @@ fun AdvancedSettingsContent(
             )
         }
 
-        item(key = "playback_issue_reports") {
+        item(key = "sentry_reports") {
             SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
                 SettingsToggleRow(
                     title = stringResource(R.string.advanced_sentry_reports),
                     subtitle = stringResource(R.string.advanced_sentry_reports_subtitle),
                     checked = uiState.sentryEnabled,
                     onToggle = { showSentryDialog = true }
-                )
-                SettingsToggleRow(
-                    title = stringResource(R.string.advanced_playback_issue_reports),
-                    subtitle = stringResource(R.string.advanced_playback_issue_reports_subtitle),
-                    checked = uiState.playbackIssueReportsEnabled,
-                    onToggle = {
-                        viewModel.onEvent(
-                            AdvancedSettingsEvent.SetPlaybackIssueReportsEnabled(
-                                !uiState.playbackIssueReportsEnabled
-                            )
-                        )
-                    }
                 )
             }
         }

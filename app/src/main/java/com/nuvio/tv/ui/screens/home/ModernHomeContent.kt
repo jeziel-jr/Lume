@@ -148,7 +148,7 @@ fun ModernHomeContent(
         uiState.homeRows.any { it is HomeRow.CollectionRow }
     }
     val hasCatalogs = uiState.catalogRows.isNotEmpty()
-    if (hasCollections && !hasCatalogs && uiState.installedAddonsCount > 0 && uiState.isLoading) {
+    if (hasCollections && !hasCatalogs && uiState.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             LoadingIndicator()
         }
@@ -621,8 +621,8 @@ fun ModernHomeContent(
                     
                     // Only use the real enrichmentActive flag from the ViewModel.
                     // Additionally, if enrichment is enabled but no enriched data exists yet
-                    // for this item, treat as pending to avoid showing un-enriched addon data.
-                    // Exception: if enrichment already failed for this item, show addon data.
+                    // for this item, treat as pending to avoid showing un-enriched data.
+                    // Exception: if enrichment already failed for this item, show raw data.
                     // Also treat as pending when activeCarouselItem is null (row not yet resolved).
                     val heroEnrichmentEnabled = uiState.heroEnrichmentEnabled
                     val enrichmentFailed = activeItemId != null && activeItemId in failedEnrichmentIds
@@ -821,7 +821,7 @@ fun ModernHomeContent(
 
                     when {
                         // During vertical scroll: freeze stable to avoid flashing
-                        // transient addon data before enrichment completes
+                        // transient data before enrichment completes
                         isScrolling && stableHasPreview -> stable!!
                         // During rapid horizontal nav: freeze to avoid backdrop flashing
                         isRapidNav && stable != null -> stable

@@ -4,39 +4,21 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbCatalogService
-import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.data.xtream.CatalogAvailabilityTracker
 import com.nuvio.tv.data.xtream.XtreamCatalogAvailabilityService
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.SearchHistoryDataStore
 import com.nuvio.tv.data.local.TmdbSettingsDataStore
-import com.nuvio.tv.domain.model.Addon
-import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.DiscoverLocation
-import com.nuvio.tv.domain.model.catalogRowStableKey
-import com.nuvio.tv.domain.model.mergeCatalogPage
-import com.nuvio.tv.domain.model.nextCatalogSkip
-import com.nuvio.tv.domain.model.skipStep
-import com.nuvio.tv.domain.model.stableKey
-import com.nuvio.tv.domain.model.supportsExtra
-import com.nuvio.tv.core.util.filterReleasedItems
-import com.nuvio.tv.core.util.isUnreleased
-import com.nuvio.tv.domain.repository.AddonRepository
-import java.time.LocalDate
-import com.nuvio.tv.domain.model.ContentType
 import com.nuvio.tv.domain.model.MetaPreview
-import com.nuvio.tv.domain.model.PosterShape
-import com.nuvio.tv.domain.model.enabledAddons
-import com.nuvio.tv.domain.repository.CatalogRepository
+import com.nuvio.tv.domain.model.mergeCatalogPage
+import com.nuvio.tv.core.util.isUnreleased
+import java.time.LocalDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,21 +28,17 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val addonRepository: AddonRepository,
-    private val catalogRepository: CatalogRepository,
     private val layoutPreferenceDataStore: LayoutPreferenceDataStore,
     private val searchHistoryDataStore: SearchHistoryDataStore,
     private val watchProgressRepository: com.nuvio.tv.domain.repository.WatchProgressRepository,
     private val watchedSeriesStateHolder: com.nuvio.tv.data.local.WatchedSeriesStateHolder,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
     private val tmdbCatalogService: TmdbCatalogService,
-    private val tmdbService: TmdbService,
     private val tmdbSettingsDataStore: TmdbSettingsDataStore,
     private val xtreamCatalogAvailabilityService: XtreamCatalogAvailabilityService,
     @ApplicationContext private val context: Context
@@ -79,19 +57,13 @@ class SearchViewModel @Inject constructor(
     val watchedMovieIds: StateFlow<Set<String>> = _watchedMovieIds.asStateFlow()
     val watchedSeriesIds: StateFlow<Set<String>> = watchedSeriesStateHolder.fullyWatchedSeriesIds
 
-    private val catalogsMap = linkedMapOf<String, CatalogRow>()
-    private val catalogOrder = mutableListOf<String>()
-
     private var activeSearchJobs: List<Job> = emptyList()
     private var discoverJob: Job? = null
-    private var catalogRowsUpdateJob: Job? = null
     private var suggestionJob: Job? = null
     private val availabilityTracker = CatalogAvailabilityTracker(
         scope = viewModelScope,
         service = xtreamCatalogAvailabilityService,
     )
-    private var hasRenderedFirstCatalog = false
-    private var pendingCatalogResponses = 0
     private var revealBatchAfterNextDiscoverFetch = false
     private var hideUnreleasedContent = false
 
@@ -101,6 +73,9 @@ class SearchViewModel @Inject constructor(
         const val SUGGESTION_DEBOUNCE_MS = 150L
         const val MAX_SUGGESTIONS = 8
         const val MAX_RECENT_SEARCHES = 8
+        const val TMDB_ADDON_ID = "tmdb"
+        const val TMDB_ADDON_NAME = "TMDB"
+        const val TMDB_ADDON_BASE_URL = "https://api.themoviedb.org/3/"
     }
 
     init {
@@ -124,7 +99,6 @@ class SearchViewModel @Inject constructor(
                             discoverCatalogs = emptyList(),
                             selectedDiscoverType = "movie",
                             selectedDiscoverCatalogKey = null,
-                            selectedDiscoverGenre = null,
                             discoverResults = emptyList(),
                             pendingDiscoverResults = emptyList(),
                             discoverHasMore = true,
@@ -164,7 +138,6 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             layoutPreferenceDataStore.hideUnreleasedContent.collectLatest { enabled ->
                 hideUnreleasedContent = enabled
-                scheduleCatalogRowsUpdate()
             }
         }
         viewModelScope.launch {
@@ -216,7 +189,6 @@ class SearchViewModel @Inject constructor(
             )
             is SearchEvent.SelectDiscoverType -> selectDiscoverType(event.type)
             is SearchEvent.SelectDiscoverCatalog -> selectDiscoverCatalog(event.catalogKey)
-            is SearchEvent.SelectDiscoverGenre -> selectDiscoverGenre(event.genre)
             SearchEvent.LoadNextDiscoverResults -> loadNextDiscoverResults()
             SearchEvent.Retry -> performSearch(uiState.value.submittedQuery.ifBlank { uiState.value.query })
         }
@@ -300,12 +272,6 @@ class SearchViewModel @Inject constructor(
         // Cancel any in-flight work from the previous query.
         activeSearchJobs.forEach { it.cancel() }
         activeSearchJobs = emptyList()
-        catalogRowsUpdateJob?.cancel()
-
-        catalogsMap.clear()
-        catalogOrder.clear()
-        hasRenderedFirstCatalog = false
-        pendingCatalogResponses = 0
 
         if (query.length < 2) {
             _uiState.update {
@@ -368,189 +334,111 @@ class SearchViewModel @Inject constructor(
         )
     }
 
-    private suspend fun loadCatalog(addon: Addon, catalog: CatalogDescriptor, query: String) {
-        val supportsSkip = catalog.supportsExtra("skip")
-        val skipStep = catalog.skipStep()
-        catalogRepository.getCatalog(
-            addonBaseUrl = addon.baseUrl,
-            addonId = addon.id,
-            addonName = addon.displayName,
-            catalogId = catalog.id,
-            catalogName = catalog.name,
-            type = catalog.apiType,
-            skip = 0,
-            skipStep = skipStep,
-            extraArgs = mapOf("search" to query),
-            supportsSkip = supportsSkip
-        ).collect { result ->
-            when (result) {
-                is NetworkResult.Success -> {
-                    if (uiState.value.submittedQuery.trim() != query) return@collect
-                    val key = catalogKey(
-                        addonId = addon.id,
-                        addonBaseUrl = addon.baseUrl,
-                        type = catalog.apiType,
-                        catalogId = catalog.id
-                    )
-                    catalogsMap[key] = result.data
-                    pendingCatalogResponses = (pendingCatalogResponses - 1).coerceAtLeast(0)
-                    scheduleCatalogRowsUpdate()
-                }
-                is NetworkResult.Error -> {
-                    if (uiState.value.submittedQuery.trim() != query) return@collect
-                    pendingCatalogResponses = (pendingCatalogResponses - 1).coerceAtLeast(0)
-                    // Ignore per-catalog errors unless we have nothing to show.
-                    if (catalogsMap.isEmpty()) {
-                        _uiState.update { it.copy(error = result.message ?: context.getString(com.nuvio.tv.R.string.search_error_failed)) }
-                    }
-                    scheduleCatalogRowsUpdate()
-                }
-                NetworkResult.Loading -> {
-                    // No-op; screen shows global loading when empty.
-                }
-            }
-        }
-    }
-
     private fun loadMoreCatalogItems(catalogId: String, addonId: String, type: String) {
-        val (key, currentRow) = catalogsMap.entries.firstOrNull { (_, row) ->
+        val state = _uiState.value
+        val currentRow = state.catalogRows.firstOrNull { row ->
             row.addonId == addonId && row.apiType == type && row.catalogId == catalogId
-        }?.let { it.key to it.value } ?: return
+        } ?: return
 
         if (currentRow.isLoading || !currentRow.hasMore) {
             return
         }
 
-        catalogsMap[key] = currentRow.copy(isLoading = true)
-        scheduleCatalogRowsUpdate()
-
-        val query = uiState.value.query.trim()
+        val query = state.submittedQuery.trim()
         if (query.isBlank()) {
             return
         }
 
-        viewModelScope.launch {
-            val addon = uiState.value.installedAddons.find { it.id == addonId && it.baseUrl == currentRow.addonBaseUrl }
-                ?: uiState.value.installedAddons.find { it.id == addonId } ?: run {
-                catalogsMap[key] = currentRow.copy(isLoading = false)
-                scheduleCatalogRowsUpdate()
-                return@launch
-            }
-
-            val nextSkip = currentRow.nextCatalogSkip()
-            catalogRepository.getCatalog(
-                addonBaseUrl = addon.baseUrl,
-                addonId = addon.id,
-                addonName = addon.displayName,
-                catalogId = catalogId,
-                catalogName = currentRow.catalogName,
-                type = currentRow.apiType,
-                skip = nextSkip,
-                skipStep = currentRow.skipStep,
-                extraArgs = mapOf("search" to query),
-                supportsSkip = currentRow.supportsSkip
-            ).collect { result ->
-                when (result) {
-                    is NetworkResult.Success -> {
-                        val latestRow = catalogsMap[key] ?: currentRow
-                        val mergedRow = latestRow.mergeCatalogPage(result.data)
-                        catalogsMap[key] = mergedRow
-                        scheduleCatalogRowsUpdate()
-                    }
-                    is NetworkResult.Error -> {
-                        catalogsMap[key] = currentRow.copy(isLoading = false)
-                        scheduleCatalogRowsUpdate()
-                    }
-                    NetworkResult.Loading -> Unit
-                }
-            }
-        }
-    }
-
-    private fun scheduleCatalogRowsUpdate() {
-        catalogRowsUpdateJob?.cancel()
-        catalogRowsUpdateJob = viewModelScope.launch {
-            if (!hasRenderedFirstCatalog && catalogsMap.isNotEmpty()) {
-                hasRenderedFirstCatalog = true
-                updateCatalogRowsNow()
-                return@launch
-            }
-            val debounceMs = when {
-                pendingCatalogResponses > 5 -> 220L
-                pendingCatalogResponses > 0 -> 140L
-                else -> 90L
-            }
-            kotlinx.coroutines.delay(debounceMs)
-            updateCatalogRowsNow()
-        }
-    }
-
-    private fun updateCatalogRowsNow() {
-        _uiState.update { state ->
-            val orderedRows = catalogOrder.map { key ->
-                catalogsMap[key]
-                    ?: state.catalogRows.find {
-                        it.stableKey() == key
-                    }
-            }.filterNotNull().filter { row ->
-                // Keep placeholder rows (shimmer) and rows with real items.
-                // Drop rows that came back empty from the API.
-                val isPlaceholder = row.isLoading &&
-                    row.items.firstOrNull()?.id?.startsWith("__placeholder_") == true
-                isPlaceholder || row.items.isNotEmpty()
-            }
-            val filteredRows = if (hideUnreleasedContent) {
-                val today = LocalDate.now()
-                orderedRows.map { row ->
-                    if (row.isLoading && row.items.firstOrNull()?.id?.startsWith("__placeholder_") == true) {
-                        row
+        _uiState.update { s ->
+            s.copy(
+                catalogRows = s.catalogRows.map { row ->
+                    if (row.addonId == addonId && row.apiType == type && row.catalogId == catalogId) {
+                        row.copy(isLoading = true)
                     } else {
-                        row.filterReleasedItems(today)
+                        row
                     }
                 }
-            } else {
-                orderedRows
-            }
-            state.copy(
-                catalogRows = filteredRows
             )
         }
+
+        viewModelScope.launch {
+            val nextPage = currentRow.currentPage + 1
+            runCatching { tmdbCatalogService.search(query, "pt-BR", page = nextPage) }
+                .onSuccess { pages ->
+                    if (uiState.value.submittedQuery.trim() != query) {
+                        _uiState.update { s ->
+                            s.copy(
+                                catalogRows = s.catalogRows.map { row ->
+                                    if (row.addonId == addonId && row.apiType == type && row.catalogId == catalogId) {
+                                        row.copy(isLoading = false)
+                                    } else {
+                                        row
+                                    }
+                                }
+                            )
+                        }
+                        return@onSuccess
+                    }
+                    val pageRow = pages.firstOrNull {
+                        it.addonId == addonId && it.apiType == type && it.catalogId == catalogId
+                    }
+                    if (pageRow == null || pageRow.items.isEmpty()) {
+                        _uiState.update { s ->
+                            s.copy(
+                                catalogRows = s.catalogRows.map { row ->
+                                    if (row.addonId == addonId && row.apiType == type && row.catalogId == catalogId) {
+                                        row.copy(isLoading = false, hasMore = false)
+                                    } else {
+                                        row
+                                    }
+                                }
+                            )
+                        }
+                        return@onSuccess
+                    }
+                    _uiState.update { s ->
+                        s.copy(
+                            catalogRows = s.catalogRows.map { row ->
+                                if (row.addonId == addonId && row.apiType == type && row.catalogId == catalogId) {
+                                    row.mergeCatalogPage(pageRow).copy(isLoading = false)
+                                } else {
+                                    row
+                                }
+                            }
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update { s ->
+                        s.copy(
+                            catalogRows = s.catalogRows.map { row ->
+                                if (row.addonId == addonId && row.apiType == type && row.catalogId == catalogId) {
+                                    row.copy(isLoading = false)
+                                } else {
+                                    row
+                                }
+                            }
+                        )
+                    }
+                }
+        }
     }
 
-    private suspend fun loadDiscoverCatalogs() {
+    private fun loadDiscoverCatalogs() {
         if (_uiState.value.discoverLocation == DiscoverLocation.OFF) return
         _uiState.update { it.copy(discoverLoading = true) }
-        val addons = try {
-            addonRepository.getInstalledAddons().first().enabledAddons()
-        } catch (_: Exception) {
-            _uiState.update { it.copy(discoverInitialized = true, discoverLoading = false) }
-            return
-        }
 
-        val discoverCatalogs = addons.flatMap { addon ->
-            addon.catalogs
-                .filter { catalog ->
-                    !(catalog.supportsExtra("search") &&
-                        catalog.extra.any { it.name.equals("search", ignoreCase = true) && it.isRequired })
-                }
-                .map { catalog ->
-                    val genres = catalog.extra
-                        .firstOrNull { it.name.equals("genre", ignoreCase = true) }
-                        ?.options
-                        .orEmpty()
-                    DiscoverCatalog(
-                        key = "${addon.id}_${catalog.apiType}_${catalog.id}",
-                        addonId = addon.id,
-                        addonName = addon.displayName,
-                        addonBaseUrl = addon.baseUrl,
-                        catalogId = catalog.id,
-                        catalogName = catalog.name,
-                        type = catalog.apiType,
-                        genres = genres,
-                        supportsSkip = catalog.supportsExtra("skip"),
-                        skipStep = catalog.skipStep()
-                    )
-                }
+        val discoverCatalogs = tmdbCatalogService.homeCatalogDefinitions.map { definition ->
+            val apiType = definition.contentType.toApiString()
+            DiscoverCatalog(
+                key = "${TMDB_ADDON_ID}_${apiType}_${definition.id}",
+                addonId = TMDB_ADDON_ID,
+                addonName = TMDB_ADDON_NAME,
+                addonBaseUrl = TMDB_ADDON_BASE_URL,
+                catalogId = definition.id,
+                catalogName = definition.title,
+                type = apiType
+            )
         }
 
         val availableTypes = discoverCatalogs.map { it.type }.distinct()
@@ -561,15 +449,12 @@ class SearchViewModel @Inject constructor(
             selectedType = selectedType,
             preferredKey = _uiState.value.selectedDiscoverCatalogKey
         )
-        val selectedGenre: String? = null
 
         _uiState.update {
             it.copy(
-                installedAddons = addons,
                 discoverCatalogs = discoverCatalogs,
                 selectedDiscoverType = selectedType,
                 selectedDiscoverCatalogKey = selectedCatalog?.key,
-                selectedDiscoverGenre = selectedGenre,
                 discoverInitialized = true,
                 discoverLoading = false,
                 discoverResults = emptyList(),
@@ -588,12 +473,10 @@ class SearchViewModel @Inject constructor(
             selectedType = type,
             preferredKey = _uiState.value.selectedDiscoverCatalogKey
         )
-        val selectedGenre: String? = null
         _uiState.update {
             it.copy(
                 selectedDiscoverType = type,
                 selectedDiscoverCatalogKey = selectedCatalog?.key,
-                selectedDiscoverGenre = selectedGenre,
                 discoverResults = emptyList(),
                 pendingDiscoverResults = emptyList(),
                 discoverPage = 1,
@@ -609,20 +492,6 @@ class SearchViewModel @Inject constructor(
             it.copy(
                 selectedDiscoverCatalogKey = catalog.key,
                 selectedDiscoverType = catalog.type,
-                selectedDiscoverGenre = null,
-                discoverResults = emptyList(),
-                pendingDiscoverResults = emptyList(),
-                discoverPage = 1,
-                discoverHasMore = true
-            )
-        }
-        fetchDiscoverContent(reset = true)
-    }
-
-    private fun selectDiscoverGenre(genre: String?) {
-        _uiState.update {
-            it.copy(
-                selectedDiscoverGenre = genre,
                 discoverResults = emptyList(),
                 pendingDiscoverResults = emptyList(),
                 discoverPage = 1,
@@ -649,7 +518,7 @@ class SearchViewModel @Inject constructor(
         discoverJob?.cancel()
         discoverJob = viewModelScope.launch {
             _uiState.update { it.copy(discoverLoadingMore = true) }
-            val nextBatch = localizeDiscoverItems(pending.take(DISCOVER_SHOW_MORE_BATCH))
+            val nextBatch = pending.take(DISCOVER_SHOW_MORE_BATCH)
             val remaining = pending.drop(DISCOVER_SHOW_MORE_BATCH)
             _uiState.update {
                 it.copy(
@@ -692,102 +561,70 @@ class SearchViewModel @Inject constructor(
             }
 
             val currentPage = if (reset) 1 else state.discoverPage + 1
-            val skip = if (currentPage <= 1) 0 else (currentPage - 1) * selectedCatalog.skipStep
             val visibleCountBeforeRequest = state.discoverResults.size
-            val extraArgs = buildMap<String, String> {
-                state.selectedDiscoverGenre?.takeIf { it.isNotBlank() }?.let { put("genre", it) }
-            }
+            val language = tmdbSettingsDataStore.settings.first().language.ifBlank { "pt-BR" }
 
-            catalogRepository.getCatalog(
-                addonBaseUrl = selectedCatalog.addonBaseUrl,
-                addonId = selectedCatalog.addonId,
-                addonName = selectedCatalog.addonName,
-                catalogId = selectedCatalog.catalogId,
-                catalogName = selectedCatalog.catalogName,
-                type = selectedCatalog.type,
-                skip = skip,
-                skipStep = selectedCatalog.skipStep,
-                extraArgs = extraArgs,
-                supportsSkip = selectedCatalog.supportsSkip
-            ).collect { result ->
-                if (_uiState.value.discoverLocation == DiscoverLocation.OFF) return@collect
-                when (result) {
-                    is NetworkResult.Success -> {
-                        val incoming = result.data.items
-                        val existing = if (reset) {
-                            emptyList()
-                        } else {
-                            _uiState.value.discoverResults + _uiState.value.pendingDiscoverResults
-                        }
-                        val existingKeys = existing.asSequence()
-                            .map(MetaPreview::discoverIdentityKey)
-                            .toSet()
-                        val hasNewUniqueIncoming = incoming.any { item ->
-                            item.discoverIdentityKey() !in existingKeys
-                        }
-                        val merged = if (reset) incoming else (existing + incoming)
-                        val rawDeduped = merged.distinctBy(MetaPreview::discoverIdentityKey)
-                        val deduped = if (hideUnreleasedContent) {
-                            val today = LocalDate.now()
-                            rawDeduped.filterNot { it.isUnreleased(today) }
-                        } else {
-                            rawDeduped
-                        }
-                        val shouldRevealBatch = !reset && revealBatchAfterNextDiscoverFetch
-                        val visibleLimit = if (reset) {
-                            DISCOVER_INITIAL_LIMIT
-                        } else if (shouldRevealBatch) {
-                            (visibleCountBeforeRequest + DISCOVER_SHOW_MORE_BATCH)
-                                .coerceAtLeast(DISCOVER_INITIAL_LIMIT)
-                        } else {
-                            visibleCountBeforeRequest.coerceAtLeast(DISCOVER_INITIAL_LIMIT)
-                        }
-                        val visible = localizeDiscoverItems(deduped.take(visibleLimit))
-                        val pending = deduped.drop(visibleLimit)
-                        val shouldStopPagination = !reset && !hasNewUniqueIncoming
-                        _uiState.update {
-                            it.copy(
-                                discoverLoading = false,
-                                discoverLoadingMore = false,
-                                discoverResults = visible,
-                                pendingDiscoverResults = pending,
-                                discoverHasMore = if (shouldStopPagination) false else result.data.hasMore,
-                                discoverPage = if (shouldStopPagination) it.discoverPage else currentPage
-                            )
-                        }
-                        revealBatchAfterNextDiscoverFetch = false
-                    }
-                    is NetworkResult.Error -> {
-                        revealBatchAfterNextDiscoverFetch = false
-                        _uiState.update {
-                            it.copy(
-                                discoverLoading = false,
-                                discoverLoadingMore = false,
-                                discoverHasMore = false
-                            )
-                        }
-                    }
-                    NetworkResult.Loading -> Unit
+            val result = runCatching {
+                tmdbCatalogService.homePage(selectedCatalog.catalogId, currentPage, language)
+            }
+            result.onSuccess { pageRow ->
+                if (_uiState.value.discoverLocation == DiscoverLocation.OFF) return@onSuccess
+                val incoming = pageRow?.items.orEmpty()
+                val existing = if (reset) {
+                    emptyList()
+                } else {
+                    _uiState.value.discoverResults + _uiState.value.pendingDiscoverResults
+                }
+                val existingKeys = existing.asSequence()
+                    .map(MetaPreview::discoverIdentityKey)
+                    .toSet()
+                val hasNewUniqueIncoming = incoming.any { item ->
+                    item.discoverIdentityKey() !in existingKeys
+                }
+                val merged = if (reset) incoming else (existing + incoming)
+                val rawDeduped = merged.distinctBy(MetaPreview::discoverIdentityKey)
+                val deduped = if (hideUnreleasedContent) {
+                    val today = LocalDate.now()
+                    rawDeduped.filterNot { it.isUnreleased(today) }
+                } else {
+                    rawDeduped
+                }
+                val shouldRevealBatch = !reset && revealBatchAfterNextDiscoverFetch
+                val visibleLimit = if (reset) {
+                    DISCOVER_INITIAL_LIMIT
+                } else if (shouldRevealBatch) {
+                    (visibleCountBeforeRequest + DISCOVER_SHOW_MORE_BATCH)
+                        .coerceAtLeast(DISCOVER_INITIAL_LIMIT)
+                } else {
+                    visibleCountBeforeRequest.coerceAtLeast(DISCOVER_INITIAL_LIMIT)
+                }
+                val visible = deduped.take(visibleLimit)
+                val pending = deduped.drop(visibleLimit)
+                val shouldStopPagination = !reset && !hasNewUniqueIncoming
+                _uiState.update {
+                    it.copy(
+                        discoverLoading = false,
+                        discoverLoadingMore = false,
+                        discoverResults = visible,
+                        pendingDiscoverResults = pending,
+                        discoverHasMore = if (shouldStopPagination) false else pageRow?.hasMore == true,
+                        discoverPage = if (shouldStopPagination) it.discoverPage else currentPage
+                    )
+                }
+                revealBatchAfterNextDiscoverFetch = false
+            }
+            result.onFailure {
+                revealBatchAfterNextDiscoverFetch = false
+                _uiState.update {
+                    it.copy(
+                        discoverLoading = false,
+                        discoverLoadingMore = false,
+                        discoverHasMore = false
+                    )
                 }
             }
         }
     }
-
-    private suspend fun localizeDiscoverItems(items: List<MetaPreview>): List<MetaPreview> =
-        coroutineScope {
-            val language = tmdbSettingsDataStore.settings.first().language.ifBlank { "pt-BR" }
-            items.map { item ->
-                async {
-                    if (!item.id.startsWith("tt", ignoreCase = true)) return@async item
-                    val preview = tmdbService.resolveLocalizedPreview(
-                        videoId = item.id,
-                        mediaType = item.apiType,
-                        language = language,
-                    ) ?: return@async item
-                    item.withLocalizedTmdbPreview(preview)
-                }
-            }.awaitAll()
-        }
 
     private fun pickDiscoverCatalog(
         catalogs: List<DiscoverCatalog>,
@@ -796,21 +633,5 @@ class SearchViewModel @Inject constructor(
     ): DiscoverCatalog? {
         val filtered = catalogs.filter { it.type == selectedType }
         return filtered.firstOrNull { it.key == preferredKey } ?: filtered.firstOrNull()
-    }
-
-    private fun buildSearchTargets(addons: List<Addon>): List<Pair<Addon, CatalogDescriptor>> {
-        val allSearchTargets = addons.flatMap { addon ->
-            addon.catalogs
-                .filter { catalog ->
-                    catalog.supportsExtra("search")
-                }
-                .map { catalog -> addon to catalog }
-        }
-
-        return allSearchTargets
-    }
-
-    private fun catalogKey(addonId: String, addonBaseUrl: String, type: String, catalogId: String): String {
-        return catalogRowStableKey(addonId, addonBaseUrl, type, catalogId)
     }
 }

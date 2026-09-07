@@ -3,7 +3,6 @@ package com.nuvio.tv.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.core.profile.ProfileManager
-import com.nuvio.tv.core.sync.ProfileSyncService
 import com.nuvio.tv.domain.model.UserProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,11 +16,12 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileSettingsViewModel @Inject constructor(
-    private val profileManager: ProfileManager,
-    private val profileSyncService: ProfileSyncService
+    private val profileManager: ProfileManager
 ) : ViewModel() {
 
     val profiles: StateFlow<List<UserProfile>> = profileManager.profiles
+
+    val activeProfileId: StateFlow<Int> = profileManager.activeProfileId
 
     val isPrimaryProfileActive: StateFlow<Boolean> = profileManager.activeProfileId
         .map { it == 1 }
@@ -29,6 +29,12 @@ class ProfileSettingsViewModel @Inject constructor(
 
     val canAddProfile: Boolean
         get() = profileManager.canCreateProfile
+
+    fun setActiveProfile(id: Int) {
+        viewModelScope.launch {
+            profileManager.setActiveProfile(id)
+        }
+    }
 
     private val _isCreating = MutableStateFlow(false)
     val isCreating: StateFlow<Boolean> = _isCreating.asStateFlow()
@@ -60,7 +66,6 @@ class ProfileSettingsViewModel @Inject constructor(
                         )
                     )
                 }
-                profileSyncService.pushToRemote()
             }
             _isCreating.value = false
         }
@@ -69,15 +74,12 @@ class ProfileSettingsViewModel @Inject constructor(
     fun updateProfile(profile: UserProfile) {
         viewModelScope.launch {
             profileManager.updateProfile(profile)
-            profileSyncService.pushToRemote()
         }
     }
 
     fun deleteProfile(id: Int) {
         viewModelScope.launch {
             profileManager.deleteProfile(id)
-            profileSyncService.deleteProfileData(id)
-            profileSyncService.pushToRemote()
         }
     }
 }

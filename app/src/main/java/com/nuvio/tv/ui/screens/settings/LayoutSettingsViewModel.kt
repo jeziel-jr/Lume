@@ -13,7 +13,6 @@ import com.nuvio.tv.core.streams.StreamBadgeRules
 import com.nuvio.tv.core.streams.StreamBadgeSettings
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.StreamBadgeSettingsDataStore
-import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.data.local.TrailerSettingsDataStore
 import com.nuvio.tv.domain.model.CardDepthStyle
 import com.nuvio.tv.domain.model.CardDepthSurface
@@ -21,8 +20,6 @@ import com.nuvio.tv.domain.model.ContinueWatchingSortMode
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.HomeLayout
-import com.nuvio.tv.domain.model.enabledAddons
-import com.nuvio.tv.domain.repository.AddonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,8 +34,6 @@ import javax.inject.Inject
 data class LayoutSettingsUiState(
     val selectedLayout: HomeLayout = HomeLayout.MODERN,
     val hasChosen: Boolean = false,
-    val availableCatalogs: List<CatalogInfo> = emptyList(),
-    val heroCatalogKeys: List<String> = emptyList(),
     val sidebarCollapsedByDefault: Boolean = false,
     val modernSidebarEnabled: Boolean = false,
     val modernSidebarBlurEnabled: Boolean = false,
@@ -75,15 +70,8 @@ data class LayoutSettingsUiState(
     val continueWatchingSortMode: ContinueWatchingSortMode = ContinueWatchingSortMode.DEFAULT
 )
 
-data class CatalogInfo(
-    val key: String,
-    val name: String,
-    val addonName: String
-)
-
 sealed class LayoutSettingsEvent {
     data class SelectLayout(val layout: HomeLayout) : LayoutSettingsEvent()
-    data class ToggleHeroCatalog(val catalogKey: String) : LayoutSettingsEvent()
     data class SetSidebarCollapsed(val collapsed: Boolean) : LayoutSettingsEvent()
     data class SetModernSidebarEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetModernSidebarBlurEnabled(val enabled: Boolean) : LayoutSettingsEvent()
@@ -133,10 +121,7 @@ class LayoutSettingsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val layoutPreferenceDataStore: LayoutPreferenceDataStore,
     private val streamBadgeSettingsDataStore: StreamBadgeSettingsDataStore,
-    private val traktSettingsDataStore: TraktSettingsDataStore,
-    private val trailerSettingsDataStore: TrailerSettingsDataStore,
-    private val addonRepository: AddonRepository,
-    private val metaRepository: com.nuvio.tv.domain.repository.MetaRepository
+    private val trailerSettingsDataStore: TrailerSettingsDataStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LayoutSettingsUiState())
@@ -171,11 +156,6 @@ class LayoutSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             layoutPreferenceDataStore.hasChosenLayout.distinctUntilChanged().collectLatest { hasChosen ->
                 updateUiStateIfChanged { it.copy(hasChosen = hasChosen) }
-            }
-        }
-        viewModelScope.launch {
-            layoutPreferenceDataStore.heroCatalogSelections.distinctUntilChanged().collectLatest { keys ->
-                updateUiStateIfChanged { it.copy(heroCatalogKeys = keys) }
             }
         }
         viewModelScope.launch {
@@ -345,13 +325,11 @@ class LayoutSettingsViewModel @Inject constructor(
                     updateUiStateIfChanged { it.copy(continueWatchingSortMode = mode) }
                 }
         }
-        loadAvailableCatalogs()
     }
 
     fun onEvent(event: LayoutSettingsEvent) {
         when (event) {
             is LayoutSettingsEvent.SelectLayout -> selectLayout(event.layout)
-            is LayoutSettingsEvent.ToggleHeroCatalog -> toggleHeroCatalog(event.catalogKey)
             is LayoutSettingsEvent.SetSidebarCollapsed -> setSidebarCollapsed(event.collapsed)
             is LayoutSettingsEvent.SetModernSidebarEnabled -> setModernSidebarEnabled(event.enabled)
             is LayoutSettingsEvent.SetModernSidebarBlurEnabled -> setModernSidebarBlurEnabled(event.enabled)
@@ -466,18 +444,6 @@ class LayoutSettingsViewModel @Inject constructor(
         if (_uiState.value.selectedLayout == layout && _uiState.value.hasChosen) return
         viewModelScope.launch {
             layoutPreferenceDataStore.setLayout(layout)
-        }
-    }
-
-    private fun toggleHeroCatalog(catalogKey: String) {
-        viewModelScope.launch {
-            val selected = _uiState.value.heroCatalogKeys.toMutableList()
-            if (catalogKey in selected) {
-                selected.remove(catalogKey)
-            } else {
-                selected.add(catalogKey)
-            }
-            layoutPreferenceDataStore.setHeroCatalogKeys(selected)
         }
     }
 
@@ -689,7 +655,6 @@ class LayoutSettingsViewModel @Inject constructor(
         if (_uiState.value.preferExternalMetaAddonDetail == enabled) return
         viewModelScope.launch {
             layoutPreferenceDataStore.setPreferExternalMetaAddonDetail(enabled)
-            metaRepository.clearCache()
         }
     }
 
@@ -747,28 +712,6 @@ class LayoutSettingsViewModel @Inject constructor(
         if (_uiState.value.cardDepthStyle == CardDepthStyle()) return
         viewModelScope.launch {
             layoutPreferenceDataStore.resetCardDepthStyle()
-        }
-    }
-
-    private fun loadAvailableCatalogs() {
-        viewModelScope.launch {
-            addonRepository.getInstalledAddons().collectLatest { installedAddons ->
-                val addons = installedAddons.enabledAddons()
-                val catalogs = addons.flatMap { addon ->
-                    addon.catalogs
-                        .filter { catalog ->
-                            !catalog.extra.any { it.name.equals("search", ignoreCase = true) && it.isRequired }
-                        }
-                        .map { catalog ->
-                            CatalogInfo(
-                                key = "${addon.id}_${catalog.apiType}_${catalog.id}",
-                                name = catalog.name,
-                                addonName = addon.displayName
-                            )
-                        }
-                }
-                updateUiStateIfChanged { it.copy(availableCatalogs = catalogs) }
-            }
         }
     }
 

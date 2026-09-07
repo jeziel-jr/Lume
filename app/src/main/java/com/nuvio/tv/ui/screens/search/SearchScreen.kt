@@ -624,9 +624,7 @@ fun SearchScreen(
                     }
 
                     uiState.isSearching && uiState.catalogRows.isEmpty() -> {
-                        // Placeholder shimmer rows are emitted by the ViewModel,
-                        // so this branch only fires if search targets haven't
-                        // been resolved yet (very brief).
+                        // TMDB search results appear once the request resolves (very brief).
                         item {
                             Box(
                                 modifier = Modifier

@@ -2,7 +2,6 @@ package com.nuvio.tv.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.media3.common.util.UnstableApi
-import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.data.local.LibassRenderType
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.Dv7HandlingMode
@@ -24,21 +23,15 @@ import com.nuvio.tv.data.local.TrailerSettingsDataStore
 import com.nuvio.tv.core.torrent.TorrentSettings
 import com.nuvio.tv.core.torrent.TorrentSettingsData
 import com.nuvio.tv.data.local.VodCacheSizeMode
-import com.nuvio.tv.domain.model.enabledAddons
-import com.nuvio.tv.domain.repository.AddonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 @HiltViewModel
 class PlaybackSettingsViewModel @Inject constructor(
     private val playerSettingsDataStore: PlayerSettingsDataStore,
     private val trailerSettingsDataStore: TrailerSettingsDataStore,
-    private val addonRepository: AddonRepository,
-    private val pluginManager: PluginManager,
     private val torrentSettings: TorrentSettings
 ) : ViewModel() {
 
@@ -50,28 +43,6 @@ class PlaybackSettingsViewModel @Inject constructor(
     fun setHideTorrentStats(enabled: Boolean) = torrentSettings.setHideTorrentStats(enabled)
 
     val lastPlaybackDiagnostics: Flow<LastPlaybackDiagnostics> = playerSettingsDataStore.lastPlaybackDiagnostics
-    val installedAddonNames: Flow<List<String>> = addonRepository.getInstalledAddons().map { addons ->
-        addons
-            .enabledAddons()
-            .filter { addon ->
-                addon.resources.any { resource ->
-                    resource.name.equals("stream", ignoreCase = true)
-                }
-            }
-            .map { it.displayName }
-            .distinct()
-            .sorted()
-    }
-    val enabledPluginNames: Flow<List<String>> = combine(
-        pluginManager.pluginsEnabled,
-        pluginManager.scrapers
-    ) { pluginsEnabled, scrapers ->
-        if (!pluginsEnabled) {
-            emptyList()
-        } else {
-            scrapers.filter { it.enabled }.map { it.name }.distinct().sorted()
-        }
-    }
 
     suspend fun setPlayerPreference(preference: PlayerPreference) {
         playerSettingsDataStore.setPlayerPreference(preference)
@@ -161,10 +132,6 @@ class PlaybackSettingsViewModel @Inject constructor(
 
     suspend fun setSkipIntroEnabled(enabled: Boolean) {
         playerSettingsDataStore.setSkipIntroEnabled(enabled)
-    }
-
-    suspend fun setParentalGuideEnabled(enabled: Boolean) {
-        playerSettingsDataStore.setParentalGuideEnabled(enabled)
     }
 
     suspend fun setAutoSkipSegmentTypeEnabled(segmentType: AutoSkipSegmentType, enabled: Boolean) {
@@ -447,14 +414,6 @@ class PlaybackSettingsViewModel @Inject constructor(
 
     suspend fun setStreamAutoPlaySource(source: StreamAutoPlaySource) {
         playerSettingsDataStore.setStreamAutoPlaySource(source)
-    }
-
-    suspend fun setStreamAutoPlaySelectedAddons(addons: Set<String>) {
-        playerSettingsDataStore.setStreamAutoPlaySelectedAddons(addons)
-    }
-
-    suspend fun setStreamAutoPlaySelectedPlugins(plugins: Set<String>) {
-        playerSettingsDataStore.setStreamAutoPlaySelectedPlugins(plugins)
     }
 
     suspend fun setStreamAutoPlayRegex(regex: String) {

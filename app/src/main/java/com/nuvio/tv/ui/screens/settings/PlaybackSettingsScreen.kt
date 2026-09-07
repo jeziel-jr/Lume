@@ -118,8 +118,6 @@ fun PlaybackSettingsContent(
     val torrentSettings by viewModel.torrentSettingsFlow.collectAsStateWithLifecycle(
         initialValue = com.nuvio.tv.core.torrent.TorrentSettingsData()
     )
-    val installedAddonNames by viewModel.installedAddonNames.collectAsStateWithLifecycle(initialValue = emptyList())
-    val enabledPluginNames by viewModel.enabledPluginNames.collectAsStateWithLifecycle(initialValue = emptyList())
     val coroutineScope = rememberCoroutineScope()
     var memoryUsageTrigger by remember { mutableStateOf(0) }
     var showMemoryUsage by remember { mutableStateOf(false) }
@@ -139,8 +137,6 @@ fun PlaybackSettingsContent(
     var showMpvHardwareDecodeModeDialog by remember { mutableStateOf(false) }
     var showStreamAutoPlayModeDialog by remember { mutableStateOf(false) }
     var showStreamAutoPlaySourceDialog by remember { mutableStateOf(false) }
-    var showStreamAutoPlayAddonSelectionDialog by remember { mutableStateOf(false) }
-    var showStreamAutoPlayPluginSelectionDialog by remember { mutableStateOf(false) }
     var showStreamRegexDialog by remember { mutableStateOf(false) }
     var showNextEpisodeThresholdModeDialog by remember { mutableStateOf(false) }
     var showReuseLastLinkCacheDialog by remember { mutableStateOf(false) }
@@ -163,8 +159,6 @@ fun PlaybackSettingsContent(
         showDv7HandlingModeDialog = false
         showStreamAutoPlayModeDialog = false
         showStreamAutoPlaySourceDialog = false
-        showStreamAutoPlayAddonSelectionDialog = false
-        showStreamAutoPlayPluginSelectionDialog = false
         showStreamRegexDialog = false
         showNextEpisodeThresholdModeDialog = false
         showReuseLastLinkCacheDialog = false
@@ -217,8 +211,6 @@ fun PlaybackSettingsContent(
                 onShowOutlineColorDialog = { openDialog { showOutlineColorDialog = true } },
                 onShowStreamAutoPlayModeDialog = { openDialog { showStreamAutoPlayModeDialog = true } },
                 onShowStreamAutoPlaySourceDialog = { openDialog { showStreamAutoPlaySourceDialog = true } },
-                onShowStreamAutoPlayAddonSelectionDialog = { openDialog { showStreamAutoPlayAddonSelectionDialog = true } },
-                onShowStreamAutoPlayPluginSelectionDialog = { openDialog { showStreamAutoPlayPluginSelectionDialog = true } },
                 onShowStreamRegexDialog = { openDialog { showStreamRegexDialog = true } },
                 onShowNextEpisodeThresholdModeDialog = { openDialog { showNextEpisodeThresholdModeDialog = true } },
                 onShowReuseLastLinkCacheDialog = { openDialog { showReuseLastLinkCacheDialog = true } },
@@ -265,7 +257,6 @@ fun PlaybackSettingsContent(
                 onSetPauseOverlayEnabled = { enabled -> coroutineScope.launch { viewModel.setPauseOverlayEnabled(enabled) } },
                 onSetOsdClockEnabled = { enabled -> coroutineScope.launch { viewModel.setOsdClockEnabled(enabled) } },
                 onSetSkipIntroEnabled = { enabled -> coroutineScope.launch { viewModel.setSkipIntroEnabled(enabled) } },
-                onSetParentalGuideEnabled = { enabled -> coroutineScope.launch { viewModel.setParentalGuideEnabled(enabled) } },
                 onSetAutoSkipSegmentTypeEnabled = { segmentType, enabled ->
                     coroutineScope.launch { viewModel.setAutoSkipSegmentTypeEnabled(segmentType, enabled) }
                 },
@@ -471,8 +462,6 @@ fun PlaybackSettingsContent(
 
     PlaybackSettingsDialogsHost(
         playerSettings = playerSettings,
-        installedAddonNames = installedAddonNames,
-        enabledPluginNames = enabledPluginNames,
         showPlayerPreferenceDialog = showPlayerPreferenceDialog,
         showInternalPlayerEngineDialog = showInternalPlayerEngineDialog,
         showLanguageDialog = showLanguageDialog,
@@ -489,8 +478,6 @@ fun PlaybackSettingsContent(
         showDv7HandlingModeDialog = showDv7HandlingModeDialog,
         showStreamAutoPlayModeDialog = showStreamAutoPlayModeDialog,
         showStreamAutoPlaySourceDialog = showStreamAutoPlaySourceDialog,
-        showStreamAutoPlayAddonSelectionDialog = showStreamAutoPlayAddonSelectionDialog,
-        showStreamAutoPlayPluginSelectionDialog = showStreamAutoPlayPluginSelectionDialog,
         showStreamRegexDialog = showStreamRegexDialog,
         showNextEpisodeThresholdModeDialog = showNextEpisodeThresholdModeDialog,
         showReuseLastLinkCacheDialog = showReuseLastLinkCacheDialog,
@@ -550,12 +537,6 @@ fun PlaybackSettingsContent(
         onSetStreamAutoPlayRegex = { regex ->
             coroutineScope.launch { viewModel.setStreamAutoPlayRegex(regex) }
         },
-        onSetStreamAutoPlaySelectedAddons = { selected ->
-            coroutineScope.launch { viewModel.setStreamAutoPlaySelectedAddons(selected) }
-        },
-        onSetStreamAutoPlaySelectedPlugins = { selected ->
-            coroutineScope.launch { viewModel.setStreamAutoPlaySelectedPlugins(selected) }
-        },
         onSetReuseLastLinkCacheHours = { hours ->
             coroutineScope.launch { viewModel.setStreamReuseLastLinkCacheHours(hours) }
         },
@@ -574,8 +555,6 @@ fun PlaybackSettingsContent(
         onDismissStreamAutoPlayModeDialog = ::dismissAllDialogs,
         onDismissStreamAutoPlaySourceDialog = ::dismissAllDialogs,
         onDismissStreamRegexDialog = ::dismissAllDialogs,
-        onDismissStreamAutoPlayAddonSelectionDialog = ::dismissAllDialogs,
-        onDismissStreamAutoPlayPluginSelectionDialog = ::dismissAllDialogs,
         onDismissNextEpisodeThresholdModeDialog = ::dismissAllDialogs,
         onDismissReuseLastLinkCacheDialog = ::dismissAllDialogs
     )

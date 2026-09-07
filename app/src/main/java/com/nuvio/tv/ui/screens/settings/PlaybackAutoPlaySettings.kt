@@ -25,14 +25,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.runtime.Composable
@@ -64,7 +61,6 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.NextEpisodeThresholdMode
 import com.nuvio.tv.data.local.StreamAutoPlayMode
@@ -77,8 +73,6 @@ internal fun LazyListScope.autoPlaySettingsItems(
     playerSettings: PlayerSettings,
     onShowModeDialog: () -> Unit,
     onShowSourceDialog: () -> Unit,
-    onShowAddonSelectionDialog: () -> Unit,
-    onShowPluginSelectionDialog: () -> Unit,
     onShowRegexDialog: () -> Unit,
     onShowNextEpisodeThresholdModeDialog: () -> Unit,
     onShowReuseLastLinkCacheDialog: () -> Unit,
@@ -93,15 +87,6 @@ internal fun LazyListScope.autoPlaySettingsItems(
     onSetStillWatchingEpisodeThreshold: (Int) -> Unit,
     onItemFocused: () -> Unit = {}
 ) {
-    val effectiveAutoPlaySource = if (
-        !AppFeaturePolicy.pluginsEnabled &&
-        playerSettings.streamAutoPlaySource == StreamAutoPlaySource.ENABLED_PLUGINS_ONLY
-    ) {
-        StreamAutoPlaySource.INSTALLED_ADDONS_ONLY
-    } else {
-        playerSettings.streamAutoPlaySource
-    }
-
     item(key = "autoplay_reuse_last_link") {
         ToggleSettingsItem(
             icon = Icons.Default.History,
@@ -276,10 +261,9 @@ internal fun LazyListScope.autoPlaySettingsItems(
     if (playerSettings.streamAutoPlayMode != StreamAutoPlayMode.MANUAL) {
 
         item(key = "autoplay_source_scope") {
-            val sourceLabel = when (effectiveAutoPlaySource) {
+            val sourceLabel = when (playerSettings.streamAutoPlaySource) {
                 StreamAutoPlaySource.ALL_SOURCES -> stringResource(R.string.autoplay_scope_all)
-                StreamAutoPlaySource.INSTALLED_ADDONS_ONLY -> stringResource(R.string.autoplay_scope_addons)
-                StreamAutoPlaySource.ENABLED_PLUGINS_ONLY -> stringResource(R.string.autoplay_scope_plugins)
+                else -> stringResource(R.string.autoplay_scope_addons)
             }
             NavigationSettingsItem(
                 icon = Icons.Default.Tune,
@@ -288,43 +272,6 @@ internal fun LazyListScope.autoPlaySettingsItems(
                 onClick = onShowSourceDialog,
                 onFocused = onItemFocused
             )
-        }
-
-        if (effectiveAutoPlaySource != StreamAutoPlaySource.ENABLED_PLUGINS_ONLY) {
-            item(key = "autoplay_allowed_addons") {
-                val addonSubtitle = if (playerSettings.streamAutoPlaySelectedAddons.isEmpty()) {
-                    stringResource(R.string.autoplay_all_addons)
-                } else {
-                    "${playerSettings.streamAutoPlaySelectedAddons.size} selected"
-                }
-                NavigationSettingsItem(
-                    icon = Icons.Default.Language,
-                    title = stringResource(R.string.autoplay_allowed_addons),
-                    subtitle = addonSubtitle,
-                    onClick = onShowAddonSelectionDialog,
-                    onFocused = onItemFocused
-                )
-            }
-        }
-
-        if (
-            AppFeaturePolicy.pluginsEnabled &&
-            effectiveAutoPlaySource != StreamAutoPlaySource.INSTALLED_ADDONS_ONLY
-        ) {
-            item(key = "autoplay_allowed_plugins") {
-                val pluginSubtitle = if (playerSettings.streamAutoPlaySelectedPlugins.isEmpty()) {
-                    stringResource(R.string.autoplay_all_plugins)
-                } else {
-                    "${playerSettings.streamAutoPlaySelectedPlugins.size} selected"
-                }
-                NavigationSettingsItem(
-                    icon = Icons.Default.Extension,
-                    title = stringResource(R.string.autoplay_allowed_plugins),
-                    subtitle = pluginSubtitle,
-                    onClick = onShowPluginSelectionDialog,
-                    onFocused = onItemFocused
-                )
-            }
         }
     }
 
@@ -358,25 +305,17 @@ internal fun AutoPlaySettingsDialogs(
     showModeDialog: Boolean,
     showSourceDialog: Boolean,
     showRegexDialog: Boolean,
-    showAddonSelectionDialog: Boolean,
-    showPluginSelectionDialog: Boolean,
     showNextEpisodeThresholdModeDialog: Boolean,
     showReuseLastLinkCacheDialog: Boolean,
     playerSettings: PlayerSettings,
-    installedAddonNames: List<String>,
-    enabledPluginNames: List<String>,
     onSetMode: (StreamAutoPlayMode) -> Unit,
     onSetSource: (StreamAutoPlaySource) -> Unit,
     onSetNextEpisodeThresholdMode: (NextEpisodeThresholdMode) -> Unit,
     onSetRegex: (String) -> Unit,
-    onSetSelectedAddons: (Set<String>) -> Unit,
-    onSetSelectedPlugins: (Set<String>) -> Unit,
     onSetReuseLastLinkCacheHours: (Int) -> Unit,
     onDismissModeDialog: () -> Unit,
     onDismissSourceDialog: () -> Unit,
     onDismissRegexDialog: () -> Unit,
-    onDismissAddonSelectionDialog: () -> Unit,
-    onDismissPluginSelectionDialog: () -> Unit,
     onDismissNextEpisodeThresholdModeDialog: () -> Unit,
     onDismissReuseLastLinkCacheDialog: () -> Unit
 ) {
@@ -421,28 +360,6 @@ internal fun AutoPlaySettingsDialogs(
                 onDismissNextEpisodeThresholdModeDialog()
             },
             onDismiss = onDismissNextEpisodeThresholdModeDialog
-        )
-    }
-
-    if (showAddonSelectionDialog) {
-        StreamAutoPlayProviderSelectionDialog(
-            title = stringResource(R.string.autoplay_allowed_addons),
-            allLabel = stringResource(R.string.autoplay_all_addons),
-            items = installedAddonNames,
-            selectedItems = playerSettings.streamAutoPlaySelectedAddons,
-            onSelectionSaved = onSetSelectedAddons,
-            onDismiss = onDismissAddonSelectionDialog
-        )
-    }
-
-    if (showPluginSelectionDialog) {
-        StreamAutoPlayProviderSelectionDialog(
-            title = stringResource(R.string.autoplay_allowed_plugins),
-            allLabel = stringResource(R.string.autoplay_all_plugins),
-            items = enabledPluginNames,
-            selectedItems = playerSettings.streamAutoPlaySelectedPlugins,
-            onSelectionSaved = onSetSelectedPlugins,
-            onDismiss = onDismissPluginSelectionDialog
         )
     }
 
@@ -580,15 +497,8 @@ private fun StreamAutoPlaySourceDialog(
             StreamAutoPlaySource.INSTALLED_ADDONS_ONLY,
             stringResource(R.string.autoplay_scope_addons),
             stringResource(R.string.autoplay_scope_addons_desc)
-        ),
-        SettingsPickerOption(
-            StreamAutoPlaySource.ENABLED_PLUGINS_ONLY,
-            stringResource(R.string.autoplay_scope_plugins),
-            stringResource(R.string.autoplay_scope_plugins_desc)
         )
-    ).filter { option ->
-        AppFeaturePolicy.pluginsEnabled || option.value != StreamAutoPlaySource.ENABLED_PLUGINS_ONLY
-    }
+    )
 
     SettingsSingleChoiceDialog(
         title = stringResource(R.string.autoplay_scope),
@@ -599,141 +509,6 @@ private fun StreamAutoPlaySourceDialog(
         width = 520.dp,
         maxHeight = 320.dp
     )
-}
-
-@Composable
-private fun StreamAutoPlayProviderSelectionDialog(
-    title: String,
-    allLabel: String,
-    items: List<String>,
-    selectedItems: Set<String>,
-    onSelectionSaved: (Set<String>) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var selected by remember(selectedItems, items) {
-        mutableStateOf(selectedItems.intersect(items.toSet()))
-    }
-    val focusRequester = remember { FocusRequester() }
-    val focusedItem = remember(selectedItems, items) {
-        items.firstOrNull { it in selectedItems }
-    }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    NuvioDialog(
-        onDismiss = {
-            onSelectionSaved(selected)
-            onDismiss()
-        },
-        title = title,
-        width = 560.dp,
-        suppressFirstKeyUp = false
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 420.dp),
-            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
-        ) {
-            Card(
-                onClick = { selected = emptySet() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(if (focusedItem == null) Modifier.focusRequester(focusRequester) else Modifier),
-                colors = CardDefaults.colors(
-                    containerColor = if (selected.isEmpty()) NuvioTheme.colors.FocusBackground else NuvioTheme.colors.BackgroundCard,
-                    focusedContainerColor = NuvioTheme.colors.FocusBackground
-                ),
-                shape = CardDefaults.shape(shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)),
-                scale = CardDefaults.scale(focusedScale = 1f)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = allLabel,
-                        color = if (selected.isEmpty()) NuvioTheme.colors.Primary else NuvioTheme.colors.TextPrimary,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (selected.isEmpty()) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = stringResource(R.string.cd_selected),
-                            tint = NuvioTheme.colors.Primary,
-                            modifier = Modifier.height(20.dp)
-                        )
-                    }
-                }
-            }
-
-            if (items.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.autoplay_no_items),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NuvioTheme.colors.TextSecondary
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 300.dp),
-                    verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = NuvioTheme.spacing.xs)
-                ) {
-                    items(
-                        items = items,
-                        key = { it }
-                    ) { item ->
-                        val isSelected = item in selected
-                        Card(
-                            onClick = {
-                                selected = if (isSelected) {
-                                    selected - item
-                                } else {
-                                    selected + item
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .then(if (item == focusedItem) Modifier.focusRequester(focusRequester) else Modifier),
-                            colors = CardDefaults.colors(
-                                containerColor = if (isSelected) NuvioTheme.colors.FocusBackground else NuvioTheme.colors.BackgroundCard,
-                                focusedContainerColor = NuvioTheme.colors.FocusBackground
-                            ),
-                            shape = CardDefaults.shape(shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)),
-                            scale = CardDefaults.scale(focusedScale = 1f)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = item,
-                                    color = if (isSelected) NuvioTheme.colors.Primary else NuvioTheme.colors.TextPrimary,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = stringResource(R.string.cd_selected),
-                                        tint = NuvioTheme.colors.Primary,
-                                        modifier = Modifier.height(18.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable

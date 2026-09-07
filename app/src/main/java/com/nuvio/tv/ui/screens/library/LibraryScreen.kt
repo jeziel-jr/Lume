@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -24,8 +23,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.focusable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -50,14 +47,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -72,17 +66,13 @@ import com.nuvio.tv.core.cloud.CloudLibraryFile
 import com.nuvio.tv.core.cloud.CloudLibraryItem
 import com.nuvio.tv.core.cloud.CloudLibraryItemType
 import com.nuvio.tv.core.cloud.CloudLibraryPlaybackInfo
-import com.nuvio.tv.domain.model.LibraryListTab
-import com.nuvio.tv.domain.model.LibrarySourceMode
 import com.nuvio.tv.domain.model.PosterShape
-import com.nuvio.tv.domain.model.TraktListPrivacy
 import com.nuvio.tv.ui.components.EmptyScreenState
 import com.nuvio.tv.ui.components.GridContentCard
 import com.nuvio.tv.ui.components.PosterCardDefaults
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.theme.NuvioTheme
-import com.nuvio.tv.ui.util.formatAddonTypeLabel
 import com.nuvio.tv.ui.util.localizedContentType
 import com.nuvio.tv.ui.util.localizedGenreLabel
 import kotlinx.coroutines.delay
@@ -103,15 +93,6 @@ private fun localizedTypeLabel(key: String): String = when (key.lowercase()) {
     else -> localizedContentType(key)
 }
 
-@Composable
-private fun LibraryListTab.localizedTitle(): String {
-    return if (type == LibraryListTab.Type.WATCHLIST) {
-        stringResource(R.string.library_watchlist)
-    } else {
-        title
-    }
-}
-
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun LibraryScreen(
@@ -124,7 +105,6 @@ fun LibraryScreen(
     val catalogAvailability by viewModel.catalogAvailability.collectAsState()
     val watchedMovieIds by viewModel.watchedMovieIds.collectAsState()
     val watchedSeriesIds by viewModel.watchedSeriesIds.collectAsState()
-    var showDeleteConfirm by remember { mutableStateOf(false) }
     var expandedPicker by remember { mutableStateOf<String?>(null) }
     var viewMode by rememberSaveable { mutableStateOf(LibraryViewMode.Saved) }
     var activeCloudItem by remember { mutableStateOf<CloudLibraryItem?>(null) }
@@ -157,7 +137,7 @@ fun LibraryScreen(
         }
     }
 
-    LaunchedEffect(uiState.isLoading, uiState.sourceMode, uiState.listTabs.size) {
+    LaunchedEffect(uiState.isLoading, uiState.allItems.size) {
         if (!uiState.isLoading && pendingPrimaryFocus) {
             val restoreKey = lastFocusedPosterKey
             val restoreIndex = restoreKey?.let { visibleItemIndexByKey[it] }
@@ -220,11 +200,6 @@ fun LibraryScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 LoadingIndicator()
-                Text(
-                    text = stringResource(R.string.library_syncing),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NuvioTheme.colors.TextSecondary
-                )
             }
         }
         return
@@ -268,8 +243,6 @@ fun LibraryScreen(
                 Text(
                     text = when {
                         viewMode == LibraryViewMode.Cloud -> stringResource(R.string.library_source_cloud).uppercase()
-                        uiState.sourceMode == LibrarySourceMode.TRAKT -> "TRAKT"
-                        uiState.isNuvioAccount -> "NUVIO"
                         else -> stringResource(R.string.library_source_local)
                     },
                     style = MaterialTheme.typography.labelLarge,
@@ -294,13 +267,10 @@ fun LibraryScreen(
         if (viewMode == LibraryViewMode.Saved) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 LibrarySelectorsRow(
-                    sourceMode = uiState.sourceMode,
-                    listTabs = uiState.listTabs,
                     typeTabs = uiState.availableTypeTabs,
                     sortOptions = uiState.availableSortOptions,
                     genres = uiState.availableGenres,
                     years = uiState.availableYears,
-                    selectedListKey = uiState.selectedListKey,
                     selectedTypeTab = uiState.selectedTypeTab,
                     selectedSortOption = uiState.selectedSortOption,
                     selectedGenre = uiState.selectedGenre,
@@ -309,10 +279,6 @@ fun LibraryScreen(
                     expandedPicker = expandedPicker,
                     onExpandedChange = { picker, shouldExpand ->
                         expandedPicker = if (shouldExpand) picker else null
-                    },
-                    onSelectList = { key ->
-                        viewModel.onSelectListTab(key)
-                        expandedPicker = null
                     },
                     onSelectType = { type ->
                         viewModel.onSelectTypeTab(type)
@@ -333,33 +299,12 @@ fun LibraryScreen(
                 )
             }
 
-            if (uiState.sourceMode == LibrarySourceMode.TRAKT && uiState.isTraktAuthenticated) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    LibraryActionsRow(
-                        pending = uiState.pendingOperation,
-                        isSyncing = uiState.isSyncing,
-                        onManageLists = viewModel::onOpenManageLists,
-                        onRefresh = viewModel::onRefresh
-                    )
-                }
-            }
-
             if (uiState.visibleItems.isEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     val selectedTypeLabel = uiState.selectedTypeTab?.let { localizedTypeLabel(it.key) }?.lowercase() ?: stringResource(R.string.library_type_items)
-                    val title = when {
-                        uiState.sourceMode == LibrarySourceMode.TRAKT && !uiState.isTraktAuthenticated -> stringResource(R.string.library_empty_trakt_not_auth_title)
-                        uiState.sourceMode == LibrarySourceMode.TRAKT -> stringResource(R.string.library_empty_trakt_title, selectedTypeLabel)
-                        else -> stringResource(R.string.library_empty_local_title, selectedTypeLabel)
-                    }
-                    val subtitle = when {
-                        uiState.sourceMode == LibrarySourceMode.TRAKT && !uiState.isTraktAuthenticated -> stringResource(R.string.library_empty_trakt_not_auth_subtitle)
-                        uiState.sourceMode == LibrarySourceMode.TRAKT -> stringResource(R.string.library_empty_trakt_subtitle)
-                        else -> stringResource(R.string.library_empty_local_subtitle)
-                    }
                     EmptyScreenState(
-                        title = title,
-                        subtitle = subtitle,
+                        title = stringResource(R.string.library_empty_local_title, selectedTypeLabel),
+                        subtitle = stringResource(R.string.library_empty_local_subtitle),
                         icon = Icons.Default.BookmarkBorder
                     )
                 }
@@ -474,46 +419,6 @@ fun LibraryScreen(
         }
 
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(NuvioTheme.spacing.sm)) }
-    }
-
-    if (uiState.showManageDialog && uiState.sourceMode == LibrarySourceMode.TRAKT) {
-        ManageListsDialog(
-            tabs = uiState.listTabs,
-            selectedKey = uiState.manageSelectedListKey,
-            errorMessage = uiState.errorMessage,
-            pending = uiState.pendingOperation,
-            onSelect = viewModel::onSelectManageList,
-            onCreate = viewModel::onStartCreateList,
-            onEdit = viewModel::onStartEditList,
-            onMoveUp = viewModel::onMoveSelectedListUp,
-            onMoveDown = viewModel::onMoveSelectedListDown,
-            onDelete = { showDeleteConfirm = true },
-            onDismiss = viewModel::onCloseManageLists
-        )
-    }
-
-    if (showDeleteConfirm) {
-        ConfirmDeleteDialog(
-            pending = uiState.pendingOperation,
-            onConfirm = {
-                showDeleteConfirm = false
-                viewModel.onDeleteSelectedList()
-            },
-            onCancel = { showDeleteConfirm = false }
-        )
-    }
-
-    val listEditor = uiState.listEditorState
-    if (listEditor != null && uiState.showManageDialog) {
-        ListEditorDialog(
-            state = listEditor,
-            pending = uiState.pendingOperation,
-            onNameChanged = viewModel::onUpdateEditorName,
-            onDescriptionChanged = viewModel::onUpdateEditorDescription,
-            onPrivacyChanged = viewModel::onUpdateEditorPrivacy,
-            onSave = viewModel::onSubmitEditor,
-            onCancel = viewModel::onCancelEditor
-        )
     }
 
     activeCloudItem?.let { item ->
@@ -868,13 +773,10 @@ private fun CloudFilePickerDialog(
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun LibrarySelectorsRow(
-    sourceMode: LibrarySourceMode,
-    listTabs: List<LibraryListTab>,
     typeTabs: List<LibraryTypeTab>,
     sortOptions: List<LibrarySortOption>,
     genres: List<FilterOption>,
     years: List<FilterOption>,
-    selectedListKey: String?,
     selectedTypeTab: LibraryTypeTab?,
     selectedSortOption: LibrarySortOption,
     selectedGenre: String?,
@@ -882,14 +784,11 @@ private fun LibrarySelectorsRow(
     primaryFocusRequester: FocusRequester,
     expandedPicker: String?,
     onExpandedChange: (String, Boolean) -> Unit,
-    onSelectList: (String) -> Unit,
     onSelectType: (LibraryTypeTab) -> Unit,
     onSelectSort: (LibrarySortOption) -> Unit,
     onSelectGenre: (String?) -> Unit,
     onSelectYear: (String?) -> Unit
 ) {
-    val selectedListLabel = listTabs.firstOrNull { it.key == selectedListKey }?.localizedTitle()
-        ?: stringResource(R.string.action_select)
     val selectedTypeLabel = selectedTypeTab?.let {
         if (it.key == LibraryTypeTab.ALL_KEY) stringResource(R.string.library_type_all) else localizedTypeLabel(it.key)
     } ?: stringResource(R.string.library_type_all)
@@ -906,29 +805,10 @@ private fun LibrarySelectorsRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
         ) {
-            if (sourceMode == LibrarySourceMode.TRAKT) {
-                LibraryDropdownPicker(
-                    modifier = Modifier
-                        .weight(1f)
-                        .focusRequester(primaryFocusRequester),
-                    title = stringResource(R.string.library_filter_list),
-                    value = selectedListLabel,
-                    selectedValue = selectedListKey,
-                    expanded = expandedPicker == "list",
-                    options = listTabs.map { LibraryOption(it.localizedTitle(), it.key) },
-                    onExpandedChange = { onExpandedChange("list", it) },
-                    onSelect = { onSelectList(it.value) }
-                )
-            }
-
             LibraryDropdownPicker(
-                modifier = if (sourceMode == LibrarySourceMode.TRAKT) {
-                    Modifier.weight(1f)
-                } else {
-                    Modifier
-                        .weight(1f)
-                        .focusRequester(primaryFocusRequester)
-                },
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(primaryFocusRequester),
                 title = stringResource(R.string.library_filter_type),
                 value = selectedTypeLabel,
                 selectedValue = selectedTypeTab?.key,
@@ -1151,364 +1031,3 @@ private data class LibraryOption(
     val value: String
 )
 
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun LibraryActionsRow(
-    pending: Boolean,
-    isSyncing: Boolean,
-    onManageLists: () -> Unit,
-    onRefresh: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
-    ) {
-        Button(
-            onClick = onManageLists,
-            enabled = !pending && !isSyncing,
-            colors = ButtonDefaults.colors(
-                containerColor = NuvioTheme.colors.BackgroundCard,
-                contentColor = NuvioTheme.colors.TextPrimary
-            )
-        ) {
-            Text(stringResource(R.string.library_manage_lists))
-        }
-        Button(
-            onClick = onRefresh,
-            enabled = !pending && !isSyncing,
-            colors = ButtonDefaults.colors(
-                containerColor = NuvioTheme.colors.BackgroundCard,
-                contentColor = NuvioTheme.colors.TextPrimary
-            )
-        ) {
-            Text(if (isSyncing) stringResource(R.string.library_syncing_btn) else stringResource(R.string.library_sync_btn))
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun ManageListsDialog(
-    tabs: List<LibraryListTab>,
-    selectedKey: String?,
-    errorMessage: String?,
-    pending: Boolean,
-    onSelect: (String) -> Unit,
-    onCreate: () -> Unit,
-    onEdit: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    onDelete: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val personalTabs = remember(tabs) { tabs.filter { it.type == LibraryListTab.Type.PERSONAL } }
-    val firstFocusRequester = remember { FocusRequester() }
-    val closeFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(personalTabs.size) {
-        val target = if (personalTabs.isNotEmpty()) firstFocusRequester else closeFocusRequester
-        val focused = runCatching { target.requestFocus() }.isSuccess
-        if (!focused) {
-            delay(16)
-            runCatching { target.requestFocus() }
-        }
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Box(
-            modifier = Modifier
-                .width(620.dp)
-                .background(NuvioTheme.colors.BackgroundElevated, RoundedCornerShape(NuvioTheme.radii.xl))
-                .padding(NuvioTheme.spacing.xl)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(
-                    text = stringResource(R.string.library_manage_trakt_lists),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = NuvioTheme.colors.TextPrimary
-                )
-
-                if (errorMessage != null) {
-                    Text(
-                        text = errorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFFB6B6)
-                    )
-                }
-
-                if (personalTabs.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.library_no_lists),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = NuvioTheme.extendedColors.textSecondary
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(personalTabs, key = { it.key }) { tab ->
-                            val selected = tab.key == selectedKey
-                            Button(
-                                onClick = { onSelect(tab.key) },
-                                enabled = !pending,
-                                modifier = if (tab.key == personalTabs.firstOrNull()?.key) {
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .focusRequester(firstFocusRequester)
-                                } else {
-                                    Modifier.fillMaxWidth()
-                                },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = if (selected) NuvioTheme.colors.FocusBackground else NuvioTheme.colors.BackgroundCard,
-                                    contentColor = NuvioTheme.colors.TextPrimary
-                                )
-                            ) {
-                                Text(
-                                    text = tab.localizedTitle(),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        onClick = onCreate,
-                        enabled = !pending,
-                        colors = ButtonDefaults.colors(
-                            containerColor = NuvioTheme.colors.BackgroundCard,
-                            contentColor = NuvioTheme.colors.TextPrimary
-                        )
-                    ) { Text(stringResource(R.string.library_list_create)) }
-                    Button(
-                        onClick = onEdit,
-                        enabled = !pending && selectedKey != null,
-                        colors = ButtonDefaults.colors(
-                            containerColor = NuvioTheme.colors.BackgroundCard,
-                            contentColor = NuvioTheme.colors.TextPrimary
-                        )
-                    ) { Text(stringResource(R.string.library_list_edit)) }
-                    Button(
-                        onClick = onMoveUp,
-                        enabled = !pending && selectedKey != null,
-                        colors = ButtonDefaults.colors(
-                            containerColor = NuvioTheme.colors.BackgroundCard,
-                            contentColor = NuvioTheme.colors.TextPrimary
-                        )
-                    ) { Text(stringResource(R.string.library_list_move_up)) }
-                    Button(
-                        onClick = onMoveDown,
-                        enabled = !pending && selectedKey != null,
-                        colors = ButtonDefaults.colors(
-                            containerColor = NuvioTheme.colors.BackgroundCard,
-                            contentColor = NuvioTheme.colors.TextPrimary
-                        )
-                    ) { Text(stringResource(R.string.library_list_move_down)) }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        onClick = onDelete,
-                        enabled = !pending && selectedKey != null,
-                        colors = ButtonDefaults.colors(
-                            containerColor = Color(0xFF4A2323),
-                            contentColor = NuvioTheme.colors.TextPrimary
-                        )
-                    ) { Text(stringResource(R.string.library_list_delete)) }
-                    Button(
-                        onClick = onDismiss,
-                        enabled = !pending,
-                        modifier = Modifier.focusRequester(closeFocusRequester),
-                        colors = ButtonDefaults.colors(
-                            containerColor = NuvioTheme.colors.BackgroundCard,
-                            contentColor = NuvioTheme.colors.TextPrimary
-                        )
-                    ) { Text(stringResource(R.string.library_list_close)) }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun ListEditorDialog(
-    state: LibraryListEditorState,
-    pending: Boolean,
-    onNameChanged: (String) -> Unit,
-    onDescriptionChanged: (String) -> Unit,
-    onPrivacyChanged: (TraktListPrivacy) -> Unit,
-    onSave: () -> Unit,
-    onCancel: () -> Unit
-) {
-    val nameFocusRequester = remember { FocusRequester() }
-    val descriptionFocusRequester = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
-    var nameEditing by remember { mutableStateOf(false) }
-    var descriptionEditing by remember { mutableStateOf(false) }
-
-    fun isSelectKey(keyCode: Int): Boolean {
-        return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
-            keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
-            keyCode == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER
-    }
-
-    LaunchedEffect(Unit) {
-        nameFocusRequester.requestFocus()
-    }
-
-    NuvioDialog(
-        onDismiss = onCancel,
-        title = if (state.mode == LibraryListEditorState.Mode.CREATE) stringResource(R.string.library_list_create_dialog_title) else stringResource(R.string.library_list_edit_dialog_title),
-        width = 560.dp
-    ) {
-        androidx.compose.material3.OutlinedTextField(
-            value = state.name,
-            onValueChange = onNameChanged,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(nameFocusRequester)
-                .onFocusChanged {
-                    if (!it.isFocused) {
-                        nameEditing = false
-                    }
-                }
-                .onPreviewKeyEvent { event ->
-                    val native = event.nativeKeyEvent
-                    if (native.action == AndroidKeyEvent.ACTION_DOWN && isSelectKey(native.keyCode)) {
-                        nameEditing = true
-                        descriptionEditing = false
-                        keyboardController?.show()
-                    }
-                    false
-                },
-            enabled = !pending,
-            readOnly = !nameEditing,
-            singleLine = true,
-            maxLines = 1,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    nameEditing = false
-                    keyboardController?.hide()
-                }
-            ),
-            label = { androidx.compose.material3.Text(stringResource(R.string.library_list_name_label)) },
-            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                focusedTextColor = NuvioTheme.colors.TextPrimary,
-                unfocusedTextColor = NuvioTheme.colors.TextPrimary,
-                focusedContainerColor = NuvioTheme.colors.BackgroundCard,
-                unfocusedContainerColor = NuvioTheme.colors.BackgroundCard,
-                focusedBorderColor = NuvioTheme.colors.FocusRing,
-                unfocusedBorderColor = NuvioTheme.colors.Border,
-                focusedLabelColor = NuvioTheme.colors.TextSecondary,
-                unfocusedLabelColor = NuvioTheme.colors.TextTertiary,
-                cursorColor = NuvioTheme.colors.FocusRing
-            )
-        )
-
-        androidx.compose.material3.OutlinedTextField(
-            value = state.description,
-            onValueChange = onDescriptionChanged,
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(descriptionFocusRequester)
-                .onFocusChanged {
-                    if (!it.isFocused) {
-                        descriptionEditing = false
-                    }
-                }
-                .onPreviewKeyEvent { event ->
-                    val native = event.nativeKeyEvent
-                    if (native.action == AndroidKeyEvent.ACTION_DOWN && isSelectKey(native.keyCode)) {
-                        descriptionEditing = true
-                        nameEditing = false
-                        keyboardController?.show()
-                    }
-                    false
-                },
-            enabled = !pending,
-            readOnly = !descriptionEditing,
-            minLines = 3,
-            maxLines = 5,
-            label = { androidx.compose.material3.Text(stringResource(R.string.library_list_description_label)) },
-            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                focusedTextColor = NuvioTheme.colors.TextPrimary,
-                unfocusedTextColor = NuvioTheme.colors.TextPrimary,
-                focusedContainerColor = NuvioTheme.colors.BackgroundCard,
-                unfocusedContainerColor = NuvioTheme.colors.BackgroundCard,
-                focusedBorderColor = NuvioTheme.colors.FocusRing,
-                unfocusedBorderColor = NuvioTheme.colors.Border,
-                focusedLabelColor = NuvioTheme.colors.TextSecondary,
-                unfocusedLabelColor = NuvioTheme.colors.TextTertiary,
-                cursorColor = NuvioTheme.colors.FocusRing
-            )
-        )
-
-        Text(
-            text = stringResource(R.string.library_list_privacy),
-            style = MaterialTheme.typography.bodyMedium,
-            color = NuvioTheme.extendedColors.textSecondary
-        )
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(TraktListPrivacy.entries.toList(), key = { it.name }) { privacy ->
-                val selected = privacy == state.privacy
-                Button(
-                    onClick = { onPrivacyChanged(privacy) },
-                    enabled = !pending,
-                    colors = ButtonDefaults.colors(
-                        containerColor = if (selected) NuvioTheme.colors.FocusBackground else NuvioTheme.colors.BackgroundCard,
-                        contentColor = NuvioTheme.colors.TextPrimary
-                    )
-                ) {
-                    Text(privacy.apiValue.replaceFirstChar { it.uppercase() })
-                }
-            }
-        }
-
-        Button(
-            onClick = onSave,
-            enabled = !pending,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.colors(
-                containerColor = NuvioTheme.colors.BackgroundCard,
-                contentColor = NuvioTheme.colors.TextPrimary
-            )
-        ) {
-            Text(if (pending) stringResource(R.string.action_saving) else stringResource(R.string.action_save))
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun ConfirmDeleteDialog(
-    pending: Boolean,
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit
-) {
-    NuvioDialog(
-        onDismiss = onCancel,
-        title = stringResource(R.string.library_delete_title),
-        subtitle = stringResource(R.string.library_delete_subtitle),
-        width = 420.dp
-    ) {
-        Button(
-            onClick = onConfirm,
-            enabled = !pending,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.colors(
-                containerColor = Color(0xFF4A2323),
-                contentColor = NuvioTheme.colors.TextPrimary
-            )
-        ) {
-            Text(stringResource(R.string.library_list_delete))
-        }
-    }
-}

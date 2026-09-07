@@ -1,22 +1,11 @@
 package com.nuvio.tv.ui.screens.home
 
-import android.util.Log
 import androidx.lifecycle.viewModelScope
-import com.nuvio.tv.R
-import com.nuvio.tv.core.network.NetworkResult
-import com.nuvio.tv.domain.model.Addon
-import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.Collection
 import com.nuvio.tv.domain.model.HomeLayout
-import com.nuvio.tv.domain.model.catalogRowStableKey
-import com.nuvio.tv.domain.model.enabledAddons
 import com.nuvio.tv.domain.model.legacyKey
-import com.nuvio.tv.domain.model.mergeCatalogPage
-import com.nuvio.tv.domain.model.nextCatalogSkip
-import com.nuvio.tv.domain.model.skipStep
 import com.nuvio.tv.domain.model.WatchedItem
-import com.nuvio.tv.domain.model.supportsExtra
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -24,11 +13,9 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import com.nuvio.tv.domain.model.MetaPreview
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.withPermit
 import com.nuvio.tv.core.util.filterReleasedItems
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -48,54 +35,9 @@ internal fun HomeViewModel.observeCollectionsPipeline() {
             .debounce(300)
             .collectLatest { collections ->
                 collectionsCache = collections
-                rebuildCatalogOrder(addonsCache)
+                rebuildCatalogOrder()
                 scheduleUpdateCatalogRows()
             }
-    }
-}
-
-internal fun HomeViewModel.loadHomeCatalogOrderPreferencePipeline() {
-    viewModelScope.launch {
-        layoutPreferenceDataStore.homeCatalogOrderKeys.collectLatest { keys ->
-            homeCatalogOrderKeys = keys
-            rebuildCatalogOrder(addonsCache)
-            scheduleUpdateCatalogRows()
-        }
-    }
-}
-
-internal fun HomeViewModel.loadFollowAddonsOrderPipeline() {
-    viewModelScope.launch {
-        layoutPreferenceDataStore.followAddonsOrder.collectLatest { enabled ->
-            followAddonsOrderEnabled = enabled
-            rebuildCatalogOrder(addonsCache)
-            scheduleUpdateCatalogRows()
-        }
-    }
-}
-
-internal fun HomeViewModel.loadDisabledHomeCatalogPreferencePipeline() {
-    viewModelScope.launch {
-        layoutPreferenceDataStore.disabledHomeCatalogKeys.collectLatest { keys ->
-            val newKeys = keys.toSet()
-            if (newKeys == disabledHomeCatalogKeys) return@collectLatest
-            disabledHomeCatalogKeys = newKeys
-            rebuildCatalogOrder(addonsCache)
-            if (addonsCache.isNotEmpty()) {
-                loadAllCatalogsPipeline(addonsCache)
-            } else {
-                scheduleUpdateCatalogRows()
-            }
-        }
-    }
-}
-
-internal fun HomeViewModel.loadCustomCatalogTitlesPipeline() {
-    viewModelScope.launch {
-        layoutPreferenceDataStore.customCatalogTitles.collectLatest { titles ->
-            customCatalogTitles = titles
-            scheduleUpdateCatalogRows()
-        }
     }
 }
 
@@ -108,446 +50,13 @@ internal fun HomeViewModel.observeTmdbSettingsPipeline() {
                 currentTmdbSettings = settings
                 val tmdbEnabledForLayout = settings.enabled &&
                     (_uiState.value.homeLayout != HomeLayout.MODERN || settings.modernHomeEnabled)
-                val enrichEnabled = tmdbEnabledForLayout || externalMetaPrefetchEnabled
-                _uiState.update { it.copy(heroEnrichmentEnabled = enrichEnabled) }
+                _uiState.update { it.copy(heroEnrichmentEnabled = tmdbEnabledForLayout) }
                 if (languageChanged) {
                     // Allow re-enrichment with the new language on next focus.
                     prefetchedTmdbIds.clear()
-                    prefetchedExternalMetaIds.clear()
                 }
                 scheduleUpdateCatalogRows()
             }
-    }
-}
-
-@OptIn(FlowPreview::class)
-internal fun HomeViewModel.observeInstalledAddonsPipeline() {
-    viewModelScope.launch {
-        addonRepository.getInstalledAddons()
-            .distinctUntilChanged()
-            .collectLatest { installedAddons ->
-                val addons = installedAddons.enabledAddons()
-                addonsCache = addons
-                loadAllCatalogsPipeline(addons)
-            }
-    }
-}
-
-internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
-    addons: List<Addon>,
-    forceReload: Boolean = false
-) {
-    val signature = buildHomeCatalogLoadSignature(addons)
-    val hasActiveLoads = synchronized(activeCatalogLoadJobs) { activeCatalogLoadJobs.any { it.isActive } }
-    if (!forceReload &&
-        signature == activeCatalogLoadSignature &&
-        (hasActiveLoads || hasAnyCatalogRows())
-    ) {
-        return
-    }
-
-    activeCatalogLoadSignature = signature
-    catalogsLoadInProgress = true
-    catalogLoadGeneration += 1
-    val generation = catalogLoadGeneration
-    cancelInFlightCatalogLoads()
-
-    // On reload (not first load), keep existing UI data visible while new
-    // catalogs load in the background to avoid a flash of empty content.
-    val isReload = _uiState.value.catalogRows.isNotEmpty() || _uiState.value.homeRows.isNotEmpty()
-    if (!isReload) {
-        _uiState.update { it.copy(isLoading = true, error = null, installedAddonsCount = addons.size) }
-        synchronized(catalogStateLock) {
-            catalogOrder.clear()
-        }
-        clearCatalogData()
-    } else {
-        _uiState.update { it.copy(error = null, installedAddonsCount = addons.size) }
-    }
-    posterStatusReconcileJob?.cancel()
-    reconcilePosterStatusObserversPipeline(emptyList())
-    _fullCatalogRows.value = emptyList()
-    hasRenderedFirstCatalog = false
-    trailerPreviewLoadingIds.clear()
-    trailerPreviewNegativeCache.clear()
-    trailerPreviewUrlsState.clear()
-    trailerPreviewAudioUrlsState.clear()
-    activeTrailerPreviewItemId = null
-    trailerPreviewRequestVersion = 0L
-    prefetchedExternalMetaIds.clear()
-    externalMetaPrefetchInFlightIds.clear()
-    externalMetaPrefetchJob?.cancel()
-    pendingExternalMetaPrefetchItemId = null
-    prefetchedTmdbIds.clear()
-    tmdbEnrichFocusJob?.cancel()
-    pendingTmdbEnrichItemId = null
-    lastHeroEnrichmentSignature = null
-    lastHeroEnrichedItems = emptyList()
-    heroItemOrder = emptyList()
-
-    try {
-        if (addons.isEmpty()) {
-            catalogsLoadInProgress = false
-            _uiState.update { it.copy(isLoading = false, error = appContext.getString(R.string.home_error_no_addons)) }
-            return
-        }
-
-        rebuildCatalogOrder(addons)
-
-        // Hero has its own catalog sources (heroCatalogKeys) configured
-        // independently in Layout Settings.  When the user has explicitly
-        // selected hero catalogs, load those even if they are disabled from
-        // home rows.  When no hero catalogs are selected, the hero simply
-        // piggybacks on whatever home catalogs are loaded — if none are
-        // loaded, the hero has no data and won't render.
-        val heroCatalogSet = currentHeroCatalogKeys.toSet()
-        val hasHeroSelections = heroCatalogSet.isNotEmpty()
-
-        if (isCatalogOrderEmpty() && !hasHeroSelections) {
-            catalogsLoadInProgress = false
-            _uiState.update { it.copy(isLoading = false, error = appContext.getString(R.string.home_error_no_catalog_addons)) }
-            return
-        }
-
-        val catalogsToLoad = addons.flatMap { addon ->
-            addon.catalogs
-                .filterNot {
-                    !it.shouldShowOnHome() || isCatalogDisabled(
-                        addonBaseUrl = addon.baseUrl,
-                        addonId = addon.id,
-                        type = it.apiType,
-                        catalogId = it.id,
-                        catalogName = it.name
-                    )
-                }
-                .map { catalog -> addon to catalog }
-        }
-
-        // Load hero-selected catalogs even if disabled from home rows —
-        // the hero has its own catalog source independent of home rows.
-        val alreadyLoadingKeys = catalogsToLoad.map { (addon, catalog) ->
-            catalogKey(addonId = addon.id, type = catalog.apiType, catalogId = catalog.id)
-        }.toSet()
-        val heroOnlyCatalogs = if (hasHeroSelections) {
-            addons.flatMap { addon ->
-                addon.catalogs
-                    .filter { catalog ->
-                        val key = catalogKey(addonId = addon.id, type = catalog.apiType, catalogId = catalog.id)
-                        key in heroCatalogSet && key !in alreadyLoadingKeys && !catalog.isSearchOnlyCatalog()
-                    }
-                    .map { catalog -> addon to catalog }
-            }
-        } else {
-            emptyList()
-        }
-
-        val allCatalogsToLoad = catalogsToLoad + heroOnlyCatalogs
-        if (allCatalogsToLoad.isEmpty()) {
-            // No home catalogs and no hero catalogs to load —
-            // but collections may still exist to render.
-            catalogsLoadInProgress = false
-            if (hasCatalogOrderEntries()) {
-                scheduleUpdateCatalogRows()
-            } else {
-                _uiState.update { it.copy(isLoading = false, error = appContext.getString(R.string.home_error_no_catalog_addons)) }
-            }
-            return
-        }
-
-        // ── Lazy loading: split into eager and deferred ──
-        val heroOnlyKeys = heroOnlyCatalogs.map { (addon, catalog) ->
-            catalogKey(addonId = addon.id, type = catalog.apiType, catalogId = catalog.id)
-        }.toSet()
-
-        // Build display title helper (respects custom titles)
-        val titlesSnapshot = customCatalogTitles
-        val showTypeSuffix = _uiState.value.catalogTypeSuffixEnabled
-        val strTypeMovie = appContext.getString(R.string.type_movie)
-        val strTypeSeries = appContext.getString(R.string.type_series)
-        fun displayTitle(addon: Addon, catalog: CatalogDescriptor): String {
-            val key = catalogKey(addonId = addon.id, type = catalog.apiType, catalogId = catalog.id)
-            val custom = titlesSnapshot[key]
-            val baseName = if (!custom.isNullOrBlank()) custom else catalog.name
-            val catalogName = baseName.replaceFirstChar { it.uppercase() }
-            if (!showTypeSuffix) return catalogName
-            val typeLabel = when (catalog.apiType.lowercase()) {
-                "movie" -> strTypeMovie.ifBlank { catalog.apiType.replaceFirstChar { it.uppercase() } }
-                "series" -> strTypeSeries.ifBlank { catalog.apiType.replaceFirstChar { it.uppercase() } }
-                else -> catalog.apiType.replaceFirstChar { it.uppercase() }
-            }
-            return "$catalogName - $typeLabel"
-        }
-
-        // Determine which home catalogs to load eagerly vs lazily.
-        // Grid layout loads all catalogs eagerly since it doesn't support
-        // placeholder shimmer rows — all content must be available upfront.
-        // Wait for layout preferences if not yet ready, to avoid wrong eager/lazy split.
-        if (!_uiState.value.layoutPreferencesReady) {
-            _uiState.first { it.layoutPreferencesReady }
-        }
-        val isGridLayout = _uiState.value.homeLayout == HomeLayout.GRID
-        val eagerHomeCatalogs = if (isGridLayout) catalogsToLoad else catalogsToLoad.take(eagerCatalogLoadCount)
-        val lazyHomeCatalogs = if (isGridLayout) emptyList() else catalogsToLoad.drop(eagerCatalogLoadCount)
-
-        // Build placeholder descriptors for lazy catalogs
-        synchronized(catalogStateLock) {
-            pendingLazyCatalogs.clear()
-            placeholderDescriptors.clear()
-        }
-        lazyLoadRequestedKeys.clear()
-
-        (eagerHomeCatalogs + lazyHomeCatalogs).forEach { (addon, catalog) ->
-            val key = catalogKey(addonId = addon.id, type = catalog.apiType, catalogId = catalog.id)
-            synchronized(catalogStateLock) {
-                placeholderDescriptors.add(
-                    HomeViewModel.PlaceholderDescriptor(
-                        catalogKey = key,
-                        addonId = addon.id,
-                        addonName = addon.displayName,
-                        addonBaseUrl = addon.baseUrl,
-                        catalogId = catalog.id,
-                        catalogName = catalog.name,
-                        apiType = catalog.apiType,
-                        displayTitle = displayTitle(addon, catalog)
-                    )
-                )
-            }
-        }
-
-        lazyHomeCatalogs.forEach { (addon, catalog) ->
-            val key = catalogKey(addonId = addon.id, type = catalog.apiType, catalogId = catalog.id)
-            synchronized(catalogStateLock) {
-                pendingLazyCatalogs[key] = addon to catalog
-            }
-        }
-
-        Log.d(HomeViewModel.TAG,
-            "Lazy loading: eager=${eagerHomeCatalogs.size} lazy=${lazyHomeCatalogs.size}"
-        )
-
-        val eagerCatalogs = eagerHomeCatalogs + heroOnlyCatalogs
-        pendingCatalogLoads = eagerCatalogs.size
-        eagerCatalogs.forEach { (addon, catalog) ->
-            loadCatalogPipeline(addon, catalog, generation)
-        }
-
-        // Immediately schedule an update so placeholder rows appear in the UI
-        // while catalogs are still loading.
-        scheduleUpdateCatalogRows()
-
-        // Safety flush: if catalogs trickle in slowly (e.g., slow addons),
-        // ensure the user sees whatever content is available within a
-        // reasonable window, even if not all catalogs have completed yet.
-        if (eagerCatalogs.size > 1) {
-            viewModelScope.launch {
-                delay(800L)
-                if (pendingCatalogLoads > 0 && hasAnyCatalogRows()) {
-                    Log.d(HomeViewModel.TAG, "Safety flush: pending=$pendingCatalogLoads — forcing UI update")
-                    scheduleUpdateCatalogRows()
-                }
-            }
-        }
-    } catch (e: Exception) {
-        catalogsLoadInProgress = false
-        _uiState.update { it.copy(isLoading = false, error = e.message) }
-    }
-}
-
-/**
- * Additively loads hero-selected catalogs that are not already in [catalogsMap].
- * Unlike [loadAllCatalogsPipeline] this does NOT clear existing state — it only
- * fills in missing hero catalog data so the hero section can render.
- *
- * Called from the presentation pipeline when [currentHeroCatalogKeys] arrives
- * after the initial catalog load (due to the layout preference debounce).
- */
-internal fun HomeViewModel.loadHeroCatalogsPipeline() {
-    val heroCatalogKeys = currentHeroCatalogKeys
-    if (heroCatalogKeys.isEmpty() || addonsCache.isEmpty()) return
-
-    val heroCatalogSet = heroCatalogKeys.toSet()
-    val alreadyLoadedKeys = snapshotCatalogKeys()
-    val missingHeroKeys = heroCatalogSet - alreadyLoadedKeys
-    if (missingHeroKeys.isEmpty()) {
-        // All hero catalogs already loaded — just refresh presentation
-        scheduleUpdateCatalogRows()
-        return
-    }
-
-    val heroToLoad = addonsCache.flatMap { addon ->
-        addon.catalogs
-            .filter { catalog ->
-                val key = catalogKey(addonId = addon.id, type = catalog.apiType, catalogId = catalog.id)
-                key in missingHeroKeys && !catalog.isSearchOnlyCatalog()
-            }
-            .map { catalog -> addon to catalog }
-    }
-
-    if (heroToLoad.isEmpty()) {
-        scheduleUpdateCatalogRows()
-        return
-    }
-
-    val generation = catalogLoadGeneration
-    pendingCatalogLoads += heroToLoad.size
-    heroToLoad.forEach { (addon, catalog) ->
-        loadCatalogPipeline(addon, catalog, generation)
-    }
-}
-
-internal fun HomeViewModel.loadCatalogPipeline(
-    addon: Addon,
-    catalog: CatalogDescriptor,
-    generation: Long
-) {
-    val loadJob = viewModelScope.launch {
-        var hasCountedCompletion = false
-        catalogLoadSemaphore.withPermit {
-            if (generation != catalogLoadGeneration) return@withPermit
-            val supportsSkip = catalog.supportsExtra("skip")
-            val skipStep = catalog.skipStep()
-            Log.d(
-                HomeViewModel.TAG,
-                "Loading home catalog addonId=${addon.id} addonName=${addon.name} type=${catalog.apiType} catalogId=${catalog.id} catalogName=${catalog.name} supportsSkip=$supportsSkip skipStep=$skipStep"
-            )
-            catalogRepository.getCatalog(
-                addonBaseUrl = addon.baseUrl,
-                addonId = addon.id,
-                addonName = addon.displayName,
-                catalogId = catalog.id,
-                catalogName = catalog.name,
-                type = catalog.apiType,
-                skip = 0,
-                skipStep = skipStep,
-                supportsSkip = supportsSkip
-            ).collect { result ->
-                if (generation != catalogLoadGeneration) return@collect
-                when (result) {
-                    is NetworkResult.Success -> {
-                        val key = catalogKey(
-                            addonId = addon.id,
-                            type = catalog.apiType,
-                            catalogId = catalog.id
-                        )
-                        replaceCatalogRow(key, result.data)
-                        // Remove placeholder descriptor now that real data is available
-                        synchronized(catalogStateLock) {
-                            placeholderDescriptors.removeAll { it.catalogKey == key }
-                        }
-                        if (!hasCountedCompletion) {
-                            pendingCatalogLoads = (pendingCatalogLoads - 1).coerceAtLeast(0)
-                            hasCountedCompletion = true
-                        }
-                        Log.d(
-                            HomeViewModel.TAG,
-                            "Home catalog loaded addonId=${addon.id} type=${catalog.apiType} catalogId=${catalog.id} items=${result.data.items.size} pending=$pendingCatalogLoads"
-                        )
-                        if (pendingCatalogLoads == 0) {
-                            catalogsLoadInProgress = false
-                        }
-                        // Batch updates: only trigger a UI rebuild when all
-                        // eager catalogs have completed, or let the debounce
-                        // in scheduleUpdateCatalogRows coalesce intermediate
-                        // arrivals.  When pending == 0 we always flush.
-                        if (pendingCatalogLoads == 0) {
-                            scheduleUpdateCatalogRows()
-                        } else if (!hasRenderedFirstCatalog) {
-                            // First content arriving — show it quickly so the
-                            // user sees something beyond placeholders.
-                            scheduleUpdateCatalogRows()
-                        }
-                        // Otherwise, let the next completion or the final
-                        // pendingCatalogLoads==0 trigger the update.
-                    }
-                    is NetworkResult.Error -> {
-                        val errorKey = catalogKey(
-                            addonId = addon.id,
-                            type = catalog.apiType,
-                            catalogId = catalog.id
-                        )
-                        // Remove placeholder on error so it doesn't show forever
-                        synchronized(catalogStateLock) {
-                            placeholderDescriptors.removeAll { it.catalogKey == errorKey }
-                        }
-                        if (!hasCountedCompletion) {
-                            pendingCatalogLoads = (pendingCatalogLoads - 1).coerceAtLeast(0)
-                            hasCountedCompletion = true
-                        }
-                        Log.w(
-                            HomeViewModel.TAG,
-                            "Home catalog failed addonId=${addon.id} type=${catalog.apiType} catalogId=${catalog.id} code=${result.code} message=${result.message}"
-                        )
-                        if (pendingCatalogLoads == 0) {
-                            catalogsLoadInProgress = false
-                        }
-                        // Same batching logic as success path.
-                        if (pendingCatalogLoads == 0 || !hasRenderedFirstCatalog) {
-                            scheduleUpdateCatalogRows()
-                        }
-                    }
-                    NetworkResult.Loading -> {
-                        /* Handled by individual row */
-                    }
-                }
-            }
-        }
-    }
-    registerCatalogLoadJob(loadJob)
-}
-
-internal fun HomeViewModel.loadMoreCatalogItemsPipeline(catalogId: String, addonId: String, type: String) {
-    val key = catalogKey(addonId = addonId, type = type, catalogId = catalogId)
-    val currentRow = readCatalogRow(key)
-
-    if (currentRow == null) {
-        return
-    }
-
-    if (currentRow.isLoading || !currentRow.hasMore) {
-        return
-    }
-    if (key in _loadingCatalogs.value) {
-        return
-    }
-
-    updateCatalogRow(key) { it.copy(isLoading = true) }
-    _loadingCatalogs.update { it + key }
-
-    viewModelScope.launch {
-        val addon = addonsCache.find { it.id == addonId }
-        if (addon == null) {
-            return@launch
-        }
-
-        val nextSkip = currentRow.nextCatalogSkip()
-        catalogRepository.getCatalog(
-            addonBaseUrl = addon.baseUrl,
-            addonId = addon.id,
-            addonName = addon.displayName,
-            catalogId = catalogId,
-            catalogName = currentRow.catalogName,
-            type = currentRow.apiType,
-            skip = nextSkip,
-            skipStep = currentRow.skipStep,
-            supportsSkip = currentRow.supportsSkip
-        ).collect { result ->
-            when (result) {
-                is NetworkResult.Success -> {
-                    updateCatalogRow(key) { latestRow ->
-                        val mergedRow = latestRow.mergeCatalogPage(result.data)
-                        mergedRow
-                    }
-                    _loadingCatalogs.update { it - key }
-                    scheduleUpdateCatalogRows()
-                }
-                is NetworkResult.Error -> {
-                    updateCatalogRow(key) { it.copy(isLoading = false) }
-                    _loadingCatalogs.update { it - key }
-                    scheduleUpdateCatalogRows()
-                }
-                NetworkResult.Loading -> { }
-            }
-        }
     }
 }
 
@@ -559,13 +68,10 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
     val currentGridItems = _uiState.value.gridItems
     val heroSectionEnabled = _uiState.value.heroSectionEnabled
     val hideUnreleased = _uiState.value.hideUnreleasedContent
-    val titlesSnapshot = customCatalogTitles
 
     val (displayRows, baseHeroItems, baseGridItems, fullRowsFiltered) = withContext(Dispatchers.Default) {
         val rawRows = orderedKeys.mapNotNull { key ->
-            val row = catalogSnapshot[key] ?: return@mapNotNull null
-            val custom = titlesSnapshot[key]
-            if (!custom.isNullOrBlank()) row.copy(catalogName = custom) else row
+            catalogSnapshot[key]
         }
         val orderedRows = if (hideUnreleased) {
             val today = LocalDate.now()
@@ -694,85 +200,29 @@ internal suspend fun HomeViewModel.updateCatalogRowsPipeline() {
 
     val (computedHomeRows, nextGridItems) = withContext(Dispatchers.Default) {
         val computedHomeRows = buildList {
-            val displayRowsByKey = displayRows.associateBy { it.legacyKey() }
-            // Build a lookup of placeholder descriptors by key for lazy catalogs
-            val placeholdersByKey = synchronized(catalogStateLock) {
-                placeholderDescriptors.associateBy { it.catalogKey }
-            }
+            // Local collection rows (pinned first, remaining in catalog order).
             collectionsCache.forEach { collection ->
-                val key = "collection_${collection.id}"
-            if (collection.pinToTop && key !in disabledHomeCatalogKeys) {
-                add(HomeRow.CollectionRow(collection))
-            }
-        }
-        for (key in orderedKeys) {
-            if (key in disabledHomeCatalogKeys) continue
-            val collectionEntry = collectionsSnapshot[key]
-            if (collectionEntry != null) {
-                if (!collectionEntry.pinToTop) {
-                    add(HomeRow.CollectionRow(collectionEntry))
+                if (collection.pinToTop) {
+                    add(HomeRow.CollectionRow(collection))
                 }
-            } else {
-                    val catalogRow = displayRowsByKey[key]
-                    if (catalogRow != null && catalogRow.items.isNotEmpty()) {
-                        add(HomeRow.Catalog(catalogRow))
-                    } else {
-                        val placeholder = placeholdersByKey[key]
-                        if (placeholder != null) {
-                        if (currentLayout == HomeLayout.MODERN) {
-                            add(HomeRow.PlaceholderCatalog(
-                                catalogKey = placeholder.catalogKey,
-                                stableCatalogKey = catalogRowStableKey(
-                                    placeholder.addonId,
-                                    placeholder.addonBaseUrl,
-                                    placeholder.apiType,
-                                    placeholder.catalogId
-                                ),
-                                addonId = placeholder.addonId,
-                                addonName = placeholder.addonName,
-                                addonBaseUrl = placeholder.addonBaseUrl,
-                                catalogId = placeholder.catalogId,
-                                catalogName = placeholder.catalogName,
-                                apiType = placeholder.apiType,
-                                displayTitle = placeholder.displayTitle
-                            ))
-                        } else {
-                            val fakeItems = (0 until 8).map { i ->
-                                MetaPreview(
-                                    id = "__placeholder_${placeholder.catalogKey}_$i",
-                                    type = com.nuvio.tv.domain.model.ContentType.fromString(placeholder.apiType),
-                                    rawType = placeholder.apiType,
-                                    name = " ",
-                                    poster = "placeholder://empty",
-                                    posterShape = com.nuvio.tv.domain.model.PosterShape.POSTER,
-                                    background = null,
-                                    logo = null,
-                                    description = null,
-                                    releaseInfo = " ",
-                                    imdbRating = null,
-                                    genres = emptyList()
-                                )
-                            }
-                            add(HomeRow.Catalog(CatalogRow(
-                                addonId = placeholder.addonId,
-                                addonName = placeholder.addonName,
-                                addonBaseUrl = placeholder.addonBaseUrl,
-                                catalogId = placeholder.catalogId,
-                                catalogName = placeholder.catalogName,
-                                type = com.nuvio.tv.domain.model.ContentType.fromString(placeholder.apiType),
-                                rawType = placeholder.apiType,
-                                items = fakeItems,
-                                isLoading = true,
-                                hasMore = false
-                            )))
-                        }
+            }
+            val displayRowsByKey = displayRows.associateBy { it.legacyKey() }
+            for (key in orderedKeys) {
+                val collectionEntry = collectionsSnapshot[key]
+                if (collectionEntry != null) {
+                    if (!collectionEntry.pinToTop) {
+                        add(HomeRow.CollectionRow(collectionEntry))
                     }
+                    continue
+                }
+                val catalogRow = displayRowsByKey[key]
+                if (catalogRow != null && catalogRow.items.isNotEmpty()) {
+                    add(HomeRow.Catalog(catalogRow))
                 }
             }
         }
-    }
 
-    val nextGridItems = if (currentLayout == HomeLayout.GRID) {
+        val nextGridItems = if (currentLayout == HomeLayout.GRID) {
         val posterCardWidthDp = _uiState.value.posterCardWidthDp
         val itemsPerRow = when (posterCardWidthDp) {
             104 -> 7; 112 -> 6; 120 -> 6; 126 -> 6; 134 -> 5; 140 -> 5; else -> 6
@@ -992,15 +442,11 @@ internal fun HomeViewModel.reconcilePosterStatusObserversPipeline(rows: List<Cat
             ) { fullyWatched, watchedItems ->
                 fullyWatched to watchedItems
             }.collectLatest { (fullyWatched, watchedItems) ->
-                val effectiveFullyWatched = if (watchProgressRepository.isTraktProgressActive()) {
-                    fullyWatched
-                } else {
-                    reconcileFullyWatchedFromLocalItems(
-                        fullyWatched = fullyWatched,
-                        watchedItems = watchedItems,
-                        seriesContentIds = allSeriesItemsByKey.values
-                    )
-                }
+                val effectiveFullyWatched = reconcileFullyWatchedFromLocalItems(
+                    fullyWatched = fullyWatched,
+                    watchedItems = watchedItems,
+                    seriesContentIds = allSeriesItemsByKey.values
+                )
                 val seriesStatus = buildMap {
                     allSeriesItemsByKey.forEach { (statusKey, contentId) ->
                         put(statusKey, contentId in effectiveFullyWatched)

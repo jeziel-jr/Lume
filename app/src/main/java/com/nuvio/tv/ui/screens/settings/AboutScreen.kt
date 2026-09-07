@@ -44,7 +44,6 @@ import com.nuvio.tv.updater.UpdateViewModel
 
 @Composable
 fun AboutScreen(
-    onNavigateToSupportersContributors: () -> Unit = {},
     onBackPress: () -> Unit = {}
 ) {
     BackHandler { onBackPress() }
@@ -53,15 +52,12 @@ fun AboutScreen(
         title = stringResource(R.string.about_title),
         subtitle = stringResource(R.string.about_subtitle)
     ) {
-        AboutSettingsContent(
-            onNavigateToSupportersContributors = onNavigateToSupportersContributors
-        )
+        AboutSettingsContent()
     }
 }
 
 @Composable
 fun AboutSettingsContent(
-    onNavigateToSupportersContributors: () -> Unit = {},
     initialFocusRequester: FocusRequester? = null
 ) {
     val context = LocalContext.current

@@ -8,16 +8,9 @@ import android.util.Log
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Divider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,9 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,8 +31,6 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.domain.model.HomeLayout
-import com.nuvio.tv.domain.model.LibraryListTab
-import com.nuvio.tv.domain.model.LibrarySourceMode
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.ui.components.ErrorState
 import com.nuvio.tv.ui.components.LoadingIndicator
@@ -51,7 +39,6 @@ import com.nuvio.tv.ui.components.PosterCardDefaults
 import com.nuvio.tv.ui.components.PosterCardStyle
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
-import com.nuvio.tv.data.local.StartupAuthNotice
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -152,8 +139,9 @@ fun HomeScreen(
         initialCwResolved,
         modernPresentationReady
     ) {
-        // Track that addons are known (even if isLoading flipped too fast to catch).
-        if (uiState.isLoading || hasCatalogContent || uiState.installedAddonsCount > 0) {
+        // Track that catalog loading has started at least once (isLoading
+        // may flip too fast to catch otherwise).
+        if (uiState.isLoading || hasCatalogContent || hasCollectionContent || hasHeroContent) {
             catalogLoadingStarted = true
         }
         // Wait until catalog loading has completed with content AND the CW
@@ -163,19 +151,16 @@ fun HomeScreen(
             !uiState.isLoading &&
             initialCwResolved &&
             modernPresentationReady &&
-            // When addons are installed, require at least one catalog row.
-            (hasCatalogContent || uiState.installedAddonsCount == 0)
+            hasCatalogContent
         ) {
-            Log.d("HomeGate", "RELEASE: catalogs=$hasCatalogContent cwResolved=$initialCwResolved cwItems=${uiState.continueWatchingItems.size} addons=${uiState.installedAddonsCount}")
+            Log.d("HomeGate", "RELEASE: catalogs=$hasCatalogContent cwResolved=$initialCwResolved cwItems=${uiState.continueWatchingItems.size}")
             homeStableGateReleased = true
         }
     }
 
     LaunchedEffect(Unit) {
         // Safety timeout — if catalogs and CW haven't loaded within this
-        // window, show whatever is available.  Covers edge cases like
-        // clean cache (addons loading from remote sync) and users with
-        // no addons at all.
+        // window, show whatever is available.
         delay(HOME_STABLE_GATE_TIMEOUT_MS)
         if (!homeStableGateReleased) {
             Log.d("HomeGate", "RELEASE timeout: isLoading=${uiState.isLoading} cwResolved=$initialCwResolved catalogs=$hasCatalogContent cwItems=${uiState.continueWatchingItems.size}")
@@ -197,8 +182,6 @@ fun HomeScreen(
         )
     }
 
-    val noAddonsError = stringResource(R.string.home_error_no_addons)
-    val noCatalogAddonsError = stringResource(R.string.home_error_no_catalog_addons)
     val hasAnyContent = uiState.catalogRows.isNotEmpty() ||
         uiState.continueWatchingItems.isNotEmpty() ||
         uiState.heroItems.isNotEmpty() ||
@@ -206,8 +189,6 @@ fun HomeScreen(
     val showStartupLoader = when {
         !uiState.layoutPreferencesReady -> true
         uiState.isLoading && !hasAnyContent -> true
-        uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> !homeStableGateReleased
-        uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> !homeStableGateReleased
         uiState.error != null && uiState.catalogRows.isEmpty() -> false
         !uiState.isLoading && !hasAnyContent -> !homeStableGateReleased
         else -> !homeStableGateReleased || !modernPresentationReady || !showHomeContentWithAnimation
@@ -225,40 +206,6 @@ fun HomeScreen(
                 Unit
             }
 
-            uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> {
-                if (!homeStableGateReleased) {
-                    Unit
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.home_no_addons),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = NuvioTheme.colors.TextSecondary
-                        )
-                    }
-                }
-            }
-
-            uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> {
-                if (!homeStableGateReleased) {
-                    Unit
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.home_no_catalog_addons),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = NuvioTheme.colors.TextSecondary
-                        )
-                    }
-                }
-            }
-
             uiState.error != null && uiState.catalogRows.isEmpty() -> {
                 ErrorState(
                     message = uiState.error ?: stringResource(R.string.error_generic),
@@ -267,8 +214,7 @@ fun HomeScreen(
             }
 
             !uiState.isLoading && !hasAnyContent -> {
-                // Don't show "no catalogs" until the stable gate has released —
-                // addons may still be loading from remote after a cache clear.
+                // Don't show "no catalogs" until the stable gate has released.
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
@@ -379,29 +325,6 @@ fun HomeScreen(
                 LoadingIndicator()
             }
         }
-
-        val startupAuthNotice = uiState.startupAuthNotice
-        if (startupAuthNotice != null) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = NuvioTheme.spacing.xl)
-                    .background(
-                        color = Color(0xFF5A1C1C),
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                    .padding(horizontal = 18.dp, vertical = 10.dp)
-            ) {
-                Text(
-                    text = when (startupAuthNotice) {
-                        StartupAuthNotice.NUVIO -> stringResource(R.string.auth_notice_nuvio_logged_out)
-                        StartupAuthNotice.TRAKT -> stringResource(R.string.auth_notice_trakt_logged_out)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NuvioTheme.colors.TextPrimary
-                )
-            }
-        }
     }
 
     val selectedPoster = posterOptionsTarget
@@ -416,7 +339,6 @@ fun HomeScreen(
             title = item.name,
             isInLibrary = uiState.posterLibraryMembership[statusKey] == true,
             isLibraryPending = statusKey in uiState.posterLibraryPending,
-            showManageLists = uiState.librarySourceMode == LibrarySourceMode.TRAKT,
             isMovie = isMovie,
             isSeries = isSeries,
             isWatched = movieWatchedStatus[statusKey] == true,
@@ -427,11 +349,7 @@ fun HomeScreen(
                 posterOptionsTarget = null
             },
             onToggleLibrary = {
-                if (uiState.librarySourceMode == LibrarySourceMode.TRAKT) {
-                    viewModel.openPosterListPicker(item, selectedPoster.addonBaseUrl)
-                } else {
-                    viewModel.togglePosterLibrary(item, selectedPoster.addonBaseUrl)
-                }
+                viewModel.togglePosterLibrary(item, selectedPoster.addonBaseUrl)
                 posterOptionsTarget = null
             },
             onToggleWatched = {
@@ -442,19 +360,6 @@ fun HomeScreen(
                 }
                 posterOptionsTarget = null
             }
-        )
-    }
-
-    if (uiState.showPosterListPicker) {
-        HomeLibraryListPickerDialog(
-            title = uiState.posterListPickerTitle ?: stringResource(R.string.detail_lists_fallback),
-            tabs = uiState.libraryListTabs,
-            membership = uiState.posterListPickerMembership,
-            isPending = uiState.posterListPickerPending,
-            error = uiState.posterListPickerError,
-            onToggle = { key -> viewModel.togglePosterListPickerMembership(key) },
-            onSave = { viewModel.savePosterListPickerMembership() },
-            onDismiss = { viewModel.dismissPosterListPicker() }
         )
     }
 }
@@ -641,7 +546,6 @@ private fun HomePosterOptionsDialog(
     title: String,
     isInLibrary: Boolean,
     isLibraryPending: Boolean,
-    showManageLists: Boolean,
     isMovie: Boolean,
     isSeries: Boolean = false,
     isWatched: Boolean,
@@ -685,14 +589,10 @@ private fun HomePosterOptionsDialog(
             )
         ) {
             Text(
-                if (showManageLists) {
-                    stringResource(R.string.library_manage_lists)
+                if (isInLibrary) {
+                    stringResource(R.string.hero_remove_from_library)
                 } else {
-                    if (isInLibrary) {
-                        stringResource(R.string.hero_remove_from_library)
-                    } else {
-                        stringResource(R.string.hero_add_to_library)
-                    }
+                    stringResource(R.string.hero_add_to_library)
                 }
             )
         }
@@ -714,88 +614,6 @@ private fun HomePosterOptionsDialog(
                         stringResource(R.string.hero_mark_watched)
                     }
                 )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun HomeLibraryListPickerDialog(
-    title: String,
-    tabs: List<LibraryListTab>,
-    membership: Map<String, Boolean>,
-    isPending: Boolean,
-    error: String?,
-    onToggle: (String) -> Unit,
-    onSave: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val primaryFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        primaryFocusRequester.requestFocus()
-    }
-
-    NuvioDialog(
-        onDismiss = onDismiss,
-        title = title,
-        subtitle = stringResource(R.string.detail_lists_subtitle),
-        width = 500.dp
-    ) {
-        if (!error.isNullOrBlank()) {
-            Text(
-                text = error,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFFFB6B6)
-            )
-        }
-
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 300.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(tabs, key = { it.key }) { tab ->
-                val selected = membership[tab.key] == true
-                val titleText = if (selected) "\u2713 ${tab.title}" else tab.title
-                Button(
-                    onClick = { onToggle(tab.key) },
-                    enabled = !isPending,
-                    modifier = if (tab.key == tabs.firstOrNull()?.key) {
-                        Modifier
-                            .fillMaxWidth()
-                            .focusRequester(primaryFocusRequester)
-                    } else {
-                        Modifier.fillMaxWidth()
-                    },
-                    colors = ButtonDefaults.colors(
-                        containerColor = if (selected) NuvioTheme.colors.FocusBackground else NuvioTheme.colors.BackgroundCard,
-                        contentColor = NuvioTheme.colors.TextPrimary
-                    )
-                ) {
-                    Text(
-                        text = titleText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-
-        Divider(color = NuvioTheme.colors.Border, thickness = NuvioTheme.spacing.hairline)
-
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-            Button(
-                onClick = onSave,
-                enabled = !isPending,
-                colors = ButtonDefaults.colors(
-                    containerColor = NuvioTheme.colors.BackgroundCard,
-                    contentColor = NuvioTheme.colors.TextPrimary
-                )
-            ) {
-                Text(if (isPending) stringResource(R.string.action_saving) else stringResource(R.string.action_save))
             }
         }
     }

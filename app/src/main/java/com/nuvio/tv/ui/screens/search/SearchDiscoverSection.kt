@@ -68,9 +68,7 @@ import com.nuvio.tv.ui.components.GridContentCard
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.components.PosterCardStyle
 import com.nuvio.tv.ui.util.dpadVerticalFastScroll
-import com.nuvio.tv.ui.util.formatAddonTypeLabel
 import com.nuvio.tv.ui.util.localizedContentType
-import com.nuvio.tv.ui.util.localizedGenreLabel
 import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 
@@ -93,14 +91,12 @@ internal fun DiscoverSection(
     onDiscoverItemFocused: (Int) -> Unit,
     onSelectType: (String) -> Unit,
     onSelectCatalog: (String) -> Unit,
-    onSelectGenre: (String?) -> Unit,
     onLoadMore: () -> Unit,
     onItemLongPress: (MetaPreview, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val selectedCatalog = uiState.discoverCatalogs.firstOrNull { it.key == uiState.selectedDiscoverCatalogKey }
     val filteredCatalogs = uiState.discoverCatalogs.filter { it.type == uiState.selectedDiscoverType }
-    val genres = selectedCatalog?.genres.orEmpty()
     var expandedPicker by remember { mutableStateOf<String?>(null) }
     val filterFocusRequester = remember { FocusRequester() }
     var gridHasFocus by remember { mutableStateOf(false) }
@@ -117,7 +113,6 @@ internal fun DiscoverSection(
     }
     val selectedTypeLabel = localizedTypeLabel(uiState.selectedDiscoverType)
     val selectedCatalogLabel = selectedCatalog?.catalogName ?: stringResource(R.string.discover_select_catalog)
-    val selectedGenreLabel = uiState.selectedDiscoverGenre?.let { localizedGenreLabel(it) } ?: stringResource(R.string.discover_genre_default)
 
     Column(
         modifier = modifier
@@ -172,26 +167,6 @@ internal fun DiscoverSection(
                 },
                 blockFocus = blockFilterFocus
             )
-
-            DiscoverDropdownPicker(
-                modifier = Modifier.weight(1f),
-                title = stringResource(R.string.discover_filter_genre),
-                value = selectedGenreLabel,
-                selectedValue = uiState.selectedDiscoverGenre ?: "__default__",
-                expanded = expandedPicker == "genre",
-                options = buildList {
-                    add(DiscoverOption(stringResource(R.string.discover_genre_default), "__default__"))
-                    addAll(genres.map { DiscoverOption(localizedGenreLabel(it), it) })
-                },
-                onExpandedChange = { shouldExpand ->
-                    expandedPicker = if (shouldExpand) "genre" else null
-                },
-                onSelect = { option ->
-                    onSelectGenre(option.value.takeUnless { it == "__default__" })
-                    expandedPicker = null
-                },
-                blockFocus = blockFilterFocus
-            )
         }
 
         selectedCatalog?.let { catalog ->
@@ -202,7 +177,6 @@ internal fun DiscoverSection(
                         .takeIf { it.isNotEmpty() }
                         ?.let(::add)
                 }
-                uiState.selectedDiscoverGenre?.let { add(localizedGenreLabel(it)) }
             }
             Text(
                 text = metadataSegments.joinToString(" • "),
@@ -252,7 +226,7 @@ internal fun DiscoverSection(
                     onItemLongPress = { item ->
                         onItemLongPress(item, selectedCatalog?.addonBaseUrl ?: "")
                     },
-                    filterKey = "${uiState.selectedDiscoverType}|${uiState.selectedDiscoverCatalogKey}|${uiState.selectedDiscoverGenre}"
+                    filterKey = "${uiState.selectedDiscoverType}|${uiState.selectedDiscoverCatalogKey}"
                 )
                 }
             }

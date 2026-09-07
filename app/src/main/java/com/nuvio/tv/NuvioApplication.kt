@@ -18,9 +18,6 @@ import coil3.bitmapFactoryMaxParallelism
 
 import okio.Path.Companion.toOkioPath
 import com.nuvio.tv.core.diagnostics.SentryInitializer
-import com.nuvio.tv.core.runtime.PluginRuntimeHooks
-import com.nuvio.tv.core.sync.RealtimeSyncInvalidationService
-import com.nuvio.tv.core.sync.StartupSyncService
 import com.nuvio.tv.core.sync.androidtv.AndroidTvChannelSyncService
 import com.nuvio.tv.data.local.SentrySettingsDataStore
 import com.nuvio.tv.core.network.IPv4FirstDns
@@ -35,9 +32,7 @@ import javax.inject.Inject
 @HiltAndroidApp
 class NuvioApplication : Application(), SingletonImageLoader.Factory {
 
-    @Inject lateinit var startupSyncService: StartupSyncService
     @Inject lateinit var androidTvChannelSyncService: AndroidTvChannelSyncService
-    @Inject lateinit var realtimeSyncInvalidationService: RealtimeSyncInvalidationService
     @Inject lateinit var sentrySettingsDataStore: SentrySettingsDataStore
 
     companion object {
@@ -68,11 +63,7 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         SentryInitializer.start(this, sentrySettingsDataStore)
-        PluginRuntimeHooks.onApplicationCreate(this)
         androidTvChannelSyncService.start()
-        if (BuildConfig.REALTIME_SYNC_ENABLED) {
-            realtimeSyncInvalidationService.start()
-        }
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).
         val tag = getSharedPreferences("app_locale", Context.MODE_PRIVATE)

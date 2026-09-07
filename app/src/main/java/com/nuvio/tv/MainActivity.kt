@@ -91,14 +91,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import com.nuvio.tv.core.runtime.PluginRuntimeHooks
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.os.ConfigurationCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.lifecycleScope
 import androidx.metrics.performance.JankStats
 import androidx.metrics.performance.PerformanceMetricsState
 import androidx.navigation.NavHostController
@@ -117,42 +115,27 @@ import androidx.tv.material3.rememberDrawerState
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import com.nuvio.tv.R
-import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.build.AppFeaturePolicy
-import com.nuvio.tv.core.deeplink.DeepLinkHandler
 import com.nuvio.tv.core.deeplink.DeepLinkParser
 import com.nuvio.tv.core.profile.ProfileManager
-import com.nuvio.tv.core.sync.ProfileSettingsSyncService
-import com.nuvio.tv.core.sync.ProfileSyncService
-import com.nuvio.tv.core.sync.StartupSyncService
-import com.nuvio.tv.data.local.AppOnboardingDataStore
 import com.nuvio.tv.data.xtream.XtreamCredentialsStore
 import com.nuvio.tv.ui.screens.xtream.XtreamSetupScreen
-import com.nuvio.tv.data.local.AuthSessionNoticeDataStore
 import com.nuvio.tv.data.local.ExperienceModeDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
-import com.nuvio.tv.data.local.StartupAuthNotice
 import com.nuvio.tv.data.local.ThemeDataStore
-import com.nuvio.tv.data.remote.supabase.AvatarRepository
-import com.nuvio.tv.data.repository.TraktProgressService
 import com.nuvio.tv.data.xtream.XtreamCatalogRepository
 import com.nuvio.tv.domain.model.AppFont
 import com.nuvio.tv.domain.model.AppTheme
-import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.model.CardDepthStyle
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.model.ExperienceMode
 import com.nuvio.tv.domain.model.SettingsUiStyle
 import com.nuvio.tv.domain.deeplink.AppDeepLink
-import com.nuvio.tv.domain.repository.AddonRepository
 import com.nuvio.tv.ui.components.NuvioScrollDefaults
 import com.nuvio.tv.ui.components.LocalCardDepthStyle
 import com.nuvio.tv.ui.components.ProfileAvatarCircle
 import com.nuvio.tv.ui.navigation.NuvioNavHost
 import com.nuvio.tv.ui.navigation.Screen
-import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
-import com.nuvio.tv.ui.screens.addon.EssentialAddonSetupScreen
-import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.ui.theme.NuvioComponents
 import com.nuvio.tv.ui.theme.NuvioMotion
 import com.nuvio.tv.ui.theme.NuvioPrimitives
@@ -195,7 +178,6 @@ private data class MainUiPrefs(
     val hasChosenLayout: Boolean? = null,
     val experienceMode: ExperienceMode? = null,
     val experienceModeLoaded: Boolean = false,
-    val addonSetupSkipped: Boolean = false,
     val sidebarCollapsed: Boolean = false,
     val modernSidebarEnabled: Boolean = false,
     val modernSidebarBlurPref: Boolean = false,
@@ -220,51 +202,22 @@ class MainActivity : ComponentActivity() {
     lateinit var experienceModeDataStore: ExperienceModeDataStore
 
     @Inject
-    lateinit var addonRepository: AddonRepository
-
-    @Inject
-    lateinit var traktProgressService: TraktProgressService
-
-    @Inject
-    lateinit var startupSyncService: StartupSyncService
-
-    @Inject
     lateinit var xtreamCatalogRepository: XtreamCatalogRepository
 
     @Inject
     lateinit var androidTvChannelSyncService: com.nuvio.tv.core.sync.androidtv.AndroidTvChannelSyncService
 
     @Inject
-    lateinit var profileSettingsSyncService: ProfileSettingsSyncService
-
-    @Inject
-    lateinit var profileSyncService: ProfileSyncService
-
-    @Inject
     lateinit var profileManager: ProfileManager
 
     @Inject
-    lateinit var authManager: AuthManager
-
-    @Inject
-    lateinit var authSessionNoticeDataStore: AuthSessionNoticeDataStore
-
-    @Inject
-    lateinit var appOnboardingDataStore: AppOnboardingDataStore
-    @Inject
     lateinit var xtreamCredentialsStore: XtreamCredentialsStore
-
-    @Inject
-    lateinit var avatarRepository: AvatarRepository
 
     @Inject
     lateinit var trailerPlayerPool: com.nuvio.tv.core.player.TrailerPlayerPool
 
     @Inject
     lateinit var externalPlaybackTracker: com.nuvio.tv.core.player.ExternalPlaybackTracker
-
-    @Inject
-    lateinit var deepLinkHandler: DeepLinkHandler
 
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
 
@@ -277,9 +230,6 @@ class MainActivity : ComponentActivity() {
         Log.d("MainActivity", "External player ActivityResult: $result")
         externalPlaybackTracker.onActivityResult(result)
     }
-
-    /** True until the first onResume after onCreate completes. */
-    private var isFirstResumeAfterCreate = false
 
     @OptIn(ExperimentalTvMaterial3Api::class, ExperimentalFoundationApi::class)
     override fun attachBaseContext(newBase: Context) {
@@ -304,13 +254,10 @@ class MainActivity : ComponentActivity() {
         Log.i("LumeStartup", "activity_on_create elapsed_realtime_ms=${android.os.SystemClock.elapsedRealtime()}")
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        isFirstResumeAfterCreate = true
         window?.setBackgroundDrawable(null)
 
         // Wire the Activity-level launcher to the tracker
         externalPlaybackTracker.activityLauncher = externalPlayerLauncher
-
-        PluginRuntimeHooks.onActivityCreate(this)
 
         window?.decorView?.post {
             val snapshot = com.nuvio.tv.core.player.DisplayCapabilities.detect(this)
@@ -323,14 +270,6 @@ class MainActivity : ComponentActivity() {
         captureDeepLinkIntent(intent)
 
         setContent {
-            var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(false) }
-            var onboardingCompletedThisSession by remember { mutableStateOf(false) }
-            var onboardingProfileSyncInProgress by remember { mutableStateOf(false) }
-            val hasSeenAuthQrFlow = remember(appOnboardingDataStore) {
-                appOnboardingDataStore.hasSeenAuthQrOnFirstLaunch.map<Boolean, Boolean?> { it }
-            }
-            val hasSeenAuthQrOnFirstLaunch by hasSeenAuthQrFlow.collectAsState(initial = null)
-            val authState by authManager.authState.collectAsState()
             val xtreamCredentials by xtreamCredentialsStore.credentials.collectAsState()
             val context = LocalContext.current
 
@@ -338,68 +277,13 @@ class MainActivity : ComponentActivity() {
                 if (xtreamCredentials != null) xtreamCatalogRepository.initialize()
             }
 
-            LaunchedEffect(authSessionNoticeDataStore, context) {
-                authSessionNoticeDataStore.pendingNotice.collect { notice ->
-                    if (notice == StartupAuthNotice.NUVIO) {
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.auth_notice_nuvio_logged_out),
-                            Toast.LENGTH_LONG
-                        ).show()
-                        authSessionNoticeDataStore.consumeNotice(notice)
-                    }
-                }
-            }
-
-            LaunchedEffect(hasSeenAuthQrOnFirstLaunch, authState) {
-                if (hasSeenAuthQrOnFirstLaunch == false && authState is AuthState.FullAccount) {
-                    appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
-                    onboardingCompletedThisSession = true
-                }
-            }
-
             val activeProfileId by profileManager.activeProfileId.collectAsState()
             val profiles by profileManager.profiles.collectAsState()
-            val hasEverSelectedProfile by profileManager.hasEverSelectedProfile.collectAsState()
-            val rememberLastProfileEnabled by profileManager.rememberLastProfileEnabled.collectAsState()
             val activeProfile = remember(activeProfileId, profiles) {
                 profiles.firstOrNull { it.id == activeProfileId }
             }
-            var profilePinStates by remember { mutableStateOf<Map<Int, Boolean>>(emptyMap()) }
-
-            LaunchedEffect(authState, profiles) {
-                if (authState is AuthState.FullAccount) {
-                    profileSyncService.pullProfileLockStates()
-                        .onSuccess { profilePinStates = it }
-                        .onFailure { profilePinStates = emptyMap() }
-                } else {
-                    profilePinStates = emptyMap()
-                }
-            }
-
-            val activeProfileHasPin = remember(activeProfileId, profilePinStates) {
-                profilePinStates[activeProfileId] == true
-            }
-
-            LaunchedEffect(hasEverSelectedProfile, activeProfileHasPin, rememberLastProfileEnabled) {
-                if (rememberLastProfileEnabled && hasEverSelectedProfile && !activeProfileHasPin && !hasSelectedProfileThisSession) {
-                    hasSelectedProfileThisSession = true
-                    if (authManager.authState.value is AuthState.FullAccount) {
-                        startupSyncService.requestSyncNow()
-                    }
-                }
-            }
-
-            var avatarCatalog by remember { mutableStateOf(emptyList<com.nuvio.tv.data.remote.supabase.AvatarCatalogItem>()) }
-
-            LaunchedEffect(Unit) {
-                avatarCatalog = runCatching { avatarRepository.getAvatarCatalog() }
-                    .getOrDefault(emptyList())
-            }
-
-            val activeProfileAvatarImageUrl = remember(activeProfile, avatarCatalog) {
+            val activeProfileAvatarImageUrl = remember(activeProfile) {
                 activeProfile?.avatarUrl?.takeIf { it.isNotBlank() }
-                    ?: activeProfile?.avatarId?.let { avatarRepository.getAvatarImageUrl(it, avatarCatalog) }
             }
 
             val mainUiPrefsFlow = remember(themeDataStore, layoutPreferenceDataStore, experienceModeDataStore) {
@@ -438,14 +322,12 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 val extraFeaturesFlow = combine(
-                    experienceModeDataStore.addonSetupSkipped,
                     layoutPreferenceDataStore.smoothBringIntoViewEnabled,
                     layoutPreferenceDataStore.fastHorizontalNavigationEnabled,
                     layoutPreferenceDataStore.composeHighlighterEnabled,
                     themeDataStore.settingsUiStyle,
-                ) { addonSetupSkipped, smoothBringIntoView, fastHorizontalNav, composeHighlighter, settingsUiStyle ->
+                ) { smoothBringIntoView, fastHorizontalNav, composeHighlighter, settingsUiStyle ->
                     MainUiPrefs(
-                        addonSetupSkipped = addonSetupSkipped,
                         smoothBringIntoViewEnabled = smoothBringIntoView,
                         fastHorizontalNavigationEnabled = fastHorizontalNav,
                         composeHighlighterEnabled = composeHighlighter,
@@ -464,7 +346,6 @@ class MainActivity : ComponentActivity() {
                         modernSidebarEnabled = layoutPrefs.modernSidebarEnabled,
                         modernSidebarBlurPref = layoutPrefs.modernSidebarBlurPref,
                         discoverLocation = layoutPrefs.discoverLocation,
-                        addonSetupSkipped = extraPrefs.addonSetupSkipped,
                         smoothBringIntoViewEnabled = extraPrefs.smoothBringIntoViewEnabled,
                         fastHorizontalNavigationEnabled = extraPrefs.fastHorizontalNavigationEnabled,
                         composeHighlighterEnabled = extraPrefs.composeHighlighterEnabled,
@@ -474,9 +355,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val mainUiPrefs by mainUiPrefsFlow.collectAsState(initial = MainUiPrefs(hasChosenLayout = null))
-            val installedAddons by remember(addonRepository) {
-                addonRepository.getInstalledAddons()
-            }.collectAsState(initial = null)
             val discoverLocation = mainUiPrefs.discoverLocation
 
             NuvioTheme(
@@ -510,38 +388,8 @@ class MainActivity : ComponentActivity() {
                         XtreamSetupScreen(onConfigured = {})
                         return@Surface
                     }
-                    val shouldShowProfileSelection = false
-
-                    if (shouldShowProfileSelection) {
-                        ProfileSelectionScreen(
-                            onProfileSelected = {
-                                hasSelectedProfileThisSession = true
-                                if (authManager.authState.value is AuthState.FullAccount) {
-                                    startupSyncService.requestSyncNow()
-                                }
-                            }
-                        )
-                        return@Surface
-                    }
-
                     val layoutChosen = true
-                    val effectiveExperienceMode = ExperienceMode.ADVANCED
-                    val needsExperienceSelection = false
-                    val needsEssentialAddonSetup = false
                     val pendingDeepLink by pendingDeepLinkUrl.collectAsState()
-
-                    LaunchedEffect(pendingDeepLink) {
-                        val url = pendingDeepLink ?: return@LaunchedEffect
-                        val deepLink = DeepLinkParser.parse(url)
-                        if (deepLink is AppDeepLink.AddonInstall && (needsEssentialAddonSetup || !layoutChosen)) {
-                            Toast.makeText(context, context.getString(R.string.addon_installing), Toast.LENGTH_SHORT).show()
-                            val installResult = deepLinkHandler.installAddon(deepLink.manifestUrl)
-                            if (pendingDeepLinkUrl.value == url) {
-                                pendingDeepLinkUrl.value = null
-                            }
-                            Toast.makeText(context, installResult.message, Toast.LENGTH_LONG).show()
-                        }
-                    }
 
                     val sidebarCollapsed = mainUiPrefs.sidebarCollapsed
                     val modernSidebarEnabled = mainUiPrefs.modernSidebarEnabled
@@ -628,17 +476,6 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     launchSingleTop = true
                                 }
-                            }
-                            is AppDeepLink.AddonInstall -> {
-                                navController.navigate(Screen.AddonManager.route) {
-                                    launchSingleTop = true
-                                }
-                                Toast.makeText(context, context.getString(R.string.addon_installing), Toast.LENGTH_SHORT).show()
-                                val installResult = deepLinkHandler.installAddon(deepLink.manifestUrl)
-                                if (pendingDeepLinkUrl.value == url) {
-                                    pendingDeepLinkUrl.value = null
-                                }
-                                Toast.makeText(context, installResult.message, Toast.LENGTH_LONG).show()
                             }
                             null -> {
                                 pendingDeepLinkUrl.value = null
@@ -750,7 +587,9 @@ class MainActivity : ComponentActivity() {
                             activeProfileColorHex = activeProfile?.avatarColorHex ?: "#1E88E5",
                             activeProfileAvatarImageUrl = activeProfileAvatarImageUrl,
                             showProfileSelector = profiles.size > 1,
-                            onSwitchProfile = { hasSelectedProfileThisSession = false },
+                            onSwitchProfile = {
+                                navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+                            },
                             onNavigate = { optimisticRoute = it },
                             onExitApp = {
                                 finishAffinity()
@@ -771,7 +610,9 @@ class MainActivity : ComponentActivity() {
                             activeProfileColorHex = activeProfile?.avatarColorHex ?: "#1E88E5",
                             activeProfileAvatarImageUrl = activeProfileAvatarImageUrl,
                             showProfileSelector = profiles.size > 1,
-                            onSwitchProfile = { hasSelectedProfileThisSession = false },
+                            onSwitchProfile = {
+                                navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+                            },
                             onNavigate = { optimisticRoute = it },
                             onExitApp = {
                                 finishAffinity()
@@ -833,15 +674,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = true
-        startupSyncService.requestForegroundSync()
-        lifecycleScope.launch {
-            if (isFirstResumeAfterCreate) {
-                isFirstResumeAfterCreate = false
-                traktProgressService.invalidateAndRefresh()
-            } else {
-                traktProgressService.refreshNow()
-            }
-        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -883,23 +715,15 @@ class MainActivity : ComponentActivity() {
         // tracked; onActivityResult keeps it for a completion or dismisses it otherwise.
         externalPlaybackTracker.raiseAutoNextOverlayOnReturn()
         super.onStart()
-        startupSyncService.startPeriodicSurfacePulls()
-        profileSettingsSyncService.requestForegroundPull()
         androidTvChannelSyncService.onForegroundChanged(true)
     }
 
     override fun onStop() {
         externalPlaybackTracker.onExternalPlayerCoveredApp()
         super.onStop()
-        startupSyncService.stopPeriodicSurfacePulls()
         // App going to background (e.g. user returning to the launcher): reconcile the
         // Continue Watching channel once so Projectivy repaints it with fresh progress.
         androidTvChannelSyncService.onForegroundChanged(false)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        PluginRuntimeHooks.onActivityDestroy()
     }
 }
 

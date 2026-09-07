@@ -52,7 +52,6 @@ internal fun PlayerRuntimeController.attachMpvView(view: NuvioMpvSurfaceView?) {
         startWatchProgressSaving()
         updateMpvAvailableTracks()
         scheduleHideControls()
-        emitScrobbleStart()
     }.onFailure {
         val detailedError = it.message ?: context.getString(com.nuvio.tv.R.string.player_error_mpv_surface_failed)
         if (
@@ -90,8 +89,7 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
     val view = mpvView
     if (view == null) {
         setLoadingStatus(
-            phase = "mpv_waiting_surface",
-            message = context.getString(com.nuvio.tv.R.string.player_loading_building),
+            context.getString(com.nuvio.tv.R.string.player_loading_building),
             showOverlay = true
         )
         _uiState.update {
@@ -107,19 +105,13 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
 
     runCatching {
         setLoadingStatus(
-            phase = "mpv_starting",
-            message = context.getString(com.nuvio.tv.R.string.player_loading_starting),
+            context.getString(com.nuvio.tv.R.string.player_loading_starting),
             showOverlay = true
         )
         performPendingMpvHardRestartIfNeeded(view)
         view.applyHardwareDecodeMode(mpvHardwareDecodeModeSetting)
         val initialResumePosition = resolvePendingInitialResumePosition()
-        playbackAnalyticsDiagnostics.setStartupStartPosition(initialResumePosition)
         view.setMedia(url, headers, initialResumePosition)
-        playbackAnalyticsDiagnostics.recordRawEventLine(
-            "PLAYER_INIT: engine=MPV host=${url.safeMpvTraceHost()} " +
-                "playbackSpeed=${_uiState.value.playbackSpeed} resumePositionMs=$initialResumePosition"
-        )
         if (initialResumePosition > 0L) {
             clearPendingInitialResumePosition()
             updatePlaybackTimeline(currentPosition = initialResumePosition)
@@ -155,7 +147,6 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
         startWatchProgressSaving()
         updateMpvAvailableTracks()
         scheduleHideControls()
-        emitScrobbleStart()
     }.onFailure { error ->
         Log.e(PlayerRuntimeController.TAG, "libmpv initialize failed: ${error.message}", error)
         val detailedError = error.message ?: context.getString(com.nuvio.tv.R.string.player_error_mpv_playback_failed)
@@ -314,7 +305,7 @@ private fun PlayerRuntimeController.applyMpvTrackSnapshot(snapshot: MpvTrackSnap
             )
         }
 
-    val internalSubtitleTracks = snapshot.subtitleTracks
+    val subtitleTracks = snapshot.subtitleTracks
         .filterNot { it.isExternal }
         .mapIndexed { index, track ->
             TrackInfo(
@@ -329,67 +320,42 @@ private fun PlayerRuntimeController.applyMpvTrackSnapshot(snapshot: MpvTrackSnap
         }
 
     val selectedAudioIndex = audioTracks.indexOfFirst { it.isSelected }
-    val selectedSubtitleIndex = internalSubtitleTracks.indexOfFirst { it.isSelected }
-    val selectedExternalSubtitleTrack = snapshot.subtitleTracks.firstOrNull { it.isExternal && it.isSelected }
-    val selectedExternalSubtitle = selectedExternalSubtitleTrack != null
+    val selectedSubtitleIndex = subtitleTracks.indexOfFirst { it.isSelected }
     logSwitchTrace(
         stage = "mpv-snapshot-mapped",
         message = "selectedAudioIndex=$selectedAudioIndex selectedSubtitleIndex=$selectedSubtitleIndex " +
-            "selectedExternalSubtitle=${selectedExternalSubtitleTrack?.id ?: "none"} " +
-            "mappedInternalSubtitleCount=${internalSubtitleTracks.size}"
+            "mappedInternalSubtitleCount=${subtitleTracks.size}"
     )
 
-    if (internalSubtitleTracks.isNotEmpty() || hasRenderedFirstFrame) {
+    if (subtitleTracks.isNotEmpty() || hasRenderedFirstFrame) {
         hasScannedTextTracksOnce = true
     }
-    maybeRestorePendingAudioSelectionAfterSubtitleRefresh(audioTracks)
 
     _uiState.update { state ->
-        val selectedAddonFromMpvTrack = selectedExternalSubtitleTrack?.let { track ->
-            state.addonSubtitles.firstOrNull { subtitle ->
-                buildAddonSubtitleTrackId(subtitle).equals(track.name, ignoreCase = true)
-            }
-        }
-
-        val addonSelection = when {
-            selectedAddonFromMpvTrack != null -> selectedAddonFromMpvTrack
-            selectedExternalSubtitle -> null
-            selectedSubtitleIndex >= 0 -> null
-            else -> state.selectedAddonSubtitle
-        }
-        val normalizedSelectedSubtitleIndex = if (selectedExternalSubtitle) {
-            -1
-        } else {
-            selectedSubtitleIndex
-        }
-
         if (
             state.audioTracks == audioTracks &&
-            state.subtitleTracks == internalSubtitleTracks &&
+            state.subtitleTracks == subtitleTracks &&
             state.selectedAudioTrackIndex == selectedAudioIndex &&
-            state.selectedSubtitleTrackIndex == normalizedSelectedSubtitleIndex &&
-            state.selectedAddonSubtitle == addonSelection
+            state.selectedSubtitleTrackIndex == selectedSubtitleIndex
         ) {
             state
         } else {
             state.copy(
                 audioTracks = audioTracks,
-                subtitleTracks = internalSubtitleTracks,
+                subtitleTracks = subtitleTracks,
                 selectedAudioTrackIndex = selectedAudioIndex,
-                selectedSubtitleTrackIndex = normalizedSelectedSubtitleIndex,
-                selectedAddonSubtitle = addonSelection
+                selectedSubtitleTrackIndex = selectedSubtitleIndex
             )
         }
     }
     applyPersistedTrackPreference(
         audioTracks = audioTracks,
-        subtitleTracks = internalSubtitleTracks
+        subtitleTracks = subtitleTracks
     )
     logSwitchTrace(
         stage = "mpv-snapshot-after-restore",
         message = "uiAudioIndex=${_uiState.value.selectedAudioTrackIndex} " +
-            "uiSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex} " +
-            "uiAddonSelected=${_uiState.value.selectedAddonSubtitle?.let { "${it.lang}/${it.addonName}/${it.id}" } ?: "none"}"
+            "uiSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex}"
     )
 }
 
@@ -555,7 +521,6 @@ internal fun PlayerRuntimeController.pauseForStillWatchingPrompt() {
     if (isUsingMpvEngine()) {
         stopProgressUpdates()
         stopWatchProgressSaving()
-        emitStopScrobbleForCurrentProgress()
     }
 }
 

@@ -2,70 +2,13 @@ package com.nuvio.tv.ui.screens.home
 
 import android.util.Log
 import androidx.lifecycle.viewModelScope
-import com.nuvio.tv.data.repository.parseContentIds
+import com.nuvio.tv.domain.model.ContentType
 import com.nuvio.tv.domain.model.LibraryEntryInput
-import com.nuvio.tv.domain.model.LibraryListTab
-import com.nuvio.tv.domain.model.LibrarySourceMode
-import com.nuvio.tv.domain.model.ListMembershipChanges
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.WatchProgress
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-internal fun HomeViewModel.observeLibraryState() {
-    viewModelScope.launch {
-        libraryRepository.sourceMode
-            .distinctUntilChanged()
-            .collectLatest { sourceMode ->
-                if (sourceMode != LibrarySourceMode.TRAKT) {
-                    activePosterListPickerInput = null
-                }
-                _uiState.update { state ->
-                    val resetPickerState = sourceMode != LibrarySourceMode.TRAKT
-                    val updatedState = state.copy(
-                        librarySourceMode = sourceMode,
-                        showPosterListPicker = if (resetPickerState) false else state.showPosterListPicker,
-                        posterListPickerPending = if (resetPickerState) false else state.posterListPickerPending,
-                        posterListPickerError = if (resetPickerState) null else state.posterListPickerError,
-                        posterListPickerTitle = if (resetPickerState) null else state.posterListPickerTitle,
-                        posterListPickerMembership = if (resetPickerState) {
-                            emptyMap()
-                        } else {
-                            state.posterListPickerMembership
-                        }
-                    )
-                    if (updatedState == state) state else updatedState
-                }
-            }
-    }
-
-    viewModelScope.launch {
-        libraryRepository.listTabs
-            .distinctUntilChanged()
-            .collectLatest { tabs ->
-                _uiState.update { state ->
-                    val filteredMembership = mergeMembershipWithTabs(
-                        tabs = tabs,
-                        membership = state.posterListPickerMembership
-                    )
-                    if (
-                        state.libraryListTabs == tabs &&
-                        state.posterListPickerMembership == filteredMembership
-                    ) {
-                        state
-                    } else {
-                        state.copy(
-                            libraryListTabs = tabs,
-                            posterListPickerMembership = filteredMembership
-                        )
-                    }
-                }
-            }
-    }
-}
 
 fun HomeViewModel.refreshPosterLibraryStatus(item: MetaPreview) {
     val statusKey = homeItemStatusKey(item.id, item.apiType)
@@ -107,137 +50,6 @@ fun HomeViewModel.togglePosterLibrary(item: MetaPreview, addonBaseUrl: String?) 
         _uiState.update { state ->
             state.copy(posterLibraryPending = state.posterLibraryPending - statusKey)
         }
-    }
-}
-
-fun HomeViewModel.openPosterListPicker(item: MetaPreview, addonBaseUrl: String?) {
-    if (_uiState.value.librarySourceMode != LibrarySourceMode.TRAKT) {
-        togglePosterLibrary(item, addonBaseUrl)
-        return
-    }
-    val input = item.toLibraryEntryInput(addonBaseUrl)
-    activePosterListPickerInput = input
-
-    _uiState.update { state ->
-        state.copy(
-            showPosterListPicker = true,
-            posterListPickerTitle = item.name,
-            posterListPickerPending = true,
-            posterListPickerError = null,
-            posterListPickerMembership = mergeMembershipWithTabs(
-                tabs = state.libraryListTabs,
-                membership = emptyMap()
-            )
-        )
-    }
-
-    viewModelScope.launch {
-        runCatching {
-            libraryRepository.getMembershipSnapshot(input)
-        }.onSuccess { snapshot ->
-            _uiState.update { state ->
-                state.copy(
-                    showPosterListPicker = true,
-                    posterListPickerPending = false,
-                    posterListPickerError = null,
-                    posterListPickerMembership = mergeMembershipWithTabs(
-                        tabs = state.libraryListTabs,
-                        membership = snapshot.listMembership
-                    )
-                )
-            }
-        }.onFailure { error ->
-            Log.w(HomeViewModel.TAG, "Failed to load poster list picker for ${item.id}: ${error.message}")
-            _uiState.update { state ->
-                state.copy(
-                    showPosterListPicker = true,
-                    posterListPickerPending = false,
-                    posterListPickerError = error.message ?: appContext.getString(com.nuvio.tv.R.string.home_poster_lists_error_load_failed)
-                )
-            }
-        }
-    }
-}
-
-fun HomeViewModel.togglePosterListPickerMembership(listKey: String) {
-    val currentValue = _uiState.value.posterListPickerMembership[listKey] == true
-    _uiState.update { state ->
-        state.copy(
-            posterListPickerMembership = state.posterListPickerMembership.toMutableMap().apply {
-                this[listKey] = !currentValue
-            },
-            posterListPickerError = null
-        )
-    }
-}
-
-fun HomeViewModel.savePosterListPickerMembership() {
-    if (_uiState.value.posterListPickerPending) return
-    if (_uiState.value.librarySourceMode != LibrarySourceMode.TRAKT) return
-    val input = activePosterListPickerInput ?: return
-
-    viewModelScope.launch {
-        _uiState.update { state ->
-            state.copy(
-                posterListPickerPending = true,
-                posterListPickerError = null
-            )
-        }
-
-        runCatching {
-            libraryRepository.applyMembershipChanges(
-                item = input,
-                changes = ListMembershipChanges(
-                    desiredMembership = _uiState.value.posterListPickerMembership
-                )
-            )
-        }.onSuccess {
-            // Refresh library membership status so next dialog open shows correct state.
-            val savedInput = activePosterListPickerInput
-            val anyListSelected = _uiState.value.posterListPickerMembership.values.any { it }
-            if (savedInput != null) {
-                val statusKey = homeItemStatusKey(savedInput.itemId, savedInput.itemType)
-                _uiState.update { state ->
-                    state.copy(
-                        showPosterListPicker = false,
-                        posterListPickerPending = false,
-                        posterListPickerError = null,
-                        posterListPickerTitle = null,
-                        posterLibraryMembership = state.posterLibraryMembership + (statusKey to anyListSelected)
-                    )
-                }
-            } else {
-                _uiState.update { state ->
-                    state.copy(
-                        showPosterListPicker = false,
-                        posterListPickerPending = false,
-                        posterListPickerError = null,
-                        posterListPickerTitle = null
-                    )
-                }
-            }
-            activePosterListPickerInput = null
-        }.onFailure { error ->
-            Log.w(HomeViewModel.TAG, "Failed to save poster list picker: ${error.message}")
-            _uiState.update { state ->
-                state.copy(
-                    posterListPickerPending = false,
-                    posterListPickerError = error.message ?: appContext.getString(com.nuvio.tv.R.string.home_poster_lists_error_update_failed)
-                )
-            }
-        }
-    }
-}
-
-fun HomeViewModel.dismissPosterListPicker() {
-    activePosterListPickerInput = null
-    _uiState.update { state ->
-        state.copy(
-            showPosterListPicker = false,
-            posterListPickerPending = false,
-            posterListPickerError = null,
-            posterListPickerTitle = null
-        )
     }
 }
 
@@ -378,14 +190,24 @@ private suspend fun HomeViewModel.unmarkSeriesWatched(item: MetaPreview) {
 
 private suspend fun HomeViewModel.fetchSeriesEpisodes(item: MetaPreview): List<com.nuvio.tv.domain.model.Video> {
     val type = if (item.apiType.equals("tv", ignoreCase = true)) "series" else item.apiType
-    var episodes: List<com.nuvio.tv.domain.model.Video> = emptyList()
-    metaRepository.getMetaFromPrimaryAddon(type, item.id)
-        .collect { networkResult ->
-            if (networkResult is com.nuvio.tv.core.network.NetworkResult.Success) {
-                episodes = networkResult.data.watchableEpisodes()
-            }
+    val contentType = ContentType.fromString(type)
+    if (contentType != ContentType.SERIES && contentType != ContentType.TV) return emptyList()
+    val tmdbId = runCatching { tmdbService.ensureTmdbId(item.id, type) }.getOrNull()
+        ?: return emptyList()
+    val today = java.time.LocalDate.now()
+    return runCatching {
+        tmdbMetadataService.fetchSeriesVideos(tmdbId, currentTmdbSettings.language)
+    }.getOrDefault(emptyList())
+        .filter { video -> video.season != null && video.episode != null && (video.season ?: 0) > 0 }
+        .filter { video ->
+            if (video.available == false) return@filter false
+            val released = video.released?.substringBefore('T')?.trim()
+            if (released.isNullOrBlank()) return@filter true
+            val isFuture = runCatching {
+                java.time.LocalDate.parse(released, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE).isAfter(today)
+            }.getOrDefault(false)
+            !isFuture
         }
-    return episodes
 }
 
 private fun MetaPreview.toLibraryEntryInput(addonBaseUrl: String?): LibraryEntryInput {
@@ -393,15 +215,16 @@ private fun MetaPreview.toLibraryEntryInput(addonBaseUrl: String?): LibraryEntry
         ?.groupValues
         ?.getOrNull(1)
         ?.toIntOrNull()
-    val parsedIds = parseContentIds(id)
+    val raw = id.trim()
+    val imdbId = raw.takeIf { it.startsWith("tt", ignoreCase = false) }?.substringBefore(':')
+    val tmdbId = if (raw.startsWith("tmdb:", ignoreCase = true)) raw.substringAfter(':').toIntOrNull() else null
     return LibraryEntryInput(
         itemId = id,
         itemType = apiType,
         title = name,
         year = year,
-        traktId = parsedIds.trakt,
-        imdbId = parsedIds.imdb,
-        tmdbId = parsedIds.tmdb,
+        imdbId = imdbId,
+        tmdbId = tmdbId,
         poster = poster,
         posterShape = posterShape,
         background = background,
@@ -412,15 +235,4 @@ private fun MetaPreview.toLibraryEntryInput(addonBaseUrl: String?): LibraryEntry
         genres = genres,
         addonBaseUrl = addonBaseUrl
     )
-}
-
-private fun mergeMembershipWithTabs(
-    tabs: List<LibraryListTab>,
-    membership: Map<String, Boolean>
-): Map<String, Boolean> {
-    return if (tabs.isEmpty()) {
-        membership
-    } else {
-        tabs.associate { tab -> tab.key to (membership[tab.key] == true) }
-    }
 }

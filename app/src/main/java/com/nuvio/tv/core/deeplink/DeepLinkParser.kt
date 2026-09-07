@@ -8,14 +8,6 @@ object DeepLinkParser {
     fun parse(url: String): AppDeepLink? {
         val parsedUrl = runCatching { URI(url.trim()) }.getOrNull() ?: return null
         val scheme = parsedUrl.scheme?.lowercase().orEmpty()
-        if (scheme == "stremio") {
-            val host = parsedUrl.host?.lowercase().orEmpty()
-            return if (looksLikeAddonHost(host)) {
-                customSchemeToHttpsUrl(url, scheme)?.let(AppDeepLink::AddonInstall)
-            } else {
-                null
-            }
-        }
         if (scheme != "nuvio" && scheme != "lume") return null
 
         val host = parsedUrl.host?.lowercase().orEmpty()
@@ -33,14 +25,7 @@ object DeepLinkParser {
                 if (type.isBlank() || id.isBlank()) null else AppDeepLink.Meta(type = type, id = id)
             }
             "imdb", "tmdb" -> parseProviderMetaDeepLink(host, pathSegments, parsedUrl)
-            "auth" -> null
-            else -> {
-                if (looksLikeAddonHost(host)) {
-                    customSchemeToHttpsUrl(url, scheme)?.let(AppDeepLink::AddonInstall)
-                } else {
-                    null
-                }
-            }
+            else -> null
         }
     }
 
@@ -117,22 +102,6 @@ object DeepLinkParser {
             .removePrefix("imdb:")
             .takeIf(String::isNotBlank)
             .orEmpty()
-    }
-
-    private fun looksLikeAddonHost(host: String): Boolean {
-        return host.contains('.') ||
-            host.equals("localhost", ignoreCase = true) ||
-            host.any(Char::isDigit)
-    }
-
-    private fun customSchemeToHttpsUrl(url: String, scheme: String): String? {
-        val prefix = "$scheme://"
-        val rest = url.trim()
-            .takeIf { it.startsWith(prefix, ignoreCase = true) }
-            ?.substring(prefix.length)
-            ?.takeIf { it.isNotBlank() && !it.startsWith("/") }
-            ?: return null
-        return "https://$rest"
     }
 
     private fun decode(value: String): String {

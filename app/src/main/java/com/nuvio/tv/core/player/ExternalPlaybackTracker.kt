@@ -2,20 +2,13 @@ package com.nuvio.tv.core.player
 
 import android.content.Context
 import android.util.Log
-import com.nuvio.tv.core.network.NetworkResult
+import com.nuvio.tv.core.tmdb.TmdbMetadataService
+import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.data.local.PlayerSettingsDataStore
 import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.domain.model.WatchProgress
-import com.nuvio.tv.domain.repository.MetaRepository
 import com.nuvio.tv.domain.repository.WatchProgressRepository
-import com.nuvio.tv.data.repository.TraktScrobbleService
-import com.nuvio.tv.data.repository.TraktScrobbleItem
-import com.nuvio.tv.data.repository.TraktEpisodeMappingService
-import com.nuvio.tv.data.repository.TraktAuthService
 import com.nuvio.tv.data.repository.SkipIntroRepository
-import com.nuvio.tv.data.repository.parseContentIds
-import com.nuvio.tv.data.repository.extractYear
-import com.nuvio.tv.data.repository.toTraktIds
 import com.nuvio.tv.ui.screens.player.PlayerNextEpisodeRules
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -159,17 +152,14 @@ internal fun resolveExternalNextEpisodeSnapshot(
  * - Process ActivityResult data when external player returns
  * - Run Zidoo REST API polling on Zidoo devices
  * - Save progress to WatchProgressRepository
- * - Send Trakt scrobble (start + stop)
  * - Start/stop the keep-alive foreground service
  */
 @Singleton
 class ExternalPlaybackTracker @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val watchProgressRepository: WatchProgressRepository,
-    private val traktScrobbleService: TraktScrobbleService,
-    private val traktEpisodeMappingService: TraktEpisodeMappingService,
-    private val traktAuthService: TraktAuthService,
-    private val metaRepository: MetaRepository,
+    private val tmdbService: TmdbService,
+    private val tmdbMetadataService: TmdbMetadataService,
     private val playerSettingsDataStore: PlayerSettingsDataStore,
     private val skipIntroRepository: SkipIntroRepository
 ) {
@@ -605,30 +595,14 @@ class ExternalPlaybackTracker @Inject constructor(
     }
 
     private suspend fun fetchRuntimeMsFromMeta(metadata: ExternalPlaybackMetadata): Long {
-        val fetched = withTimeoutOrNull(META_FETCH_TIMEOUT_MS) {
-            metaRepository
-                .getMetaFromAllAddons(type = metadata.contentType, id = metadata.contentId)
-                .first { it !is NetworkResult.Loading }
-        }
-        val meta = (fetched as? NetworkResult.Success)?.data ?: return 0L
-        val season = metadata.season
-        val episode = metadata.episode
-        val minutes: Int? = if (season != null && episode != null) {
-            meta.videos.firstOrNull { it.season == season && it.episode == episode }?.runtime
-                ?: parseRuntimeMinutes(meta.runtime)
-        } else {
-            parseRuntimeMinutes(meta.runtime)
-        }
-        return (minutes ?: 0).toLong() * 60_000L
-    }
-
-    /** Parses "24 min", "120", or "1h 30m" style runtime strings into minutes. */
-    private fun parseRuntimeMinutes(runtime: String?): Int? {
-        if (runtime.isNullOrBlank()) return null
-        val hours = Regex("(\\d+)\\s*h").find(runtime)?.groupValues?.get(1)?.toIntOrNull()
-        val mins = Regex("(\\d+)\\s*m").find(runtime)?.groupValues?.get(1)?.toIntOrNull()
-        if (hours != null || mins != null) return (hours ?: 0) * 60 + (mins ?: 0)
-        return Regex("\\d+").find(runtime)?.value?.toIntOrNull()
+        val season = metadata.season ?: return 0L
+        val episode = metadata.episode ?: return 0L
+        val tmdbId = tmdbService.ensureTmdbId(metadata.contentId, metadata.contentType) ?: return 0L
+        val video = withTimeoutOrNull(META_FETCH_TIMEOUT_MS) {
+            tmdbMetadataService.fetchSeriesVideos(tmdbId)
+                .firstOrNull { it.season == season && it.episode == episode }
+        } ?: return 0L
+        return (video.runtime ?: 0).toLong() * 60_000L
     }
 
     // --- Disk persistence for pendingMetadata (survives process death) -------------
@@ -774,15 +748,13 @@ class ExternalPlaybackTracker @Inject constructor(
     private suspend fun resolveNextEpisodeSnapshot(
         metadata: ExternalPlaybackMetadata
     ): ExternalNextEpisodeSnapshot {
-        val result = withTimeoutOrNull(META_FETCH_TIMEOUT_MS) {
-            metaRepository
-                .getMetaFromAllAddons(type = metadata.contentType, id = metadata.contentId)
-                .first { it !is NetworkResult.Loading }
-        }
-        val meta = (result as? NetworkResult.Success)?.data
+        val tmdbId = tmdbService.ensureTmdbId(metadata.contentId, metadata.contentType)
             ?: return ExternalNextEpisodeSnapshot.Unknown
+        val videos = withTimeoutOrNull(META_FETCH_TIMEOUT_MS) {
+            tmdbMetadataService.fetchSeriesVideos(tmdbId)
+        } ?: return ExternalNextEpisodeSnapshot.Unknown
         return resolveExternalNextEpisodeSnapshot(
-            videos = meta.videos,
+            videos = videos,
             currentSeason = metadata.season,
             currentEpisode = metadata.episode
         )
@@ -1111,7 +1083,7 @@ class ExternalPlaybackTracker @Inject constructor(
         }
     }
 
-    // ===================== Progress save + Trakt scrobble =====================
+    // ===================== Progress save =====================
 
     private fun saveProgress(
         metadata: ExternalPlaybackMetadata,
@@ -1142,61 +1114,6 @@ class ExternalPlaybackTracker @Inject constructor(
                 "content=${metadata.contentId}, video=${metadata.videoId}, " +
                 "progressPct=${progress.progressPercentage}, isInProgress=${progress.isInProgress()}")
             watchProgressRepository.saveProgress(progress)
-
-            // Trakt scrobble
-            if (traktAuthService.getCurrentAuthState().isAuthenticated &&
-                traktAuthService.hasRequiredCredentials()) {
-                val progressPercent = if (effectiveDuration > 0L) {
-                    (positionMs.toFloat() / effectiveDuration.toFloat() * 100f).coerceIn(0f, 100f)
-                } else {
-                    0f
-                }
-                if (progressPercent > 0f) {
-                    val scrobbleItem = buildScrobbleItem(metadata)
-                    if (scrobbleItem != null) {
-                        Log.d(TAG, "Sending Trakt scrobble: ${progressPercent}%")
-                        traktScrobbleService.scrobbleStart(scrobbleItem, progressPercent = 0f)
-                        traktScrobbleService.scrobbleStop(scrobbleItem, progressPercent = progressPercent)
-                    }
-                }
-            }
-        }
-    }
-
-    private suspend fun buildScrobbleItem(metadata: ExternalPlaybackMetadata): TraktScrobbleItem? {
-        val parsedIds = parseContentIds(metadata.contentId)
-        val ids = toTraktIds(parsedIds)
-        if (ids.trakt == null && ids.imdb.isNullOrBlank() && ids.tmdb == null) return null
-
-        val parsedYear = extractYear(metadata.year)
-        val isEpisode = metadata.contentType.lowercase() in listOf("series", "tv") &&
-            metadata.season != null && metadata.episode != null
-
-        return if (isEpisode) {
-            val mapped = traktEpisodeMappingService.prefetchEpisodeMapping(
-                contentId = metadata.contentId,
-                contentType = metadata.contentType,
-                videoId = metadata.videoId,
-                season = metadata.season,
-                episode = metadata.episode
-            )
-            val effectiveSeason = mapped?.season ?: metadata.season ?: return null
-            val effectiveEpisode = mapped?.episode ?: metadata.episode ?: return null
-
-            TraktScrobbleItem.Episode(
-                showTitle = metadata.contentName,
-                showYear = parsedYear,
-                showIds = ids,
-                season = effectiveSeason,
-                number = effectiveEpisode,
-                episodeTitle = metadata.episodeTitle
-            )
-        } else {
-            TraktScrobbleItem.Movie(
-                title = metadata.contentName,
-                year = parsedYear,
-                ids = ids
-            )
         }
     }
 }

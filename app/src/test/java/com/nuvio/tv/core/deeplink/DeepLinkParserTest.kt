@@ -23,22 +23,6 @@ class DeepLinkParserTest {
     }
 
     @Test
-    fun parsesAddonInstallDeepLink() {
-        assertEquals(
-            AppDeepLink.AddonInstall("https://free.nebulapro.xyz/sports/i/free/manifest.json"),
-            DeepLinkParser.parse("nuvio://free.nebulapro.xyz/sports/i/free/manifest.json")
-        )
-    }
-
-    @Test
-    fun parsesStremioAddonInstallDeepLink() {
-        assertEquals(
-            AppDeepLink.AddonInstall("https://free.nebulapro.xyz/sports/i/free/manifest.json"),
-            DeepLinkParser.parse("stremio://free.nebulapro.xyz/sports/i/free/manifest.json")
-        )
-    }
-
-    @Test
     fun parsesDirectImdbDetailDeepLink() {
         assertEquals(
             AppDeepLink.Meta(type = "series", id = "tt0944947"),
@@ -63,12 +47,12 @@ class DeepLinkParserTest {
     }
 
     @Test
-    fun doesNotTreatAuthLinkAsAddonInstall() {
-        assertNull(DeepLinkParser.parse("nuvio://auth/trakt?code=abc"))
+    fun ignoresUnknownScheme() {
+        assertNull(DeepLinkParser.parse("stremio://detail/series/tt0944947"))
     }
 
     @Test
-    fun doesNotTreatNonHostStremioLinkAsAddonInstall() {
-        assertNull(DeepLinkParser.parse("stremio://detail/series/tt0944947"))
+    fun ignoresUnknownHost() {
+        assertNull(DeepLinkParser.parse("nuvio://auth?code=abc"))
     }
 }

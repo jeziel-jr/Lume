@@ -135,39 +135,20 @@ sealed class Screen(val route: String) {
     data object Discover : Screen("discover")
     data object Library : Screen("library")
     data object Settings : Screen("settings")
-    data object Trakt : Screen("trakt")
     data object TmdbSettings : Screen("tmdb_settings")
     data object XtreamSetup : Screen("xtream_setup")
     data object ThemeSettings : Screen("theme_settings")
     data object PlaybackSettings : Screen("playback_settings")
     data object About : Screen("about")
-    data object SupportersContributors : Screen("supporters_contributors")
-    data object AddonManager : Screen("addon_manager")
-    data object CatalogOrder : Screen("catalog_order")
-    data object Plugins : Screen("plugins")
     data object ExperienceModeSelection : Screen("experience_mode_selection")
     data object LayoutSelection : Screen("layout_selection")
     data object LayoutSettings : Screen("layout_settings")
-    data object Account : Screen("account")
-    data object ManageProfiles : Screen("manage_profiles")
-    data object AuthSignIn : Screen("auth_sign_in")
-    data object AuthQrSignIn : Screen("auth_qr_sign_in")
-    data object SyncCodeGenerate : Screen("sync_code_generate")
-    data object SyncCodeClaim : Screen("sync_code_claim")
     data object CatalogSeeAll : Screen("catalog_see_all/{catalogId}/{addonId}/{type}?fromSearch={fromSearch}") {
         private fun encode(value: String): String =
             URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
         fun createRoute(catalogId: String, addonId: String, type: String, fromSearch: Boolean = false): String {
             return "catalog_see_all/${encode(catalogId)}/${encode(addonId)}/${encode(type)}?fromSearch=$fromSearch"
-        }
-    }
-
-    data object Collections : Screen("collections")
-
-    data object CollectionEditor : Screen("collection_editor?collectionId={collectionId}") {
-        fun createRoute(collectionId: String? = null): String {
-            return "collection_editor?collectionId=${collectionId ?: ""}"
         }
     }
 
@@ -179,8 +160,6 @@ sealed class Screen(val route: String) {
             return "folder_detail/${encode(collectionId)}/${encode(folderId)}"
         }
     }
-
-    data object ProfileSelection : Screen("profile_selection")
 
     data object CastDetail : Screen("cast_detail/{personId}/{personName}?preferCrew={preferCrew}") {
         private fun encode(value: String): String =

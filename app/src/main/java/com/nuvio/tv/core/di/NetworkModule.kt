@@ -1,33 +1,25 @@
 package com.nuvio.tv.core.di
 
 import android.content.Context
-import android.util.Log
 import com.nuvio.tv.BuildConfig
-import com.nuvio.tv.data.remote.api.AddonApi
+import com.nuvio.tv.LocaleCache
+import com.nuvio.tv.core.diagnostics.SentryNetworkBreadcrumbInterceptor
+import com.nuvio.tv.core.network.IPv4FirstDns
+import com.nuvio.tv.core.tmdb.TmdbRateLimitInterceptor
 import com.nuvio.tv.data.remote.api.AniSkipApi
 import com.nuvio.tv.data.remote.api.AnimeSkipApi
 import com.nuvio.tv.data.remote.api.ArmApi
-import com.nuvio.tv.data.remote.api.AuthDiagnosticReportApi
-import com.nuvio.tv.data.remote.api.DonationsApi
 import com.nuvio.tv.data.remote.api.GitHubReleaseApi
-import com.nuvio.tv.data.remote.api.TraktApi
-import com.nuvio.tv.data.remote.api.TrailerApi
 import com.nuvio.tv.data.remote.api.IntroDbApi
-import com.nuvio.tv.data.remote.api.ImdbTapframeApi
-import com.nuvio.tv.data.remote.api.MDBListApi
-import com.nuvio.tv.data.remote.api.ParentalGuideApi
-import com.nuvio.tv.data.remote.api.PlaybackIssueReportApi
 import com.nuvio.tv.data.remote.api.PremiumizeApi
 import com.nuvio.tv.data.remote.api.RealDebridApi
-import com.nuvio.tv.data.remote.api.SeriesGraphApi
 import com.nuvio.tv.data.remote.api.TmdbApi
 import com.nuvio.tv.data.remote.api.TorboxApi
-import com.nuvio.tv.data.remote.api.UniqueContributionsApi
-import com.nuvio.tv.data.xtream.XtreamDataSource
+import com.nuvio.tv.data.remote.api.TrailerApi
 import com.nuvio.tv.data.xtream.XtreamCatalogRepository
-import com.nuvio.tv.data.xtream.XtreamPlaybackResolver
 import com.nuvio.tv.data.xtream.XtreamCredentialsStore
-import com.nuvio.tv.LocaleCache
+import com.nuvio.tv.data.xtream.XtreamDataSource
+import com.nuvio.tv.data.xtream.XtreamPlaybackResolver
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
@@ -41,37 +33,23 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
-import com.nuvio.tv.core.network.IPv4FirstDns
-import com.nuvio.tv.core.tmdb.TmdbRateLimitInterceptor
-import com.nuvio.tv.core.diagnostics.SentryNetworkBreadcrumbInterceptor
 import java.io.File
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Named
 import javax.inject.Singleton
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
-private object TraktHttpTrace {
-    private val requestCounter = AtomicLong(0L)
-    fun nextRequestId(): Long = requestCounter.incrementAndGet()
-}
-
-private fun normalizedBaseUrl(rawUrl: String, fallback: String): String {
-    val trimmed = rawUrl.trim()
-    if (trimmed.isBlank()) return fallback
-    return if (trimmed.endsWith('/')) trimmed else "$trimmed/"
-}
-
 /**
- * Builds the value sent in the `Accept-Language` request header so addons can
- * serve localized payloads (catalog names, descriptions, etc.). Falls back to
- * the system locale when the user has not overridden the app language. The
- * primary tag is given the highest q-weight; English is appended at q=0.7 as
- * a sensible fallback for addons that don't support the requested locale.
+ * Builds the value sent in the `Accept-Language` request header so remote
+ * services can serve localized payloads (catalog names, descriptions, etc.).
+ * Falls back to the system locale when the user has not overridden the app
+ * language. The primary tag is given the highest q-weight; English is
+ * appended at q=0.7 as a sensible fallback for services that don't support
+ * the requested locale.
  */
 private fun buildAcceptLanguageHeader(): String {
     val explicit = LocaleCache.localeTag
@@ -200,76 +178,6 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @Named("trakt")
-    fun provideTraktOkHttpClient(
-        okHttpClient: OkHttpClient
-    ): OkHttpClient = okHttpClient.newBuilder()
-        .addInterceptor { chain ->
-            val request = chain.request()
-            val version = BuildConfig.VERSION_NAME.ifBlank { "dev" }
-            val newRequest = request.newBuilder()
-                .header("Content-Type", "application/json")
-                .header("User-Agent", "Nuvio/$version")
-                .header("trakt-api-key", BuildConfig.TRAKT_CLIENT_ID)
-                .header("trakt-api-version", "2")
-                .build()
-
-            if (!BuildConfig.DEBUG) {
-                return@addInterceptor chain.proceed(newRequest)
-            }
-
-            val requestId = TraktHttpTrace.nextRequestId()
-            val target = buildString {
-                append(newRequest.url.encodedPath)
-                newRequest.url.encodedQuery?.let { query ->
-                    append('?')
-                    append(query)
-                }
-            }
-            val startNs = System.nanoTime()
-            Log.d("TraktHttp", "REQ #$requestId ${newRequest.method} $target")
-
-            try {
-                val response = chain.proceed(newRequest)
-                val durationMs = (System.nanoTime() - startNs) / 1_000_000L
-                val retryAfter = response.header("Retry-After")
-                val rateLimit = response.header("X-Ratelimit")
-                val page = response.header("X-Pagination-Page")
-                val pageCount = response.header("X-Pagination-Page-Count")
-                val pageInfo = if (page != null || pageCount != null) {
-                    " page=${page ?: "-"} pageCount=${pageCount ?: "-"}"
-                } else {
-                    ""
-                }
-                val retryInfo = retryAfter?.let { " retryAfter=${it}s" } ?: ""
-                val rateInfo = rateLimit?.let { " rate=$it" } ?: ""
-                Log.d(
-                    "TraktHttp",
-                    "RES #$requestId ${response.code} ${newRequest.method} $target ${durationMs}ms$retryInfo$pageInfo$rateInfo"
-                )
-                response
-            } catch (error: Exception) {
-                val durationMs = (System.nanoTime() - startNs) / 1_000_000L
-                Log.w(
-                    "TraktHttp",
-                    "ERR #$requestId ${newRequest.method} $target ${durationMs}ms ${error.javaClass.simpleName}: ${error.message}"
-                )
-                throw error
-            }
-        }
-        .build()
-
-    @Provides
-    @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
-        Retrofit.Builder()
-            .baseUrl("https://placeholder.nuvio.tv/")
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-
-    @Provides
-    @Singleton
     @Named("tmdb")
     fun provideTmdbRetrofit(@Named("tmdb") okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
         Retrofit.Builder()
@@ -280,21 +188,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @Named("trakt")
-    fun provideTraktRetrofit(
-        @Named("trakt") okHttpClient: OkHttpClient,
-        moshi: Moshi
-    ): Retrofit =
-        Retrofit.Builder()
-            .baseUrl(BuildConfig.TRAKT_API_URL.ifBlank { "https://api.trakt.tv/" })
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
+    fun provideTmdbApi(@Named("tmdb") retrofit: Retrofit): TmdbApi =
+        retrofit.create(TmdbApi::class.java)
 
-    @Provides
-    @Singleton
-    fun provideAddonApi(retrofit: Retrofit): AddonApi =
-        retrofit.create(AddonApi::class.java)
+    // --- Debrid APIs ---
 
     @Provides
     @Singleton
@@ -349,31 +246,6 @@ object NetworkModule {
     @Singleton
     fun providePremiumizeApi(@Named("premiumize") retrofit: Retrofit): PremiumizeApi =
         retrofit.create(PremiumizeApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideTmdbApi(@Named("tmdb") retrofit: Retrofit): TmdbApi =
-        retrofit.create(TmdbApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideTraktApi(@Named("trakt") retrofit: Retrofit): TraktApi =
-        retrofit.create(TraktApi::class.java)
-
-    @Provides
-    @Singleton
-    @Named("parentalGuide")
-    fun provideParentalGuideRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
-        Retrofit.Builder()
-            .baseUrl("https://api.tiffara.com/")
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-
-    @Provides
-    @Singleton
-    fun provideParentalGuideApi(@Named("parentalGuide") retrofit: Retrofit): ParentalGuideApi =
-        retrofit.create(ParentalGuideApi::class.java)
 
     // --- Skip Intro APIs ---
 
@@ -454,67 +326,6 @@ object NetworkModule {
     fun provideGitHubReleaseApi(@Named("github") retrofit: Retrofit): GitHubReleaseApi =
         retrofit.create(GitHubReleaseApi::class.java)
 
-    @Provides
-    @Singleton
-    @Named("uniqueContributionsBaseUrl")
-    fun provideUniqueContributionsBaseUrl(): String =
-        BuildConfig.UNIQUE_CONTRIBUTIONS_BASE_URL
-
-    @Provides
-    @Singleton
-    @Named("uniqueContributions")
-    fun provideUniqueContributionsRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
-        Retrofit.Builder()
-            .baseUrl(normalizedBaseUrl(BuildConfig.UNIQUE_CONTRIBUTIONS_BASE_URL, "https://localhost/"))
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-
-    @Provides
-    @Singleton
-    fun provideUniqueContributionsApi(@Named("uniqueContributions") retrofit: Retrofit): UniqueContributionsApi =
-        retrofit.create(UniqueContributionsApi::class.java)
-
-    @Provides
-    @Singleton
-    @Named("donations")
-    fun provideDonationsRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit {
-        val baseUrl = BuildConfig.DONATIONS_BASE_URL
-            .takeIf { it.isNotBlank() }
-            ?: error("DONATIONS_BASE_URL is missing. Set it in local.properties or local.dev.properties.")
-
-        return Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideDonationsApi(@Named("donations") retrofit: Retrofit): DonationsApi =
-        retrofit.create(DonationsApi::class.java)
-
-    @Provides
-    @Singleton
-    @Named("playbackReports")
-    fun providePlaybackReportsRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
-        Retrofit.Builder()
-            .baseUrl(normalizedBaseUrl(BuildConfig.PLAYBACK_REPORTS_BASE_URL, "https://localhost/"))
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-
-    @Provides
-    @Singleton
-    fun providePlaybackIssueReportApi(@Named("playbackReports") retrofit: Retrofit): PlaybackIssueReportApi =
-        retrofit.create(PlaybackIssueReportApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideAuthDiagnosticReportApi(@Named("playbackReports") retrofit: Retrofit): AuthDiagnosticReportApi =
-        retrofit.create(AuthDiagnosticReportApi::class.java)
-
     // --- Trailer API ---
 
     @Provides
@@ -531,67 +342,4 @@ object NetworkModule {
     @Singleton
     fun provideTrailerApi(@Named("trailer") retrofit: Retrofit): TrailerApi =
         retrofit.create(TrailerApi::class.java)
-
-    // --- MDBList API ---
-
-    @Provides
-    @Singleton
-    @Named("mdblist")
-    fun provideMDBListRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
-        Retrofit.Builder()
-            .baseUrl("https://api.mdblist.com/")
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-
-    @Provides
-    @Singleton
-    fun provideMDBListApi(@Named("mdblist") retrofit: Retrofit): MDBListApi =
-        retrofit.create(MDBListApi::class.java)
-
-    // --- SeriesGraph API ---
-
-    @Provides
-    @Singleton
-    @Named("seriesGraph")
-    fun provideSeriesGraphRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit {
-        val rawBaseUrl = BuildConfig.IMDB_RATINGS_API_BASE_URL
-        val normalizedBaseUrl = if (rawBaseUrl.isNotBlank()) {
-            if (rawBaseUrl.endsWith('/')) rawBaseUrl else "$rawBaseUrl/"
-        } else {
-            "http://localhost/"
-        }
-        return Retrofit.Builder()
-            .baseUrl(normalizedBaseUrl)
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideSeriesGraphApi(@Named("seriesGraph") retrofit: Retrofit): SeriesGraphApi =
-        retrofit.create(SeriesGraphApi::class.java)
-
-    @Provides
-    @Singleton
-    @Named("imdbTapframe")
-    fun provideImdbTapframeRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit {
-        val rawBaseUrl = BuildConfig.IMDB_TAPFRAME_API_BASE_URL
-        val normalizedBaseUrl = if (rawBaseUrl.isNotBlank()) {
-            if (rawBaseUrl.endsWith('/')) rawBaseUrl else "$rawBaseUrl/"
-        } else {
-            "http://localhost/"
-        }
-        return Retrofit.Builder()
-            .baseUrl(normalizedBaseUrl)
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideImdbTapframeApi(@Named("imdbTapframe") retrofit: Retrofit): ImdbTapframeApi =
-        retrofit.create(ImdbTapframeApi::class.java)
 }

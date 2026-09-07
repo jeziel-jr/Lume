@@ -112,9 +112,9 @@ data class PersistedTrackPreference(
     val subtitleName: String?,
     val subtitleTrackId: String?,
     val subtitleIsForced: Boolean? = null,
-    val addonSubtitleId: String?,
-    val addonSubtitleUrl: String?,
-    val addonSubtitleAddonName: String?,
+    val addonSubtitleId: String? = null,
+    val addonSubtitleUrl: String? = null,
+    val addonSubtitleAddonName: String? = null,
     val audioLanguage: String?,
     val audioName: String?,
     val audioTrackId: String?
@@ -137,12 +137,6 @@ internal fun PersistedTrackPreference.toTrackPreference(): com.nuvio.tv.ui.scree
                 trackId = subtitleTrackId,
                 isForcedHint = subtitleIsForced
             )
-        )
-        "ADDON" -> com.nuvio.tv.ui.screens.player.PlayerRuntimeController.RememberedSubtitleSelection.Addon(
-            id = addonSubtitleId ?: "",
-            url = addonSubtitleUrl ?: "",
-            language = subtitleLanguage ?: "",
-            addonName = addonSubtitleAddonName ?: ""
         )
         "DISABLED" -> com.nuvio.tv.ui.screens.player.PlayerRuntimeController.RememberedSubtitleSelection.Disabled
         else -> null

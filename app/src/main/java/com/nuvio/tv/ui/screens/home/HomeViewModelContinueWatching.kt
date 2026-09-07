@@ -3,8 +3,6 @@ package com.nuvio.tv.ui.screens.home
 import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.viewModelScope
-import com.nuvio.tv.core.network.NetworkResult
-import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.data.local.WatchedItemsPreferences
 import com.nuvio.tv.domain.model.ContinueWatchingSortMode
 import com.nuvio.tv.domain.model.ContentType
@@ -290,8 +288,8 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                 ProgressSnapshot(items, nextUpSeeds, hasLoaded)
             },
             combine(
-                traktSettingsDataStore.continueWatchingDaysCap,
-                traktSettingsDataStore.dismissedNextUpKeys,
+                layoutPreferenceDataStore.continueWatchingDaysCap,
+                layoutPreferenceDataStore.dismissedNextUpKeys,
                 layoutPreferenceDataStore.showUnairedNextUp,
                 layoutPreferenceDataStore.nextUpFromFurthestEpisode,
                 layoutPreferenceDataStore.continueWatchingSortMode
@@ -325,7 +323,6 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
             try {
                 debug.markPhase("filter-snapshot")
                 val cycleStartMs = SystemClock.elapsedRealtime()
-                val useTraktProgress = watchProgressRepository.isTraktProgressActive()
                 val items = snapshot.items
                 val nextUpSeeds = snapshot.nextUpSeeds
                 val daysCap = snapshot.daysCap
@@ -333,7 +330,7 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                 val showUnairedNextUp = snapshot.showUnairedNextUp
                 val nextUpFromFurthestEpisode = snapshot.nextUpFromFurthestEpisode
                 val continueWatchingSortMode = snapshot.continueWatchingSortMode
-                val cutoffMs = if (!useTraktProgress || daysCap == TraktSettingsDataStore.CONTINUE_WATCHING_DAYS_CAP_ALL) {
+                val cutoffMs = if (daysCap == com.nuvio.tv.data.local.LayoutPreferenceDataStore.CONTINUE_WATCHING_DAYS_CAP_ALL) {
                     null
                 } else {
                     val windowMs = daysCap.toLong() * 24L * 60L * 60L * 1000L
@@ -360,7 +357,7 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                 // Evict in-memory next-up caches for series that lost all seeds
                 // (e.g. user unmarked all episodes as watched).
                 // Skip eviction when seeds haven't loaded yet to avoid wiping
-                // valid cached items before Trakt responds.
+                // valid cached items before live progress responds.
                 if (snapshot.hasLoadedRemoteProgress) {
                     synchronized(discoveredOlderNextUpItems) {
                         discoveredOlderNextUpItems.removeAll { it.info.contentId !in activeSeedContentIds }
@@ -377,7 +374,7 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                     cutoffMs = cutoffMs
                 )
 
-                // Load cached CW snapshots for instant render before Trakt responds
+                // Load cached CW snapshots for instant render while live progress loads.
                 val (cachedNextUp, cachedInProgress) = coroutineScope {
                     val nextUpDeferred = async(Dispatchers.IO) {
                         runCatching { cwEnrichmentCache.getNextUpSnapshot() }.getOrDefault(emptyList())
@@ -451,36 +448,6 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                                     genres = cached?.genres ?: emptyList(),
                                     releaseInfo = cached?.releaseInfo,
                                     contentLanguage = cached?.contentLanguage
-                                )
-                            )
-                        }
-                    }
-                    // For Trakt: show cached in-progress until Trakt responds (items non-empty).
-                    if (liveInProgress.isEmpty() && useTraktProgress && cachedInProgress.isNotEmpty() && items.isEmpty()) {
-                        cachedInProgress.forEach { cached ->
-                            add(
-                                ContinueWatchingItem.InProgress(
-                                    progress = WatchProgress(
-                                        contentId = cached.contentId,
-                                        contentType = cached.contentType,
-                                        name = cached.name,
-                                        poster = cached.poster,
-                                        backdrop = cached.backdrop,
-                                        logo = cached.logo,
-                                        videoId = cached.videoId,
-                                        season = cached.season,
-                                        episode = cached.episode,
-                                        episodeTitle = cached.episodeTitle,
-                                        position = cached.position,
-                                        duration = cached.duration,
-                                        lastWatched = cached.lastWatched,
-                                        progressPercent = cached.progressPercent
-                                    ),
-                                    episodeThumbnail = cached.episodeThumbnail,
-                                    episodeDescription = cached.episodeDescription,
-                                    episodeImdbRating = cached.episodeImdbRating,
-                                    genres = cached.genres,
-                                    releaseInfo = cached.releaseInfo
                                 )
                             )
                         }
@@ -651,9 +618,9 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                                     if (state.continueWatchingItems == partialItems) {
                                         state
                                     } else if (!snapshot.hasLoadedRemoteProgress && state.continueWatchingItems.isNotEmpty()) {
-                                        // Don't overwrite with partial data until remote progress
+                                        // Don't overwrite with partial data until live progress
                                         // has loaded. Partial next-up resolution should not replace
-                                        // cached items that include Trakt in-progress entries.
+                                        // cached items.
                                         state
                                     } else {
                                         state.copy(continueWatchingItems = partialItems)
@@ -695,13 +662,10 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
 
                     val showIdSiblings = watchProgressRepository.getShowIdSiblings()
 
-                    // Deduplicate IDs using Trakt's sibling mapping (IMDB ↔ TMDB from
-                    // the same show). Resolve meta once per show, then cross-cache the
-                    // result under all sibling IDs. When multiple TMDB shows share the
-                    // same IMDB (e.g. Trakt season splits), they have separate Trakt
-                    // entries with distinct sibling sets, so they won't collide.
+                    // Deduplicate IDs via the repository's sibling mapping (IMDB ↔ TMDB
+                    // of the same show). Resolve meta once per show, then cross-cache
+                    // the result under all sibling IDs.
                     val resolvableIds = allWatchedEpisodes.keys.filter { contentId ->
-                        if (contentId.startsWith("trakt:")) return@filter false
                         val cacheKey = "series:$contentId"
                         synchronized(cwBadgeEpisodeCache) {
                             !cwBadgeEpisodeCache.containsKey(cacheKey) &&
@@ -722,7 +686,7 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                         val siblings = showIdSiblings[id]
                         val group = if (siblings != null && "__ambiguous__" !in siblings) {
                             val cluster = (siblings + id)
-                                .filter { it in resolvableIds && !it.startsWith("trakt:") && it !in ambiguousIds }
+                                .filter { it in resolvableIds && it !in ambiguousIds }
                             if (cluster.isEmpty()) listOf(id)
                             else cluster.sortedBy { if (it.startsWith("tt")) 0 else 1 }
                         } else {
@@ -1096,8 +1060,8 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
 
                 _uiState.update { state ->
                     // Don't overwrite cached CW with empty data while sources are still loading.
-                    // Once remote progress is confirmed loaded (Nuvio Sync completed or Trakt
-                    // responded), trust the empty result — items may have been deleted remotely.
+                    // Once live progress is confirmed loaded, trust the empty result — items
+                    // may have been removed.
                     val shouldProtectCache = normalItems.isEmpty() &&
                         state.continueWatchingItems.isNotEmpty() &&
                         !snapshot.hasLoadedRemoteProgress
@@ -1118,7 +1082,7 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
                 )
                 // Signal that the first CW cycle completed (items or confirmed empty).
                 if (!_initialCwResolved.value) {
-                    val hasRealData = normalItems.isNotEmpty() || !useTraktProgress || items.isNotEmpty()
+                    val hasRealData = normalItems.isNotEmpty() || items.isNotEmpty()
                     if (hasRealData) {
                         _initialCwResolved.value = true
                     }
@@ -1169,7 +1133,7 @@ internal fun HomeViewModel.loadContinueWatchingPipeline() {
 
                 // Rich metadata only runs after the final lightweight CW list is visible.
                 // If TMDB enrichment is enabled for CW, skip grace period to avoid
-                // visible flash of addon data being replaced by TMDB data.
+                // visible flash of un-enriched data being replaced by TMDB data.
                 debug.markPhase("enrichment-grace")
                 val tmdbEnrichCw = currentTmdbSettings.enabled && currentTmdbSettings.enrichContinueWatching
                 val enrichmentDelayMs = if (tmdbEnrichCw) 0L else remainingContinueWatchingEnrichmentGraceMs()
@@ -1212,17 +1176,12 @@ private fun shouldTreatAsInProgressForContinueWatching(progress: WatchProgress):
 
     val hasStartedPlayback = progress.position > 0L ||
         progress.progressPercent?.let { it > 0f } == true
-    return hasStartedPlayback &&
-        progress.source != WatchProgress.SOURCE_TRAKT_HISTORY &&
-        progress.source != WatchProgress.SOURCE_TRAKT_SHOW_PROGRESS
+    return hasStartedPlayback
 }
 
 private fun shouldUseAsCompletedSeed(progress: WatchProgress): Boolean {
     if (isMalformedNextUpSeedContentId(progress.contentId)) return false
-    if (!progress.isCompleted()) return false
-    if (progress.source != WatchProgress.SOURCE_TRAKT_PLAYBACK) return true
-    val explicitPercent = progress.progressPercent ?: return false
-    return explicitPercent >= 95f
+    return progress.isCompleted()
 }
 
 private fun shouldTreatAsActiveInProgressForNextUpSuppression(
@@ -1262,11 +1221,8 @@ private fun WatchProgress.toNextUpTraceString(): String {
 
 private fun nextUpSeedSourceRank(progress: WatchProgress): Int {
     return when (progress.source) {
-        WatchProgress.SOURCE_TRAKT_PLAYBACK -> 0
-        WatchProgress.SOURCE_TRAKT_SHOW_PROGRESS -> 0
-        WatchProgress.SOURCE_TRAKT_HISTORY -> 1
-        WatchProgress.SOURCE_LOCAL -> 2
-        else -> 4
+        WatchProgress.SOURCE_LOCAL -> 0
+        else -> 2
     }
 }
 
@@ -1274,7 +1230,7 @@ private fun isMalformedNextUpSeedContentId(contentId: String?): Boolean {
     val trimmed = contentId?.trim().orEmpty()
     if (trimmed.isEmpty()) return true
     return when (trimmed.lowercase(Locale.US)) {
-        "tmdb", "imdb", "trakt", "tmdb:", "imdb:", "trakt:" -> true
+        "tmdb", "imdb", "tmdb:", "imdb:" -> true
         else -> false
     }
 }
@@ -1353,7 +1309,7 @@ private fun resolveVideoForProgress(progress: WatchProgress, meta: CwMetaSummary
         videos.firstOrNull { it.season == season && it.episode == episode }?.let { return it }
 
         // Fallback: if not found by season+episode (anime with absolute numbering
-        // on Trakt vs multi-season on addon), try global index matching.
+        // vs multi-season listings), try global index matching.
         val addonSeasons = videos.mapTo(mutableSetOf()) { it.season }
         if (season == 1 && addonSeasons.size > 1 && episode > 0) {
             val sorted = videos.sortedWith(
@@ -1478,15 +1434,16 @@ private suspend fun HomeViewModel.buildLightweightNextUpItems(
         launch(Dispatchers.IO) {
             lookupSemaphore.withPermit {
                 processedContentIds.add(progress.contentId)
-                // Remap seed from Trakt numbering to addon numbering (for anime).
-                // Done here (after filters) so only ~5-10 seeds are remapped, not all 189.
+                // Remap seed numbering when listings use absolute vs multi-season
+                // episode numbers (anime). Done here (after filters) so only ~5-10
+                // seeds are remapped, not all 189.
                 val remappedProgress = watchProgressRepository.remapEpisodeSeed(progress)
                 val nextUp = buildNextUpItem(
                     progress = remappedProgress,
                     showUnairedNextUp = showUnairedNextUp,
                     debug = debug
                 ) ?: run {
-                    // If meta was not available (network error, addon timeout),
+                    // If meta was not available (network error, metadata timeout),
                     // remove from processedContentIds so this series is NOT
                     // treated as "rejected". The cached CW snapshot will keep
                     // it visible until the next successful meta resolution.
@@ -1593,7 +1550,7 @@ private suspend fun HomeViewModel.enrichVisibleContinueWatchingItems(
 
     // Save enriched next-up info to in-memory overlay so the next CW cycle's
     // cached/partial/normal emissions use enriched data from the start,
-    // preventing title/thumbnail flickering between addon and TMDB values.
+    // preventing title/thumbnail flickering between raw and TMDB values.
     sortedEnrichedItems.forEach { item ->
         when (item) {
             is ContinueWatchingItem.NextUp -> {
@@ -1742,7 +1699,7 @@ private suspend fun HomeViewModel.buildNextUpItem(
         }
         // Only mark as fully watched if meta was actually resolved (i.e. we
         // confirmed there is no next episode). When meta is unavailable
-        // (network error, addon timeout) we must NOT treat the series as
+        // (network error, metadata timeout) we must NOT treat the series as
         // fully watched — that would incorrectly remove it from Continue
         // Watching. The cached CW snapshot will keep it visible until the
         // next successful meta resolution.
@@ -2239,105 +2196,91 @@ private suspend fun HomeViewModel.resolveMetaForProgress(
         }
     }
 
-    val idCandidates = buildList {
-        add(progress.contentId)
-        if (progress.contentId.startsWith("tmdb:")) add(progress.contentId.substringAfter(':'))
-    }.distinct()
-
-    val typeCandidates = listOf(progress.contentType, "series", "tv").distinct()
-    val useAllAddons = externalMetaPrefetchEnabled
-    val resolved = run {
-        var summary: CwMetaSummary? = null
-        var attempts = 0
-        for (type in typeCandidates) {
-            for (candidateId in idCandidates) {
-                attempts += 1
-                val attemptStartedAtMs = SystemClock.elapsedRealtime()
-                val result = withTimeoutOrNull(6_000L) {
-                    if (useAllAddons) {
-                        metaRepository.getMetaFromAllAddons(
-                            type = type,
-                            id = candidateId
-                        ).first { it !is NetworkResult.Loading }
-                    } else {
-                        metaRepository.getMetaFromPrimaryAddon(
-                            type = type,
-                            id = candidateId
-                        ).first { it !is NetworkResult.Loading }
-                    }
-                }
-                val attemptElapsedMs = SystemClock.elapsedRealtime() - attemptStartedAtMs
-                if (result == null) {
-                    debug?.recordMetaTimeout()
-                    debug?.recordMetaAttempt(
-                        progress = progress,
-                        type = type,
-                        candidateId = candidateId,
-                        elapsedMs = attemptElapsedMs,
-                        outcome = "timeout"
-                    )
-                    continue
-                }
-                when (result) {
-                    is NetworkResult.Success<*> -> {
-                        debug?.recordMetaAttempt(
-                            progress = progress,
-                            type = type,
-                            candidateId = candidateId,
-                            elapsedMs = attemptElapsedMs,
-                            outcome = "success"
-                        )
-                    }
-                    is NetworkResult.Error -> {
-                        debug?.recordMetaError()
-                        debug?.recordMetaAttempt(
-                            progress = progress,
-                            type = type,
-                            candidateId = candidateId,
-                            elapsedMs = attemptElapsedMs,
-                            outcome = "error:${result.code ?: "unknown"}"
-                        )
-                    }
-                    NetworkResult.Loading -> Unit
-                }
-                summary = ((result as? NetworkResult.Success<*>)?.data as? Meta)?.toCwSummary()
-                if (summary != null) break
-            }
-            if (summary != null) break
-        }
-        // Fallback: if primary addon failed, try all addons before giving up.
-        if (summary == null && !useAllAddons) {
-            for (type in typeCandidates) {
-                for (candidateId in idCandidates) {
-                    attempts += 1
-                    val fallbackResult = withTimeoutOrNull(6_000L) {
-                        metaRepository.getMetaFromAllAddons(
-                            type = type,
-                            id = candidateId
-                        ).first { it !is NetworkResult.Loading }
-                    }
-                    summary = ((fallbackResult as? NetworkResult.Success<*>)?.data as? Meta)?.toCwSummary()
-                    if (summary != null) break
-                }
-                if (summary != null) break
-            }
-        }
+    val tmdbId = runCatching { tmdbService.ensureTmdbId(progress.contentId, progress.contentType) }.getOrNull()
+    if (tmdbId == null) {
+        debug?.recordMetaError()
         debug?.recordMetaResolveFinished(
             progress = progress,
             elapsedMs = SystemClock.elapsedRealtime() - startedAtMs,
-            success = summary != null,
-            attempts = attempts
+            success = false,
+            attempts = 1
         )
-        summary
+        synchronized(metaCache) {
+            metaCache[cacheKey] = null
+            cwMetaNegativeCacheTimestamps[cacheKey] = SystemClock.elapsedRealtime()
+        }
+        return null
     }
+    val language = currentTmdbSettings.language
+    val contentType = ContentType.fromString(progress.contentType)
+    val enrichment = withTimeoutOrNull(6_000L) {
+        runCatching {
+            tmdbMetadataService.fetchEnrichment(
+                tmdbId = tmdbId,
+                contentType = contentType,
+                language = language
+            )
+        }.getOrNull()
+    } ?: run {
+        debug?.recordMetaTimeout()
+        debug?.recordMetaResolveFinished(
+            progress = progress,
+            elapsedMs = SystemClock.elapsedRealtime() - startedAtMs,
+            success = false,
+            attempts = 1
+        )
+        synchronized(metaCache) {
+            metaCache[cacheKey] = null
+            cwMetaNegativeCacheTimestamps[cacheKey] = SystemClock.elapsedRealtime()
+        }
+        return null
+    }
+    val videos = if (contentType == ContentType.SERIES || contentType == ContentType.TV) {
+        withTimeoutOrNull(6_000L) {
+            runCatching {
+                tmdbMetadataService.fetchSeriesVideos(tmdbId, language)
+            }.getOrNull()
+        }.orEmpty()
+    } else {
+        emptyList()
+    }
+    val resolved = CwMetaSummary(
+        id = progress.contentId,
+        name = enrichment.localizedTitle
+            ?: enrichment.originalTitle
+            ?: progress.name,
+        poster = enrichment.poster,
+        backdropUrl = enrichment.backdrop,
+        logo = enrichment.logo,
+        description = enrichment.description,
+        genres = enrichment.genres,
+        releaseInfo = enrichment.releaseInfo,
+        imdbRating = enrichment.rating?.toFloat(),
+        language = enrichment.language,
+        country = enrichment.countries?.joinToString(", "),
+        videos = videos.map { v ->
+            CwVideoSummary(
+                id = v.id,
+                title = v.title,
+                released = v.released,
+                thumbnail = v.thumbnail,
+                season = v.season,
+                episode = v.episode,
+                overview = v.overview,
+                available = v.available
+            )
+        }
+    )
+    debug?.recordMetaResolveFinished(
+        progress = progress,
+        elapsedMs = SystemClock.elapsedRealtime() - startedAtMs,
+        success = true,
+        attempts = 1
+    )
 
     synchronized(metaCache) {
         metaCache[cacheKey] = resolved
-        if (resolved == null) {
-            cwMetaNegativeCacheTimestamps[cacheKey] = SystemClock.elapsedRealtime()
-        } else {
-            cwMetaNegativeCacheTimestamps.remove(cacheKey)
-        }
+        cwMetaNegativeCacheTimestamps.remove(cacheKey)
     }
     return resolved
 }
@@ -2384,42 +2327,49 @@ private suspend fun HomeViewModel.resolveBadgeEpisodes(
         return episodes
     }
 
-    if (contentId.startsWith("trakt:")) {
+    val tmdbId = runCatching { tmdbService.ensureTmdbId(contentId, contentType) }.getOrNull()
+    if (tmdbId == null) {
         synchronized(cwBadgeEpisodeCache) { cwBadgeEpisodeCache[cacheKey] = null }
         return null
     }
-    val idCandidates = buildList {
-        add(contentId)
-        if (contentId.startsWith("tmdb:")) add(contentId.substringAfter(':'))
-    }.distinct()
-    val typeCandidates = listOf(contentType, "series", "tv").distinct()
-    val useAllAddons = externalMetaPrefetchEnabled
-
-    for (type in typeCandidates) {
-        for (candidateId in idCandidates) {
-            val result = withTimeoutOrNull(2_500L) {
-                if (useAllAddons) {
-                    metaRepository.getMetaFromAllAddons(type = type, id = candidateId)
-                        .first { it !is NetworkResult.Loading }
-                } else {
-                    metaRepository.getMetaFromPrimaryAddon(type = type, id = candidateId)
-                        .first { it !is NetworkResult.Loading }
-                }
-            } ?: continue
-            val meta = (result as? NetworkResult.Success<*>)?.data as? Meta ?: continue
-            val summary = meta.toCwSummary()
-            val episodes = summary.watchableEpisodes()
-                .mapNotNull { v -> v.season?.let { s -> v.episode?.let { e -> s to e } } }
-                .toSet()
-            summary.earliestRevalidationMs()?.let { ms ->
-                cwBadgeNextSeasonMs[contentId] = ms
-            }
-            synchronized(cwBadgeEpisodeCache) { cwBadgeEpisodeCache[cacheKey] = episodes }
-            return episodes
+    val videos = withTimeoutOrNull(2_500L) {
+        runCatching {
+            tmdbMetadataService.fetchSeriesVideos(tmdbId, currentTmdbSettings.language)
+        }.getOrNull()
+    } ?: emptyList()
+    val episodes = videos
+        .mapNotNull { v -> v.season?.let { s -> v.episode?.let { e -> s to e } } }
+        .toSet()
+    val summary = CwMetaSummary(
+        id = contentId,
+        name = "",
+        poster = null,
+        backdropUrl = null,
+        logo = null,
+        description = null,
+        genres = emptyList(),
+        releaseInfo = null,
+        imdbRating = null,
+        language = null,
+        country = null,
+        videos = videos.map { v ->
+            CwVideoSummary(
+                id = v.id,
+                title = v.title,
+                released = v.released,
+                thumbnail = v.thumbnail,
+                season = v.season,
+                episode = v.episode,
+                overview = v.overview,
+                available = v.available
+            )
         }
+    )
+    summary.earliestRevalidationMs()?.let { ms ->
+        cwBadgeNextSeasonMs[contentId] = ms
     }
-    synchronized(cwBadgeEpisodeCache) { cwBadgeEpisodeCache[cacheKey] = null }
-    return null
+    synchronized(cwBadgeEpisodeCache) { cwBadgeEpisodeCache[cacheKey] = episodes }
+    return episodes
 }
 
 private fun buildLightweightEpisodeVideoId(
@@ -2572,7 +2522,7 @@ private fun isSeriesTypeCW(type: String?): Boolean {
 }
 
 /** Applies enriched overlay from the previous enrichment cycle to avoid
- *  flickering between addon meta and TMDB-enriched values during fresh builds. */
+ *  flickering between raw and TMDB-enriched values during fresh builds. */
 private suspend fun HomeViewModel.applyContinueWatchingEnrichmentOverlay(
     items: List<ContinueWatchingItem>
 ): List<ContinueWatchingItem> {
@@ -2779,22 +2729,13 @@ private suspend fun HomeViewModel.resolveContinueWatchingTmdbData(
 
     if (!isSeriesTypeCW(progress.contentType)) {
         val startedAtMs = SystemClock.elapsedRealtime()
-        val mdbEnabled = currentMdbListSettings.enabled && currentMdbListSettings.apiKey.isNotBlank()
-        val (movieMeta, mdbImdbRating) = coroutineScope {
-            val movieDeferred = async {
-                runCatching {
-                    tmdbMetadataService.fetchEnrichment(
-                        tmdbId = tmdbId,
-                        contentType = ContentType.MOVIE,
-                        language = language
-                    )
-                }.getOrNull()
-            }
-            val mdbDeferred = if (mdbEnabled) async {
-                runCatching { mdbListRepository.getImdbRatingForItem(progress.contentId, progress.contentType) }.getOrNull()
-            } else null
-            movieDeferred.await() to mdbDeferred?.await()
-        }
+        val movieMeta = runCatching {
+            tmdbMetadataService.fetchEnrichment(
+                tmdbId = tmdbId,
+                contentType = ContentType.MOVIE,
+                language = language
+            )
+        }.getOrNull()
         debug?.recordTmdbCall(
             kind = "in-progress-movie-enrichment",
             elapsedMs = SystemClock.elapsedRealtime() - startedAtMs,
@@ -2811,16 +2752,15 @@ private suspend fun HomeViewModel.resolveContinueWatchingTmdbData(
                 airDate = null,
                 overview = it.description?.trim()?.takeIf { t -> t.isNotEmpty() },
                 showDescription = null,
-                rating = mdbImdbRating ?: it.rating,
+                rating = it.rating,
                 contentLanguage = it.language
             )
         }
     }
 
     val episodeStartedAtMs = SystemClock.elapsedRealtime()
-    val mdbEnabled = currentMdbListSettings.enabled && currentMdbListSettings.apiKey.isNotBlank()
 
-    val (episodeMeta, showMeta, mdbImdbRating) = coroutineScope {
+    val (episodeMeta, showMeta) = coroutineScope {
         val episodeDeferred = async {
             runCatching {
                 tmdbMetadataService.fetchEpisodeEnrichment(
@@ -2839,10 +2779,7 @@ private suspend fun HomeViewModel.resolveContinueWatchingTmdbData(
                 )
             }.getOrNull()
         }
-        val mdbDeferred = if (mdbEnabled) async {
-            runCatching { mdbListRepository.getImdbRatingForItem(progress.contentId, progress.contentType) }.getOrNull()
-        } else null
-        Triple(episodeDeferred.await(), showDeferred.await(), mdbDeferred?.await())
+        episodeDeferred.await() to showDeferred.await()
     }
 
     debug?.recordTmdbCall(
@@ -2865,7 +2802,7 @@ private suspend fun HomeViewModel.resolveContinueWatchingTmdbData(
         airDate = episodeMeta?.airDate?.trim()?.takeIf { it.isNotEmpty() },
         overview = episodeMeta?.overview?.trim()?.takeIf { it.isNotEmpty() },
         showDescription = showMeta?.description?.trim()?.takeIf { it.isNotEmpty() },
-        rating = mdbImdbRating ?: showMeta?.rating,
+        rating = showMeta?.rating,
         contentLanguage = showMeta?.language
     )
 
@@ -2900,8 +2837,6 @@ private suspend fun HomeViewModel.resolveTmdbIdForNextUp(
         add(progress.contentId)
         add(meta.id)
         add(progress.videoId)
-        if (progress.contentId.startsWith("trakt:")) add(progress.contentId.substringAfter(':'))
-        if (meta.id.startsWith("trakt:")) add(meta.id.substringAfter(':'))
     }
         .map { it.trim() }
         .filter { it.isNotBlank() }
@@ -3044,7 +2979,7 @@ internal fun HomeViewModel.removeContinueWatchingPipeline(
             )
         }
         viewModelScope.launch {
-            traktSettingsDataStore.addDismissedNextUpKey(dismissKey)
+            layoutPreferenceDataStore.addDismissedNextUpKey(dismissKey)
         }
         return
     }

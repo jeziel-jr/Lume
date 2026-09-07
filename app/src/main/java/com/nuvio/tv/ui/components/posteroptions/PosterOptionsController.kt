@@ -1,19 +1,12 @@
 package com.nuvio.tv.ui.components.posteroptions
 
 import android.util.Log
-import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.data.local.WatchedSeriesStateHolder
-import com.nuvio.tv.data.repository.parseContentIds
 import com.nuvio.tv.domain.model.LibraryEntryInput
-import com.nuvio.tv.domain.model.LibraryListTab
-import com.nuvio.tv.domain.model.LibrarySourceMode
-import com.nuvio.tv.domain.model.ListMembershipChanges
 import com.nuvio.tv.domain.model.MetaPreview
-import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.domain.repository.LibraryRepository
-import com.nuvio.tv.domain.repository.MetaRepository
 import com.nuvio.tv.domain.repository.WatchProgressRepository
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -23,7 +16,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
@@ -42,7 +34,6 @@ class PosterOptionsController @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
     private val libraryRepository: LibraryRepository,
     private val watchProgressRepository: WatchProgressRepository,
-    private val metaRepository: MetaRepository,
     private val watchedSeriesStateHolder: WatchedSeriesStateHolder,
     private val tmdbService: TmdbService
 ) {
@@ -60,42 +51,6 @@ class PosterOptionsController @Inject constructor(
         if (bound) return
         bound = true
         this.scope = scope
-
-        libraryRepository.sourceMode
-            .distinctUntilChanged()
-            .onEach { mode ->
-                _state.update { current ->
-                    val resetPicker = mode != LibrarySourceMode.TRAKT
-                    if (resetPicker) {
-                        current.copy(
-                            librarySourceMode = mode,
-                            listPickerActive = false,
-                            listPickerPending = false,
-                            listPickerError = null,
-                            listPickerTitle = null,
-                            listPickerMembership = emptyMap()
-                        )
-                    } else {
-                        current.copy(librarySourceMode = mode)
-                    }
-                }
-            }
-            .launchIn(scope)
-
-        libraryRepository.listTabs
-            .distinctUntilChanged()
-            .onEach { tabs ->
-                _state.update { current ->
-                    current.copy(
-                        libraryListTabs = tabs,
-                        listPickerMembership = mergeMembershipWithTabs(
-                            tabs = tabs,
-                            membership = current.listPickerMembership
-                        )
-                    )
-                }
-            }
-            .launchIn(scope)
 
         targetFlow
             .flatMapLatest { item ->
@@ -164,7 +119,7 @@ class PosterOptionsController @Inject constructor(
 
     private suspend fun canonicalize(item: MetaPreview): MetaPreview {
         if (item.id.startsWith("tt", ignoreCase = false)) return item
-        val tmdbNumber = parseContentIds(item.id).tmdb ?: item.id.toIntOrNull() ?: return item
+        val tmdbNumber = contentTmdbId(item.id) ?: item.id.toIntOrNull() ?: return item
         val mediaType = if (item.apiType.equals("series", ignoreCase = true) ||
             item.apiType.equals("tv", ignoreCase = true) ||
             item.apiType.equals("anime", ignoreCase = true)
@@ -207,122 +162,6 @@ class PosterOptionsController @Inject constructor(
                 Log.w(TAG, "Failed to toggle library for ${canonical.id}: ${error.message}")
             }
             _state.update { it.copy(isLibraryPending = false) }
-        }
-    }
-
-    fun openListPicker() {
-        val state = _state.value
-        val item = state.target ?: return
-        if (state.librarySourceMode != LibrarySourceMode.TRAKT) {
-            toggleLibrary()
-            dismiss()
-            return
-        }
-        val scope = this.scope ?: return
-
-        _state.update { current ->
-            current.copy(
-                target = null,
-                listPickerActive = true,
-                listPickerTitle = item.name,
-                listPickerPending = true,
-                listPickerError = null,
-                listPickerMembership = mergeMembershipWithTabs(
-                    tabs = current.libraryListTabs,
-                    membership = emptyMap()
-                )
-            )
-        }
-        targetFlow.value = null
-
-        scope.launch {
-            val canonical = canonicalize(item)
-            val input = canonical.toLibraryEntryInput(state.addonBaseUrl.takeIf { it.isNotBlank() })
-            activeListPickerInput = input
-            runCatching {
-                libraryRepository.getMembershipSnapshot(input)
-            }.onSuccess { snapshot ->
-                _state.update { current ->
-                    current.copy(
-                        listPickerPending = false,
-                        listPickerError = null,
-                        listPickerMembership = mergeMembershipWithTabs(
-                            tabs = current.libraryListTabs,
-                            membership = snapshot.listMembership
-                        )
-                    )
-                }
-            }.onFailure { error ->
-                Log.w(TAG, "Failed to load list picker for ${canonical.id}: ${error.message}")
-                _state.update { current ->
-                    current.copy(
-                        listPickerPending = false,
-                        listPickerError = error.message ?: appContext.getString(com.nuvio.tv.R.string.poster_options_error_load_lists_failed)
-                    )
-                }
-            }
-        }
-    }
-
-    fun toggleListMembership(listKey: String) {
-        _state.update { current ->
-            val nextMembership = current.listPickerMembership.toMutableMap().apply {
-                this[listKey] = !(this[listKey] == true)
-            }
-            current.copy(
-                listPickerMembership = nextMembership,
-                listPickerError = null
-            )
-        }
-    }
-
-    fun saveListPicker() {
-        val state = _state.value
-        if (state.listPickerPending) return
-        if (state.librarySourceMode != LibrarySourceMode.TRAKT) return
-        val input = activeListPickerInput ?: return
-        val scope = this.scope ?: return
-
-        _state.update { it.copy(listPickerPending = true, listPickerError = null) }
-        scope.launch {
-            runCatching {
-                libraryRepository.applyMembershipChanges(
-                    item = input,
-                    changes = ListMembershipChanges(
-                        desiredMembership = _state.value.listPickerMembership
-                    )
-                )
-            }.onSuccess {
-                activeListPickerInput = null
-                _state.update {
-                    it.copy(
-                        listPickerActive = false,
-                        listPickerPending = false,
-                        listPickerError = null,
-                        listPickerTitle = null
-                    )
-                }
-            }.onFailure { error ->
-                Log.w(TAG, "Failed to save list picker: ${error.message}")
-                _state.update {
-                    it.copy(
-                        listPickerPending = false,
-                        listPickerError = error.message ?: appContext.getString(com.nuvio.tv.R.string.poster_options_error_update_lists_failed)
-                    )
-                }
-            }
-        }
-    }
-
-    fun dismissListPicker() {
-        activeListPickerInput = null
-        _state.update {
-            it.copy(
-                listPickerActive = false,
-                listPickerPending = false,
-                listPickerError = null,
-                listPickerTitle = null
-            )
         }
     }
 
@@ -386,77 +225,15 @@ class PosterOptionsController @Inject constructor(
     }
 
     private suspend fun markSeriesWatched(item: MetaPreview) {
-        val episodes = fetchSeriesEpisodes(item).filter { it.season != null && it.episode != null && it.season != 0 }
-        if (episodes.isEmpty()) {
-            watchProgressRepository.markAsCompleted(buildCompletedMovieProgress(item))
-            return
-        }
-
-        val progressList = episodes.map { video ->
-            WatchProgress(
-                contentId = item.id,
-                contentType = item.apiType,
-                name = item.name,
-                poster = item.poster,
-                backdrop = item.backdropUrl,
-                logo = item.logo,
-                videoId = video.id,
-                season = video.season,
-                episode = video.episode,
-                episodeTitle = video.title,
-                position = 1L,
-                duration = 1L,
-                lastWatched = System.currentTimeMillis(),
-                progressPercent = 100f
-            )
-        }
-        watchProgressRepository.markAsCompletedBatch(progressList)
+        watchProgressRepository.markAsCompleted(buildCompletedMovieProgress(item))
     }
 
     private suspend fun unmarkSeriesWatched(item: MetaPreview) {
-        val episodes = fetchSeriesEpisodes(item).filter { it.season != null && it.episode != null && it.season != 0 }
-        if (episodes.isEmpty()) {
-            watchProgressRepository.removeFromHistory(item.id, videoId = item.imdbId)
-            return
-        }
-
-        val episodePairs = episodes.map { it.season!! to it.episode!! }
-        watchProgressRepository.removeFromHistoryBatch(
-            contentId = item.id,
-            videoId = item.imdbId,
-            episodes = episodePairs
-        )
+        watchProgressRepository.removeFromHistory(item.id, videoId = item.imdbId)
     }
-
-    private suspend fun fetchSeriesEpisodes(item: MetaPreview): List<Video> {
-        val type = if (item.apiType.equals("tv", ignoreCase = true) ||
-            item.apiType.equals("anime", ignoreCase = true)
-        ) "series" else item.apiType
-        var episodes: List<Video> = emptyList()
-        metaRepository.getMetaFromPrimaryAddon(type, item.id)
-            .collect { networkResult ->
-                if (networkResult is NetworkResult.Success) {
-                    episodes = networkResult.data.videos
-                }
-            }
-        return episodes
-    }
-
-    private var activeListPickerInput: LibraryEntryInput? = null
 
     companion object {
         private const val TAG = "PosterOptionsCtrl"
-    }
-}
-
-private fun mergeMembershipWithTabs(
-    tabs: List<LibraryListTab>,
-    membership: Map<String, Boolean>
-): Map<String, Boolean> {
-    return if (tabs.isEmpty()) {
-        membership
-    } else {
-        tabs.associate { tab -> tab.key to (membership[tab.key] == true) }
     }
 }
 
@@ -484,7 +261,7 @@ private fun MetaPreview.toLibraryEntryInput(addonBaseUrl: String?): LibraryEntry
         ?.groupValues
         ?.getOrNull(1)
         ?.toIntOrNull()
-    val parsedIds = parseContentIds(id)
+    val (imdbId, tmdbId) = contentIdsOf(id)
     // The library renders as portrait. If the source MetaPreview was built for landscape
     // display (e.g. TMDB collection / more-like-this), its `poster` field holds the backdrop.
     // Prefer `rawPosterUrl` (the proper portrait) when available so the saved entry isn't a
@@ -498,9 +275,8 @@ private fun MetaPreview.toLibraryEntryInput(addonBaseUrl: String?): LibraryEntry
         itemType = apiType,
         title = name,
         year = year,
-        traktId = parsedIds.trakt,
-        imdbId = parsedIds.imdb,
-        tmdbId = parsedIds.tmdb,
+        imdbId = imdbId,
+        tmdbId = tmdbId,
         poster = savedPoster,
         posterShape = savedShape,
         background = background,
@@ -511,4 +287,22 @@ private fun MetaPreview.toLibraryEntryInput(addonBaseUrl: String?): LibraryEntry
         genres = genres,
         addonBaseUrl = addonBaseUrl
     )
+}
+
+/** Returns the TMDB id embedded in a `tmdb:<id>` style content id, or null. */
+private fun contentTmdbId(contentId: String): Int? {
+    val raw = contentId.trim()
+    return if (raw.startsWith("tmdb:", ignoreCase = true)) {
+        raw.substringAfter(':').toIntOrNull()
+    } else {
+        null
+    }
+}
+
+/** Extracts (imdbId, tmdbId) from a raw content id, mirroring the id shapes used across the app. */
+private fun contentIdsOf(contentId: String): Pair<String?, Int?> {
+    val raw = contentId.trim()
+    val imdb = raw.takeIf { it.startsWith("tt", ignoreCase = false) }?.substringBefore(':')
+    val tmdb = if (raw.startsWith("tmdb:", ignoreCase = true)) raw.substringAfter(':').toIntOrNull() else null
+    return imdb to tmdb
 }

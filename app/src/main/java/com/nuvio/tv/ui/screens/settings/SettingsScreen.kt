@@ -5,7 +5,6 @@ package com.nuvio.tv.ui.screens.settings
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 import androidx.activity.compose.BackHandler
-import androidx.annotation.RawRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -37,7 +36,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
@@ -45,7 +43,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,7 +81,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.R
-import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.domain.model.ExperienceMode
 import com.nuvio.tv.domain.model.SettingsUiStyle
 import kotlinx.coroutines.delay
@@ -93,26 +89,20 @@ import kotlin.math.roundToInt
 
 internal enum class SettingsCategory {
     EXPERIENCE,
-    ACCOUNT,
     PROFILES,
     PARENTAL,
     XTREAM_PROFILE,
     APPEARANCE,
     LAYOUT,
-    CONTENT_DISCOVERY,
     INTEGRATION,
     PLAYBACK,
     ADVANCED,
-    TRAKT,
     ABOUT,
     DEBUG
 }
 
 private enum class IntegrationSettingsSection {
-    Hub,
     Debrid,
-    Tmdb,
-    MdbList,
     AnimeSkip
 }
 
@@ -125,7 +115,6 @@ internal data class SettingsSectionSpec(
     val category: SettingsCategory,
     val title: String,
     val icon: ImageVector? = null,
-    @param:RawRes val rawIconRes: Int? = null,
     val subtitle: String,
     val destination: SettingsSectionDestination
 )
@@ -147,13 +136,6 @@ private fun rememberSettingsSectionSpecs() = listOf(
         title = stringResource(R.string.settings_experience),
         icon = Icons.Default.Tune,
         subtitle = stringResource(R.string.settings_experience_subtitle),
-        destination = SettingsSectionDestination.Inline
-    ),
-    SettingsSectionSpec(
-        category = SettingsCategory.ACCOUNT,
-        title = stringResource(R.string.settings_account),
-        icon = Icons.Default.Person,
-        subtitle = stringResource(R.string.settings_account_subtitle),
         destination = SettingsSectionDestination.Inline
     ),
     SettingsSectionSpec(
@@ -182,21 +164,14 @@ private fun rememberSettingsSectionSpecs() = listOf(
         title = stringResource(R.string.appearance_title),
         icon = Icons.Default.Palette,
         subtitle = stringResource(R.string.appearance_subtitle),
-        destination = SettingsSectionDestination.Inline
+        destination = SettingsSectionDestination.External
     ),
     SettingsSectionSpec(
         category = SettingsCategory.LAYOUT,
         title = stringResource(R.string.settings_layout),
         icon = Icons.Default.GridView,
         subtitle = stringResource(R.string.settings_layout_subtitle),
-        destination = SettingsSectionDestination.Inline
-    ),
-    SettingsSectionSpec(
-        category = SettingsCategory.CONTENT_DISCOVERY,
-        title = stringResource(R.string.settings_content_discovery),
-        icon = Icons.Default.Explore,
-        subtitle = stringResource(R.string.settings_content_discovery_subtitle),
-        destination = SettingsSectionDestination.Inline
+        destination = SettingsSectionDestination.External
     ),
     SettingsSectionSpec(
         category = SettingsCategory.INTEGRATION,
@@ -210,13 +185,6 @@ private fun rememberSettingsSectionSpecs() = listOf(
         title = stringResource(R.string.settings_playback),
         icon = Icons.Rounded.PlayArrow,
         subtitle = stringResource(R.string.settings_playback_subtitle),
-        destination = SettingsSectionDestination.Inline
-    ),
-    SettingsSectionSpec(
-        category = SettingsCategory.TRAKT,
-        title = "Trakt",
-        rawIconRes = R.raw.trakt_tv_glyph,
-        subtitle = stringResource(R.string.settings_trakt_subtitle),
         destination = SettingsSectionDestination.External
     ),
     SettingsSectionSpec(
@@ -224,7 +192,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         title = stringResource(R.string.about_title),
         icon = Icons.Default.Info,
         subtitle = stringResource(R.string.settings_about_subtitle),
-        destination = SettingsSectionDestination.Inline
+        destination = SettingsSectionDestination.External
     ),
     SettingsSectionSpec(
         category = SettingsCategory.ADVANCED,
@@ -240,28 +208,17 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_debug_subtitle),
         destination = SettingsSectionDestination.Inline
     )
-).filter {
-    it.category in setOf(
-        SettingsCategory.XTREAM_PROFILE,
-        SettingsCategory.PARENTAL,
-        SettingsCategory.APPEARANCE,
-        SettingsCategory.LAYOUT,
-        SettingsCategory.PLAYBACK,
-        SettingsCategory.ADVANCED,
-        SettingsCategory.ABOUT
-    )
-}
+)
 
 @Composable
 fun SettingsScreen(
     showBuiltInHeader: Boolean = true,
-    onNavigateToTrakt: () -> Unit = {},
-    onNavigateToAddons: () -> Unit = {},
-    onNavigateToPlugins: () -> Unit = {},
-    onNavigateToAuthQrSignIn: () -> Unit = {},
     onNavigateToXtreamSetup: () -> Unit = {},
-    onNavigateToManageProfiles: () -> Unit = {},
-    onNavigateToSupportersContributors: () -> Unit = {},
+    onNavigateToLayoutSettings: () -> Unit = {},
+    onNavigateToPlaybackSettings: () -> Unit = {},
+    onNavigateToThemeSettings: () -> Unit = {},
+    onNavigateToTmdbSettings: () -> Unit = {},
+    onNavigateToAbout: () -> Unit = {},
     profileViewModel: ProfileSettingsViewModel = hiltViewModel(),
     experienceModeViewModel: ExperienceModeSettingsViewModel = hiltViewModel()
 ) {
@@ -289,16 +246,17 @@ fun SettingsScreen(
     val visibleSections = remember(isPrimaryProfileActive, isEssentialMode, allSectionSpecs) {
         allSectionSpecs.filter { section ->
             when (section.category) {
-                SettingsCategory.EXPERIENCE -> false
+                SettingsCategory.EXPERIENCE -> isEssentialMode
                 SettingsCategory.DEBUG -> BuildConfig.IS_DEBUG_BUILD && !isEssentialMode
                 SettingsCategory.PROFILES -> isPrimaryProfileActive
                 SettingsCategory.PARENTAL -> true
-                SettingsCategory.ACCOUNT -> isPrimaryProfileActive
                 SettingsCategory.XTREAM_PROFILE -> true
+                SettingsCategory.APPEARANCE -> true
                 SettingsCategory.LAYOUT -> true
-                SettingsCategory.CONTENT_DISCOVERY -> true
                 SettingsCategory.INTEGRATION -> true
-                SettingsCategory.ADVANCED -> true
+                SettingsCategory.PLAYBACK -> true
+                SettingsCategory.ADVANCED -> !isEssentialMode
+                SettingsCategory.ABOUT -> true
                 else -> true
             }
         }
@@ -316,26 +274,18 @@ fun SettingsScreen(
     }
     val contentFocusRequesters = remember {
         mapOf(
-            SettingsCategory.APPEARANCE to FocusRequester(),
             SettingsCategory.EXPERIENCE to FocusRequester(),
             SettingsCategory.PROFILES to FocusRequester(),
             SettingsCategory.PARENTAL to FocusRequester(),
-            SettingsCategory.LAYOUT to FocusRequester(),
-            SettingsCategory.CONTENT_DISCOVERY to FocusRequester(),
+            SettingsCategory.XTREAM_PROFILE to FocusRequester(),
             SettingsCategory.INTEGRATION to FocusRequester(),
-            SettingsCategory.PLAYBACK to FocusRequester(),
-            SettingsCategory.ADVANCED to FocusRequester(),
-            SettingsCategory.ABOUT to FocusRequester(),
-            SettingsCategory.ACCOUNT to FocusRequester()
+            SettingsCategory.ADVANCED to FocusRequester()
         )
     }
     val railContainerFocusRequester = remember { FocusRequester() }
-    val integrationHubFocusRequester = remember { FocusRequester() }
     val integrationDebridFocusRequester = remember { FocusRequester() }
-    val integrationTmdbFocusRequester = remember { FocusRequester() }
-    val integrationMdbListFocusRequester = remember { FocusRequester() }
     val integrationAnimeSkipFocusRequester = remember { FocusRequester() }
-    var integrationSection by remember { mutableStateOf(IntegrationSettingsSection.Hub) }
+    var integrationSection by remember { mutableStateOf<IntegrationSettingsSection?>(null) }
     var pendingContentFocusCategory by remember { mutableStateOf<SettingsCategory?>(null) }
     var pendingContentFocusRequestId by remember { mutableLongStateOf(0L) }
     var allowDetailAutofocus by remember { mutableStateOf(false) }
@@ -343,8 +293,11 @@ fun SettingsScreen(
     val focusManager = LocalFocusManager.current
 
     LaunchedEffect(visibleSections) {
-        if (visibleSections.none { it.category == selectedCategory }) {
-            selectedCategory = visibleSections.firstOrNull()?.category ?: SettingsCategory.APPEARANCE
+        val selectedSpec = visibleSections.firstOrNull { it.category == selectedCategory }
+        if (selectedSpec == null || selectedSpec.destination == SettingsSectionDestination.External) {
+            selectedCategory = visibleSections.firstOrNull {
+                it.destination == SettingsSectionDestination.Inline
+            }?.category ?: SettingsCategory.APPEARANCE
         }
     }
 
@@ -387,13 +340,15 @@ fun SettingsScreen(
             val onSectionClick: (SettingsSectionSpec) -> Unit = { section ->
                 if (section.destination == SettingsSectionDestination.External) {
                     when (section.category) {
-                        SettingsCategory.ACCOUNT -> onNavigateToAuthQrSignIn()
-                        SettingsCategory.TRAKT -> onNavigateToTrakt()
+                        SettingsCategory.APPEARANCE -> onNavigateToThemeSettings()
+                        SettingsCategory.LAYOUT -> onNavigateToLayoutSettings()
+                        SettingsCategory.PLAYBACK -> onNavigateToPlaybackSettings()
+                        SettingsCategory.ABOUT -> onNavigateToAbout()
                         else -> Unit
                     }
                 } else {
                     if (section.category == SettingsCategory.INTEGRATION) {
-                        integrationSection = IntegrationSettingsSection.Hub
+                        integrationSection = null
                     }
                     allowDetailAutofocus = true
                     selectedCategory = section.category
@@ -411,7 +366,7 @@ fun SettingsScreen(
                 val selectFocusedTab: (SettingsCategory) -> Unit = { category ->
                     if (selectedCategory != category) {
                         if (category == SettingsCategory.INTEGRATION) {
-                            integrationSection = IntegrationSettingsSection.Hub
+                            integrationSection = null
                         }
                         allowDetailAutofocus = false
                         selectedCategory = category
@@ -493,7 +448,6 @@ fun SettingsScreen(
                                 SettingsTopBarTab(
                                     title = section.title,
                                     icon = section.icon,
-                                    rawIconRes = section.rawIconRes,
                                     isSelected = selectedCategory == section.category,
                                     focusRequester = railFocusRequesters[section.category],
                                     onClick = { onSectionClick(section) },
@@ -551,23 +505,15 @@ fun SettingsScreen(
                         ) { animatedCategory ->
                             SettingsDetailPane(
                                 selectedCategory = animatedCategory,
-                                isEssentialMode = isEssentialMode,
                                 allowDetailAutofocus = allowDetailAutofocus,
                                 contentFocusRequesters = contentFocusRequesters,
                                 experienceModeViewModel = experienceModeViewModel,
                                 integrationSection = integrationSection,
                                 onSelectIntegrationSection = { integrationSection = it },
-                                integrationHubFocusRequester = integrationHubFocusRequester,
                                 integrationDebridFocusRequester = integrationDebridFocusRequester,
-                                integrationTmdbFocusRequester = integrationTmdbFocusRequester,
-                                integrationMdbListFocusRequester = integrationMdbListFocusRequester,
                                 integrationAnimeSkipFocusRequester = integrationAnimeSkipFocusRequester,
-                                onNavigateToManageProfiles = onNavigateToManageProfiles,
-                                onNavigateToAddons = onNavigateToAddons,
-                                onNavigateToPlugins = onNavigateToPlugins,
-                                onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn,
                                 onNavigateToXtreamSetup = onNavigateToXtreamSetup,
-                                onNavigateToSupportersContributors = onNavigateToSupportersContributors
+                                onNavigateToTmdbSettings = onNavigateToTmdbSettings
                             )
                         }
                     }
@@ -651,7 +597,6 @@ fun SettingsScreen(
                             SettingsRailButton(
                                 title = section.title,
                                 icon = section.icon,
-                                rawIconRes = section.rawIconRes,
                                 isSelected = selectedCategory == section.category,
                                 focusRequester = railFocusRequesters[section.category],
                                 onClick = { onSectionClick(section) },
@@ -702,23 +647,15 @@ fun SettingsScreen(
                 ) {
                     SettingsDetailPane(
                         selectedCategory = selectedCategory,
-                        isEssentialMode = isEssentialMode,
                         allowDetailAutofocus = allowDetailAutofocus,
                         contentFocusRequesters = contentFocusRequesters,
                         experienceModeViewModel = experienceModeViewModel,
                         integrationSection = integrationSection,
                         onSelectIntegrationSection = { integrationSection = it },
-                        integrationHubFocusRequester = integrationHubFocusRequester,
                         integrationDebridFocusRequester = integrationDebridFocusRequester,
-                        integrationTmdbFocusRequester = integrationTmdbFocusRequester,
-                        integrationMdbListFocusRequester = integrationMdbListFocusRequester,
                         integrationAnimeSkipFocusRequester = integrationAnimeSkipFocusRequester,
-                        onNavigateToManageProfiles = onNavigateToManageProfiles,
-                        onNavigateToAddons = onNavigateToAddons,
-                        onNavigateToPlugins = onNavigateToPlugins,
-                        onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn,
                         onNavigateToXtreamSetup = onNavigateToXtreamSetup,
-                        onNavigateToSupportersContributors = onNavigateToSupportersContributors
+                        onNavigateToTmdbSettings = onNavigateToTmdbSettings
                     )
                 }
             }
@@ -730,23 +667,15 @@ fun SettingsScreen(
 @Composable
 private fun SettingsDetailPane(
     selectedCategory: SettingsCategory,
-    isEssentialMode: Boolean,
     allowDetailAutofocus: Boolean,
     contentFocusRequesters: Map<SettingsCategory, FocusRequester>,
     experienceModeViewModel: ExperienceModeSettingsViewModel,
-    integrationSection: IntegrationSettingsSection,
-    onSelectIntegrationSection: (IntegrationSettingsSection) -> Unit,
-    integrationHubFocusRequester: FocusRequester,
+    integrationSection: IntegrationSettingsSection?,
+    onSelectIntegrationSection: (IntegrationSettingsSection?) -> Unit,
     integrationDebridFocusRequester: FocusRequester,
-    integrationTmdbFocusRequester: FocusRequester,
-    integrationMdbListFocusRequester: FocusRequester,
     integrationAnimeSkipFocusRequester: FocusRequester,
-    onNavigateToManageProfiles: () -> Unit,
-    onNavigateToAddons: () -> Unit,
-    onNavigateToPlugins: () -> Unit,
-    onNavigateToAuthQrSignIn: () -> Unit,
     onNavigateToXtreamSetup: () -> Unit,
-    onNavigateToSupportersContributors: () -> Unit
+    onNavigateToTmdbSettings: () -> Unit
 ) {
     when (selectedCategory) {
         SettingsCategory.EXPERIENCE -> EssentialAdvancedSettingsContent(
@@ -758,7 +687,6 @@ private fun SettingsDetailPane(
             }
         )
         SettingsCategory.PROFILES -> ProfileSettingsContent(
-            onManageProfiles = onNavigateToManageProfiles,
             initialFocusRequester = if (allowDetailAutofocus) {
                 contentFocusRequesters[SettingsCategory.PROFILES]
             } else {
@@ -779,57 +707,6 @@ private fun SettingsDetailPane(
                 null
             },
         )
-        SettingsCategory.APPEARANCE -> ThemeSettingsContent(
-            initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.APPEARANCE]
-            } else {
-                null
-            }
-        )
-        SettingsCategory.LAYOUT -> LayoutSettingsContent(
-            initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.LAYOUT]
-            } else {
-                null
-            },
-            essentialMode = isEssentialMode
-        )
-        SettingsCategory.PLAYBACK -> if (isEssentialMode) {
-            EssentialPlaybackSettingsContent(
-                initialFocusRequester = if (allowDetailAutofocus) {
-                    contentFocusRequesters[SettingsCategory.PLAYBACK]
-                } else {
-                    null
-                }
-            )
-        } else {
-            PlaybackSettingsContent(
-                initialFocusRequester = if (allowDetailAutofocus) {
-                    contentFocusRequesters[SettingsCategory.PLAYBACK]
-                } else {
-                    null
-                }
-            )
-        }
-        SettingsCategory.ADVANCED -> if (isEssentialMode) {
-            EssentialAdvancedSettingsContent(
-                experienceModeViewModel = experienceModeViewModel,
-                initialFocusRequester = if (allowDetailAutofocus) {
-                    contentFocusRequesters[SettingsCategory.ADVANCED]
-                } else {
-                    null
-                }
-            )
-        } else {
-            AdvancedSettingsContent(
-                initialFocusRequester = if (allowDetailAutofocus) {
-                    contentFocusRequesters[SettingsCategory.ADVANCED]
-                } else {
-                    null
-                },
-                experienceModeViewModel = experienceModeViewModel
-            )
-        }
         SettingsCategory.INTEGRATION -> IntegrationSettingsContent(
             selectedSection = integrationSection,
             onSelectSection = onSelectIntegrationSection,
@@ -838,81 +715,22 @@ private fun SettingsDetailPane(
             } else {
                 null
             },
-            hubFocusRequester = integrationHubFocusRequester,
             debridFocusRequester = integrationDebridFocusRequester,
-            tmdbFocusRequester = integrationTmdbFocusRequester,
-            mdbListFocusRequester = integrationMdbListFocusRequester,
             animeSkipFocusRequester = integrationAnimeSkipFocusRequester,
+            onNavigateToTmdbSettings = onNavigateToTmdbSettings,
             onNavigateToXtreamSetup = onNavigateToXtreamSetup,
             autoFocusEnabled = allowDetailAutofocus
         )
-        SettingsCategory.ABOUT -> AboutSettingsContent(
-            onNavigateToSupportersContributors = onNavigateToSupportersContributors,
+        SettingsCategory.ADVANCED -> AdvancedSettingsContent(
             initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.ABOUT]
+                contentFocusRequesters[SettingsCategory.ADVANCED]
             } else {
                 null
-            }
-        )
-        SettingsCategory.CONTENT_DISCOVERY -> ContentDiscoverySettingsContent(
-            onNavigateToAddons = onNavigateToAddons,
-            onNavigateToPlugins = onNavigateToPlugins,
-            showPlugins = AppFeaturePolicy.pluginsEnabled && !isEssentialMode,
-            initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.CONTENT_DISCOVERY]
-            } else {
-                null
-            }
-        )
-        SettingsCategory.ACCOUNT -> AccountSettingsInline(
-            onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn,
-            initialFocusRequester = if (allowDetailAutofocus) {
-                contentFocusRequesters[SettingsCategory.ACCOUNT]
-            } else {
-                null
-            }
+            },
+            experienceModeViewModel = experienceModeViewModel
         )
         SettingsCategory.DEBUG -> DebugSettingsContent()
-        SettingsCategory.TRAKT -> Unit
-    }
-}
-
-@Composable
-private fun ContentDiscoverySettingsContent(
-    onNavigateToAddons: () -> Unit,
-    onNavigateToPlugins: () -> Unit,
-    showPlugins: Boolean,
-    initialFocusRequester: FocusRequester?
-) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
-    ) {
-        SettingsDetailHeader(
-            title = stringResource(R.string.settings_content_discovery),
-            subtitle = stringResource(R.string.settings_content_discovery_subtitle)
-        )
-        SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
-            SettingsActionRow(
-                title = stringResource(R.string.addon_title),
-                subtitle = stringResource(R.string.settings_content_discovery_addons_subtitle),
-                onClick = onNavigateToAddons,
-                leadingIcon = Icons.Default.GridView,
-                modifier = if (initialFocusRequester != null) {
-                    Modifier.focusRequester(initialFocusRequester)
-                } else {
-                    Modifier
-                }
-            )
-            if (showPlugins) {
-                SettingsActionRow(
-                    title = stringResource(R.string.plugin_title),
-                    subtitle = stringResource(R.string.settings_content_discovery_plugins_subtitle),
-                    onClick = onNavigateToPlugins,
-                    leadingIcon = Icons.Default.Build
-                )
-            }
-        }
+        else -> Unit
     }
 }
 
@@ -956,68 +774,33 @@ private fun EssentialAdvancedSettingsContent(
 }
 
 @Composable
-private fun AccountSettingsInline(
-    onNavigateToAuthQrSignIn: () -> Unit,
-    initialFocusRequester: FocusRequester?
-) {
-    val accountViewModel: com.nuvio.tv.ui.screens.account.AccountViewModel = hiltViewModel()
-    val accountUiState by accountViewModel.uiState.collectAsStateWithLifecycle()
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
-    ) {
-        SettingsDetailHeader(
-            title = stringResource(R.string.settings_account),
-            subtitle = stringResource(R.string.settings_account_section_subtitle)
-        )
-        SettingsGroupCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) {
-            com.nuvio.tv.ui.screens.account.AccountSettingsContent(
-                uiState = accountUiState,
-                viewModel = accountViewModel,
-                onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn,
-                initialFocusRequester = initialFocusRequester
-            )
-        }
-    }
-}
-
-@Composable
 private fun IntegrationSettingsContent(
-    selectedSection: IntegrationSettingsSection,
-    onSelectSection: (IntegrationSettingsSection) -> Unit,
+    selectedSection: IntegrationSettingsSection?,
+    onSelectSection: (IntegrationSettingsSection?) -> Unit,
     initialFocusRequester: FocusRequester?,
-    hubFocusRequester: FocusRequester,
     debridFocusRequester: FocusRequester,
-    tmdbFocusRequester: FocusRequester,
-    mdbListFocusRequester: FocusRequester,
     animeSkipFocusRequester: FocusRequester,
+    onNavigateToTmdbSettings: () -> Unit,
     onNavigateToXtreamSetup: () -> Unit,
     autoFocusEnabled: Boolean
 ) {
-    BackHandler(enabled = selectedSection != IntegrationSettingsSection.Hub) {
-        onSelectSection(IntegrationSettingsSection.Hub)
+    BackHandler(enabled = selectedSection != null) {
+        onSelectSection(null)
     }
-    val hubEntryFocusRequester = initialFocusRequester ?: hubFocusRequester
+    val landingEntryFocusRequester = initialFocusRequester ?: remember { FocusRequester() }
 
     LaunchedEffect(selectedSection, autoFocusEnabled) {
         if (!autoFocusEnabled) return@LaunchedEffect
         val requester = when (selectedSection) {
-            IntegrationSettingsSection.Hub -> hubEntryFocusRequester
+            null -> landingEntryFocusRequester
             IntegrationSettingsSection.Debrid -> debridFocusRequester
-            IntegrationSettingsSection.Tmdb -> tmdbFocusRequester
-            IntegrationSettingsSection.MdbList -> mdbListFocusRequester
             IntegrationSettingsSection.AnimeSkip -> animeSkipFocusRequester
         }
         runCatching { requester.requestFocus() }
     }
 
     when (selectedSection) {
-        IntegrationSettingsSection.Hub -> {
+        null -> {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -1032,50 +815,43 @@ private fun IntegrationSettingsContent(
                         .fillMaxWidth()
                         .weight(1f)
                 ) {
-                    val integrationHubState = rememberLazyListState()
+                    val integrationListState = rememberLazyListState()
                     Box(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
-                            state = integrationHubState,
+                            state = integrationListState,
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            item(key = "integration_hub_debrid") {
+                            item(key = "integration_debrid") {
                                 SettingsActionRow(
                                     title = stringResource(R.string.debrid_title),
                                     subtitle = stringResource(R.string.settings_debrid_subtitle),
                                     onClick = { onSelectSection(IntegrationSettingsSection.Debrid) },
-                                    modifier = Modifier.focusRequester(hubEntryFocusRequester)
+                                    modifier = Modifier.focusRequester(landingEntryFocusRequester)
                                 )
                             }
-                            item(key = "integration_hub_xtream") {
-                                SettingsActionRow(
-                                    title = stringResource(R.string.xtream_settings_title),
-                                    subtitle = stringResource(R.string.xtream_settings_subtitle),
-                                    onClick = onNavigateToXtreamSetup,
-                                )
-                            }
-                            item(key = "integration_hub_tmdb") {
+                            item(key = "integration_tmdb") {
                                 SettingsActionRow(
                                     title = "TMDB",
                                     subtitle = stringResource(R.string.settings_tmdb_subtitle),
-                                    onClick = { onSelectSection(IntegrationSettingsSection.Tmdb) }
+                                    onClick = onNavigateToTmdbSettings
                                 )
                             }
-                            item(key = "integration_hub_mdblist") {
-                                SettingsActionRow(
-                                    title = "MDBList",
-                                    subtitle = stringResource(R.string.settings_mdblist_subtitle),
-                                    onClick = { onSelectSection(IntegrationSettingsSection.MdbList) }
-                                )
-                            }
-                            item(key = "integration_hub_animeskip") {
+                            item(key = "integration_animeskip") {
                                 SettingsActionRow(
                                     title = "Anime-Skip",
                                     subtitle = stringResource(R.string.settings_animeskip_subtitle),
                                     onClick = { onSelectSection(IntegrationSettingsSection.AnimeSkip) }
                                 )
                             }
+                            item(key = "integration_xtream") {
+                                SettingsActionRow(
+                                    title = stringResource(R.string.xtream_settings_title),
+                                    subtitle = stringResource(R.string.xtream_settings_subtitle),
+                                    onClick = onNavigateToXtreamSetup
+                                )
+                            }
                         }
-                        SettingsVerticalScrollIndicators(state = integrationHubState)
+                        SettingsVerticalScrollIndicators(state = integrationListState)
                     }
                 }
             }
@@ -1084,18 +860,6 @@ private fun IntegrationSettingsContent(
         IntegrationSettingsSection.Debrid -> {
             DebridSettingsContent(
                 initialFocusRequester = debridFocusRequester
-            )
-        }
-
-        IntegrationSettingsSection.Tmdb -> {
-            TmdbSettingsContent(
-                initialFocusRequester = tmdbFocusRequester
-            )
-        }
-
-        IntegrationSettingsSection.MdbList -> {
-            MDBListSettingsContent(
-                initialFocusRequester = mdbListFocusRequester
             )
         }
 

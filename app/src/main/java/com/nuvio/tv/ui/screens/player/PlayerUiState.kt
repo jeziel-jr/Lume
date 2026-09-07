@@ -12,7 +12,6 @@ import com.nuvio.tv.data.local.SubtitleStyleSettings
 import com.nuvio.tv.data.repository.SkipInterval
 import com.nuvio.tv.domain.model.MetaCastMember
 import com.nuvio.tv.domain.model.Stream
-import com.nuvio.tv.domain.model.Subtitle
 import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.data.xtream.XtreamComponentHealth
@@ -20,13 +19,6 @@ import com.nuvio.tv.ui.components.SourceChipItem
 
 enum class PlayerExitReason {
     StillWatchingPrompt
-}
-
-enum class PlaybackIssueReportStatus {
-    Idle,
-    Sending,
-    Sent,
-    Failed
 }
 
 sealed interface PostPlayMode {
@@ -82,12 +74,9 @@ data class PlayerUiState(
     val playbackSpeed: Float = 1f,
     val loadingOverlayEnabled: Boolean = true,
     val showPlayerLoadingStatus: Boolean = true,
-    val playbackIssueReportsEnabled: Boolean = false,
     val showLoadingOverlay: Boolean = true,
     val loadingMessage: String? = null,
     val loadingProgress: Float? = null,
-    val loadingIssueReportVisible: Boolean = false,
-    val loadingIssueElapsedMs: Long = 0L,
     val pauseOverlayEnabled: Boolean = true,
     val osdClockEnabled: Boolean = true,
     val showPauseOverlay: Boolean = false,
@@ -104,25 +93,12 @@ data class PlayerUiState(
     val showAudioOverlay: Boolean = false,
     val showSubtitleOverlay: Boolean = false,
     val showSubtitleStylePanel: Boolean = false,
-    val showSubtitleTimingDialog: Boolean = false,
     val showSubtitleDelayOverlay: Boolean = false,
     val subtitleDelayMs: Int = 0,
-    val subtitleAutoSyncCues: List<SubtitleSyncCue> = emptyList(),
-    val subtitleAutoSyncCapturedVideoMs: Long? = null,
-    val subtitleAutoSyncStatus: String? = null,
-    val subtitleAutoSyncError: String? = null,
-    val subtitleAutoSyncLoading: Boolean = false,
-    val subtitleAutoSyncLoadedTrackKey: String? = null,
     val showSpeedDialog: Boolean = false,
     val showMoreDialog: Boolean = false,
     // Subtitle style settings
     val subtitleStyle: SubtitleStyleSettings = SubtitleStyleSettings(),
-    // Addon subtitles
-    val addonSubtitles: List<Subtitle> = emptyList(),
-    val isLoadingAddonSubtitles: Boolean = false,
-    val selectedAddonSubtitle: Subtitle? = null,
-    val addonSubtitlesError: String? = null,
-    val installedSubtitleAddonOrder: List<String> = emptyList(),
     // Episodes/streams side panel (for series)
     val showEpisodesPanel: Boolean = false,
     val isLoadingEpisodes: Boolean = false,
@@ -164,14 +140,7 @@ data class PlayerUiState(
     val error: String? = null,
     val serverDiagnosisChecking: Boolean = false,
     val serverDiagnosis: XtreamComponentHealth? = null,
-    val playbackIssueReportStatus: PlaybackIssueReportStatus = PlaybackIssueReportStatus.Idle,
-    val playbackIssueReportId: String? = null,
-    val playbackIssueReportError: String? = null,
     val pendingSeekPosition: Long? = null, // For resuming from saved progress
-    // Parental guide overlay
-    val parentalWarnings: List<ParentalWarning> = emptyList(),
-    val showParentalGuide: Boolean = false,
-    val parentalGuideHasShown: Boolean = false,
     // Skip intro
     val activeSkipInterval: SkipInterval? = null,
     val skipIntervalDismissed: Boolean = false,
@@ -256,11 +225,6 @@ data class NextEpisodeInfo(
     val isOtherType: Boolean = false
 )
 
-data class SubtitleSyncCue(
-    val startTimeMs: Long,
-    val text: String
-)
-
 sealed class PlayerEvent {
     data object OnPlayPause : PlayerEvent()
     data object OnSeekForward : PlayerEvent()
@@ -276,18 +240,12 @@ sealed class PlayerEvent {
     data class OnSetCenterMixLevelDb(val db: Int) : PlayerEvent()
     data class OnSelectSubtitleTrack(val index: Int) : PlayerEvent()
     data object OnDisableSubtitles : PlayerEvent()
-    data class OnSelectAddonSubtitle(val subtitle: Subtitle) : PlayerEvent()
     data class OnSetPlaybackSpeed(val speed: Float) : PlayerEvent()
     data object OnToggleControls : PlayerEvent()
     data object OnShowAudioOverlay : PlayerEvent()
     data object OnShowSubtitleOverlay : PlayerEvent()
     data object OnOpenSubtitleStylePanel : PlayerEvent()
     data object OnDismissSubtitleStylePanel : PlayerEvent()
-    data object OnShowSubtitleTimingDialog : PlayerEvent()
-    data object OnDismissSubtitleTimingDialog : PlayerEvent()
-    data object OnCaptureSubtitleAutoSyncTime : PlayerEvent()
-    data class OnApplySubtitleAutoSyncCue(val cueStartTimeMs: Long) : PlayerEvent()
-    data object OnReloadSubtitleAutoSyncCues : PlayerEvent()
     data object OnShowSubtitleDelayOverlay : PlayerEvent()
     data object OnHideSubtitleDelayOverlay : PlayerEvent()
     data class OnAdjustSubtitleDelay(val deltaMs: Int, val showOverlay: Boolean = true) : PlayerEvent()
@@ -309,8 +267,6 @@ sealed class PlayerEvent {
     data class OnSourceStreamSelected(val stream: Stream) : PlayerEvent()
     data object OnDismissTransientOverlay : PlayerEvent()
     data object OnRetry : PlayerEvent()
-    data object OnReportPlaybackIssue : PlayerEvent()
-    data object OnParentalGuideHide : PlayerEvent()
     data class OnShowDisplayModeInfo(val info: DisplayModeInfo) : PlayerEvent()
     data object OnHideDisplayModeInfo : PlayerEvent()
     data object OnDismissPauseOverlay : PlayerEvent()
@@ -335,11 +291,6 @@ sealed class PlayerEvent {
     data object OnDismissStreamInfo : PlayerEvent()
     data object OnToggleTorrentStats : PlayerEvent()
 }
-
-data class ParentalWarning(
-    val label: String,
-    val severity: String
-)
 
 data class DisplayModeInfo(
     val width: Int,
