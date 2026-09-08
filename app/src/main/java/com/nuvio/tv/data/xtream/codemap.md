@@ -24,10 +24,15 @@ source, not the discovery or metadata authority.
   performs bounded detail calls, rejects positive mismatched provider TMDB IDs, handles
   missing or zero provider IDs, normalizes mislabeled single-season year suffixes, and
   builds direct movie or episode URLs.
-- `XtreamCatalogAvailabilityService` classifies TMDB previews from the local index and
-  persisted exact movie or series results. `CatalogAvailabilityTracker` reclassifies
-  changing lists after catalog state or availability revisions and emits `UNKNOWN` while
-  loading or after catalog errors.
+- `XtreamCatalogAvailabilityService` classifies TMDB previews from the local index,
+  persisted exact movie or series results, and session-cached TMDB alternative
+  titles. `XtreamAlternativeTitleLookup` fetches alternative titles once per TMDB
+  identity (404 = empty result; other failures back off), so a card with no local
+  candidate waits for the same alias pool the details path resolves with instead of
+  showing a false `Indisponível`. `CatalogAvailabilityTracker` reclassifies changing
+  lists after catalog state, availability-revision, or alias-revision changes and
+  emits `UNKNOWN` while loading, after catalog errors, or while an alias lookup is
+  pending.
 - `XtreamServerHealthMonitor` separately checks account, movie, and series samples,
   classifies HTTP, network, provider, and media responses, and persists credential-free
   health by source fingerprint. A healthy probe followed by player rejection becomes an
@@ -40,8 +45,9 @@ source, not the discovery or metadata authority.
    VOD and series lists concurrently on a cache miss.
 2. TMDB metadata supplies localized, original, and alternative titles plus the release
    year. Availability classification first uses exact cached TMDB IDs, then conservative
-   title matching; playback resolution uses the same local index and fetches provider
-   detail only for candidate streams.
+   title matching, and finally TMDB alternative titles when the card carries no local
+   candidate; playback resolution uses the same local index and fetches provider detail
+   only for candidate streams.
 3. Series availability probes details and records available season/episode pairs. A
    resolver returns `Available`, `Unavailable`, or `Failure` without guessing across
    ambiguous candidates.

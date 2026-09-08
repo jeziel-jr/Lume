@@ -23,7 +23,8 @@ class CatalogAvailabilityTracker(
                 items,
                 service.catalogState,
                 service.availabilityRevision,
-            ) { trackedItems, catalogState, _ ->
+                service.aliasRevision,
+            ) { trackedItems, catalogState, _, _ ->
                 trackedItems to catalogState
             }.collectLatest { (trackedItems, catalogState) ->
                 _availability.value = when {

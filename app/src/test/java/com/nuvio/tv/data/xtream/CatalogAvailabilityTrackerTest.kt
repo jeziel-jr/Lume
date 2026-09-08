@@ -27,6 +27,7 @@ class CatalogAvailabilityTrackerTest {
         val service = mockk<XtreamCatalogAvailabilityService>()
         every { service.catalogState } returns catalogState
         every { service.availabilityRevision } returns availabilityRevision
+        every { service.aliasRevision } returns MutableStateFlow(0L)
         coEvery { service.classify(any()) } answers {
             firstArg<List<MetaPreview>>().associate {
                 it.catalogAvailabilityKey() to CatalogPlaybackAvailability.UNAVAILABLE
@@ -59,6 +60,7 @@ class CatalogAvailabilityTrackerTest {
         val service = mockk<XtreamCatalogAvailabilityService>()
         every { service.catalogState } returns catalogState
         every { service.availabilityRevision } returns availabilityRevision
+        every { service.aliasRevision } returns MutableStateFlow(0L)
         coEvery { service.classify(any()) } coAnswers {
             val submitted = firstArg<List<MetaPreview>>()
             if (submitted.firstOrNull()?.id == "tmdb:old") delay(1_000L)
@@ -91,6 +93,7 @@ class CatalogAvailabilityTrackerTest {
         val service = mockk<XtreamCatalogAvailabilityService>()
         every { service.catalogState } returns catalogState
         every { service.availabilityRevision } returns availabilityRevision
+        every { service.aliasRevision } returns MutableStateFlow(0L)
         val trackerScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
         val tracker = CatalogAvailabilityTracker(trackerScope, service)
 
@@ -111,6 +114,7 @@ class CatalogAvailabilityTrackerTest {
         val service = mockk<XtreamCatalogAvailabilityService>()
         every { service.catalogState } returns catalogState
         every { service.availabilityRevision } returns availabilityRevision
+        every { service.aliasRevision } returns MutableStateFlow(0L)
         coEvery { service.classify(any()) } answers {
             firstArg<List<MetaPreview>>().associate {
                 it.catalogAvailabilityKey() to current
@@ -132,6 +136,42 @@ class CatalogAvailabilityTrackerTest {
         advanceUntilIdle()
         assertEquals(
             CatalogPlaybackAvailability.AVAILABLE,
+            tracker.availability.value[item.catalogAvailabilityKey()],
+        )
+        trackerScope.cancel()
+    }
+
+    @Test
+    fun `alias lookup completion reclassifies item awaiting alternative titles`() = runTest {
+        val catalogState = MutableStateFlow<XtreamCatalogState>(XtreamCatalogState.Ready())
+        val availabilityRevision = MutableStateFlow(0L)
+        val aliasRevision = MutableStateFlow(0L)
+        var current = CatalogPlaybackAvailability.UNKNOWN
+        val service = mockk<XtreamCatalogAvailabilityService>()
+        every { service.catalogState } returns catalogState
+        every { service.availabilityRevision } returns availabilityRevision
+        every { service.aliasRevision } returns aliasRevision
+        coEvery { service.classify(any()) } answers {
+            firstArg<List<MetaPreview>>().associate {
+                it.catalogAvailabilityKey() to current
+            }
+        }
+        val trackerScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val tracker = CatalogAvailabilityTracker(trackerScope, service)
+        val item = preview("tmdb:1429")
+
+        tracker.submit(listOf(item))
+        advanceUntilIdle()
+        assertEquals(
+            CatalogPlaybackAvailability.UNKNOWN,
+            tracker.availability.value[item.catalogAvailabilityKey()],
+        )
+
+        current = CatalogPlaybackAvailability.LIKELY_AVAILABLE
+        aliasRevision.value += 1L
+        advanceUntilIdle()
+        assertEquals(
+            CatalogPlaybackAvailability.LIKELY_AVAILABLE,
             tracker.availability.value[item.catalogAvailabilityKey()],
         )
         trackerScope.cancel()

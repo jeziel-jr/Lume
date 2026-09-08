@@ -19,9 +19,11 @@ fun MetaPreview.catalogAvailabilityKey(): String = "$apiType:$id"
 class XtreamCatalogAvailabilityService @Inject constructor(
     private val catalogRepository: XtreamCatalogRepository,
     private val availabilityStore: XtreamAvailabilityStore,
+    private val alternativeTitleLookup: XtreamAlternativeTitleLookup,
 ) {
     val catalogState: StateFlow<XtreamCatalogState> = catalogRepository.state
     val availabilityRevision: StateFlow<Long> = availabilityStore.revision
+    val aliasRevision: StateFlow<Long> = alternativeTitleLookup.revision
 
     suspend fun classify(items: List<MetaPreview>): Map<String, CatalogPlaybackAvailability> {
         if (items.isEmpty()) return emptyMap()
@@ -43,23 +45,45 @@ class XtreamCatalogAvailabilityService @Inject constructor(
             catalogFetchedAtMillis = index.fetchedAtMillis,
         )
 
-        return identities.associate { (item, tmdbId) ->
+        val results = LinkedHashMap<String, CatalogPlaybackAvailability>(identities.size)
+        for ((item, tmdbId) in identities) {
+            val isSeries = item.isSeries()
             val availability = when {
-                tmdbId != null && item.isSeries() && cached.series[tmdbId] == true -> CatalogPlaybackAvailability.AVAILABLE
-                tmdbId != null && item.isSeries() && cached.series[tmdbId] == false -> CatalogPlaybackAvailability.UNAVAILABLE
-                tmdbId != null && !item.isSeries() && cached.movies[tmdbId] == true -> CatalogPlaybackAvailability.AVAILABLE
-                tmdbId != null && !item.isSeries() && cached.movies[tmdbId] == false -> CatalogPlaybackAvailability.UNAVAILABLE
-                item.hasConservativeLocalCandidate(index) -> CatalogPlaybackAvailability.LIKELY_AVAILABLE
-                else -> CatalogPlaybackAvailability.UNAVAILABLE
+                tmdbId != null && isSeries && cached.series[tmdbId] == true -> CatalogPlaybackAvailability.AVAILABLE
+                tmdbId != null && isSeries && cached.series[tmdbId] == false -> CatalogPlaybackAvailability.UNAVAILABLE
+                tmdbId != null && !isSeries && cached.movies[tmdbId] == true -> CatalogPlaybackAvailability.AVAILABLE
+                tmdbId != null && !isSeries && cached.movies[tmdbId] == false -> CatalogPlaybackAvailability.UNAVAILABLE
+                item.hasConservativeLocalCandidate(index, extraTitles = emptyList()) -> CatalogPlaybackAvailability.LIKELY_AVAILABLE
+                tmdbId == null -> CatalogPlaybackAvailability.UNAVAILABLE
+                else -> {
+                    // The details screen resolves with TMDB alternative titles the card
+                    // does not carry, so a missing local candidate is not yet proof of
+                    // absence. Wait for the session alias lookup before marking
+                    // Indisponivel; the tracker reclassifies when it completes.
+                    val aliases = alternativeTitleLookup.cachedTitles(tmdbId, isSeries)
+                    if (aliases == null) {
+                        alternativeTitleLookup.requestTitles(tmdbId, isSeries)
+                        CatalogPlaybackAvailability.UNKNOWN
+                    } else if (item.hasConservativeLocalCandidate(index, extraTitles = aliases)) {
+                        CatalogPlaybackAvailability.LIKELY_AVAILABLE
+                    } else {
+                        CatalogPlaybackAvailability.UNAVAILABLE
+                    }
+                }
             }
-            item.catalogAvailabilityKey() to availability
+            results[item.catalogAvailabilityKey()] = availability
         }
+        return results
     }
 
-    private fun MetaPreview.hasConservativeLocalCandidate(index: XtreamCatalogIndex): Boolean {
+    private fun MetaPreview.hasConservativeLocalCandidate(
+        index: XtreamCatalogIndex,
+        extraTitles: List<String>,
+    ): Boolean {
         val titles = buildSet {
             add(name)
             addAll(alternativeTitles)
+            addAll(extraTitles)
         }.map(XtreamTitleMatcher::normalize).filter(String::isNotBlank)
         val year = releaseInfo?.take(4)?.toIntOrNull()
         val candidateCount = if (isSeries()) {

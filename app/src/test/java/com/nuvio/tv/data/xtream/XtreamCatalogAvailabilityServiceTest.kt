@@ -8,6 +8,7 @@ import com.nuvio.tv.domain.model.PosterShape
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -34,9 +35,64 @@ class XtreamCatalogAvailabilityServiceTest {
     }
 
     @Test
-    fun `missing conservative candidate is unavailable`() = runTest {
-        val service = service(index(vod = listOf(XtreamVodItem(1, name = "Duna", year = "2021"))))
+    fun `tmdb item without local candidate waits for alias lookup instead of unavailable`() = runTest {
+        val lookup = mockk<XtreamAlternativeTitleLookup>(relaxed = true)
+        every { lookup.cachedTitles(any(), any()) } returns null
+        val service = service(
+            index = index(vod = listOf(XtreamVodItem(1, name = "Duna", year = "2021"))),
+            lookup = lookup,
+        )
         val item = preview(id = "tmdb:2", name = "Duna", year = "1984")
+
+        assertEquals(
+            CatalogPlaybackAvailability.UNKNOWN,
+            service.classify(listOf(item))[item.catalogAvailabilityKey()],
+        )
+        verify(exactly = 1) { lookup.requestTitles(2, false) }
+    }
+
+    @Test
+    fun `missing conservative candidate stays unavailable after alias lookup found nothing`() = runTest {
+        val lookup = mockk<XtreamAlternativeTitleLookup>(relaxed = true)
+        every { lookup.cachedTitles(any(), any()) } returns emptyList()
+        val service = service(
+            index = index(vod = listOf(XtreamVodItem(1, name = "Duna", year = "2021"))),
+            lookup = lookup,
+        )
+        val item = preview(id = "tmdb:2", name = "Duna", year = "1984")
+
+        assertEquals(
+            CatalogPlaybackAvailability.UNAVAILABLE,
+            service.classify(listOf(item))[item.catalogAvailabilityKey()],
+        )
+        verify(exactly = 0) { lookup.requestTitles(any(), any()) }
+    }
+
+    @Test
+    fun `tmdb alternative title from alias lookup makes title likely available`() = runTest {
+        val lookup = mockk<XtreamAlternativeTitleLookup>(relaxed = true)
+        every { lookup.cachedTitles(1429, false) } returns listOf("Ataque dos Titãs")
+        val service = service(
+            index = index(vod = listOf(XtreamVodItem(1, name = "Ataque dos Titãs", year = "2013"))),
+            lookup = lookup,
+        )
+        val item = preview(id = "tmdb:1429", name = "Attack on Titan", year = "2013")
+
+        assertEquals(
+            CatalogPlaybackAvailability.LIKELY_AVAILABLE,
+            service.classify(listOf(item))[item.catalogAvailabilityKey()],
+        )
+    }
+
+    @Test
+    fun `tmdb alternative titles that still do not match stay unavailable`() = runTest {
+        val lookup = mockk<XtreamAlternativeTitleLookup>(relaxed = true)
+        every { lookup.cachedTitles(1429, false) } returns listOf("Shingeki no Kyojin")
+        val service = service(
+            index = index(vod = listOf(XtreamVodItem(1, name = "Ataque dos Titãs", year = "2013"))),
+            lookup = lookup,
+        )
+        val item = preview(id = "tmdb:1429", name = "Attack on Titan", year = "2013")
 
         assertEquals(
             CatalogPlaybackAvailability.UNAVAILABLE,
@@ -45,7 +101,9 @@ class XtreamCatalogAvailabilityServiceTest {
     }
 
     @Test
-    fun `yearless duplicate title stays unavailable instead of guessing`() = runTest {
+    fun `yearless duplicate title stays unavailable after aliases instead of guessing`() = runTest {
+        val lookup = mockk<XtreamAlternativeTitleLookup>(relaxed = true)
+        every { lookup.cachedTitles(any(), any()) } returns emptyList()
         val service = service(
             index(
                 vod = listOf(
@@ -53,6 +111,7 @@ class XtreamCatalogAvailabilityServiceTest {
                     XtreamVodItem(2, name = "Nosferatu"),
                 ),
             ),
+            lookup = lookup,
         )
         val item = preview(id = "tmdb:3", name = "Nosferatu", year = "")
 
@@ -60,18 +119,21 @@ class XtreamCatalogAvailabilityServiceTest {
             CatalogPlaybackAvailability.UNAVAILABLE,
             service.classify(listOf(item))[item.catalogAvailabilityKey()],
         )
+        verify(exactly = 0) { lookup.requestTitles(any(), any()) }
     }
 
     @Test
     fun `exact cached unavailability wins over title candidate`() = runTest {
+        val lookup = mockk<XtreamAlternativeTitleLookup>(relaxed = true)
         val index = index(vod = listOf(XtreamVodItem(1, name = "Duna", year = "2021")))
-        val service = service(index, cachedMovies = mapOf(438631 to false))
+        val service = service(index, cachedMovies = mapOf(438631 to false), lookup = lookup)
         val item = preview(id = "tmdb:438631", name = "Duna", year = "2021")
 
         assertEquals(
             CatalogPlaybackAvailability.UNAVAILABLE,
             service.classify(listOf(item))[item.catalogAvailabilityKey()],
         )
+        verify(exactly = 0) { lookup.cachedTitles(any(), any()) }
     }
 
     @Test
@@ -113,19 +175,25 @@ class XtreamCatalogAvailabilityServiceTest {
 
     @Test
     fun `imdb item without local candidate is unavailable`() = runTest {
-        val service = service(index(vod = listOf(XtreamVodItem(1, name = "Outro Filme", year = "2026"))))
+        val lookup = mockk<XtreamAlternativeTitleLookup>(relaxed = true)
+        val service = service(
+            index = index(vod = listOf(XtreamVodItem(1, name = "Outro Filme", year = "2026"))),
+            lookup = lookup,
+        )
         val item = preview(id = "tt31015278", name = "O Drama", year = "2026")
 
         assertEquals(
             CatalogPlaybackAvailability.UNAVAILABLE,
             service.classify(listOf(item))[item.catalogAvailabilityKey()],
         )
+        verify(exactly = 0) { lookup.cachedTitles(any(), any()) }
     }
 
     private fun service(
         index: XtreamCatalogIndex?,
         cachedMovies: Map<Int, Boolean> = emptyMap(),
         cachedSeries: Map<Int, Boolean> = emptyMap(),
+        lookup: XtreamAlternativeTitleLookup = mockk(relaxed = true),
     ): XtreamCatalogAvailabilityService {
         val repository = mockk<XtreamCatalogRepository>()
         val store = mockk<XtreamAvailabilityStore>()
@@ -138,7 +206,7 @@ class XtreamCatalogAvailabilityServiceTest {
             movies = cachedMovies,
             series = cachedSeries,
         )
-        return XtreamCatalogAvailabilityService(repository, store)
+        return XtreamCatalogAvailabilityService(repository, store, lookup)
     }
 
     private fun index(
