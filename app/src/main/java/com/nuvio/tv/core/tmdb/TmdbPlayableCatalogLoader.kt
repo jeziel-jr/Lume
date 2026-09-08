@@ -98,12 +98,17 @@ class TmdbPlayableCatalogLoader @Inject constructor(
     }
 
     private suspend fun filter(items: List<MetaPreview>): FilteredItems {
-        val availability = availabilityService.classify(items)
-        val indexReady = availability.values.none { it == CatalogPlaybackAvailability.UNKNOWN }
+        // While the Xtream index is not ready there is nothing to filter
+        // against: keep the whole row and let Home refilter on index readiness.
+        val indexReady = availabilityService.catalogState.value is XtreamCatalogState.Ready
         if (!indexReady) return FilteredItems(items, indexReady = false)
+        val availability = availabilityService.classify(items)
         return FilteredItems(
             items = items.filter { item ->
                 when (availability[item.catalogAvailabilityKey()]) {
+                    // Items awaiting the TMDB alias lookup classify as UNKNOWN:
+                    // Home shows no badges, so they must stay out of rows until
+                    // they are confirmed playable, exactly like UNAVAILABLE ones.
                     CatalogPlaybackAvailability.AVAILABLE,
                     CatalogPlaybackAvailability.LIKELY_AVAILABLE -> true
                     else -> false
