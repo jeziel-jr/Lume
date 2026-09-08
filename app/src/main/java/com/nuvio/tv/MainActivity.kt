@@ -119,11 +119,13 @@ import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.core.deeplink.DeepLinkParser
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.data.xtream.XtreamCredentialsStore
+import com.nuvio.tv.ui.screens.xtream.CatalogBootstrapScreen
 import com.nuvio.tv.ui.screens.xtream.XtreamSetupScreen
 import com.nuvio.tv.data.local.ExperienceModeDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.ThemeDataStore
 import com.nuvio.tv.data.xtream.XtreamCatalogRepository
+import com.nuvio.tv.data.xtream.XtreamCatalogState
 import com.nuvio.tv.domain.model.AppFont
 import com.nuvio.tv.domain.model.AppTheme
 import com.nuvio.tv.domain.model.CardDepthStyle
@@ -416,6 +418,28 @@ class MainActivity : ComponentActivity() {
                     if (showProfileSelection) {
                         ProfileSelectionScreen(
                             onProfileSelected = { profileSelectionDismissed = true }
+                        )
+                        return@Surface
+                    }
+
+                    // Catalog readiness gate (cold start only). While the Xtream
+                    // catalog is being prepared there is nothing to classify titles
+                    // against, so Home is held behind a staged progress screen and
+                    // only composes once availability is known — no title ever
+                    // appears only to disappear a second later.
+                    val catalogBootState by xtreamCatalogRepository.state.collectAsState()
+                    val catalogBootProgress by xtreamCatalogRepository.bootProgress.collectAsState()
+                    if (savedInstanceState == null && catalogBootState !is XtreamCatalogState.Ready) {
+                        var catalogRetryTrigger by remember { mutableStateOf(0) }
+                        LaunchedEffect(catalogRetryTrigger) {
+                            if (catalogRetryTrigger > 0) {
+                                runCatching { xtreamCatalogRepository.retry() }
+                            }
+                        }
+                        CatalogBootstrapScreen(
+                            progress = catalogBootProgress,
+                            failed = catalogBootState is XtreamCatalogState.Error,
+                            onRetry = { catalogRetryTrigger += 1 },
                         )
                         return@Surface
                     }

@@ -2689,6 +2689,14 @@
     <string name="collections_editor_tmdb_collection_fallback">Coleção TMDB %1$d</string>
     <string name="catalog_availability_unavailable">Indisponível</string>
     <string name="catalog_availability_checking">Verificando</string>
+    <string name="catalog_boot_title">Preparando seu catálogo</string>
+    <string name="catalog_boot_subtitle">Verificando a disponibilidade para que todo título esteja pronto para assistir.</string>
+    <string name="catalog_boot_error_title">Não foi possível preparar o catálogo</string>
+    <string name="catalog_boot_error_body">Verifique sua conexão e tente novamente.</string>
+    <string name="catalog_boot_account">Conta verificada</string>
+    <string name="catalog_boot_movies">Filmes do catálogo</string>
+    <string name="catalog_boot_series">Séries do catálogo</string>
+    <string name="catalog_boot_indexing">Indexando títulos para reprodução</string>
     <string name="action_confirm">Confirmar</string>
     <string name="xtream_setup_title">Conecte seu provedor</string>
     <string name="xtream_setup_subtitle">Escaneie o QR com o celular, informe usuário e senha e confirme a conexão nesta TV.</string>
@@ -2704,7 +2712,7 @@
     <string name="xtream_setup_username_label">Usuário</string>
     <string name="xtream_setup_password_label">Senha</string>
     <string name="xtream_setup_missing_fields">Preencha servidor, usuário e senha.</string>
-    <string name="xtream_profile_title">Perfil</string>
+    <string name="xtream_profile_title">Conta</string>
     <string name="xtream_profile_subtitle">Sua conta e assinatura do provedor</string>
     <string name="xtream_profile_user">Usuário</string>
     <string name="xtream_profile_status">Status</string>

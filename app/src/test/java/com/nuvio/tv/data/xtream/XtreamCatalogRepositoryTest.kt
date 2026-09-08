@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.flow.first
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -32,6 +33,40 @@ class XtreamCatalogRepositoryTest {
         assertTrue(repository.state.value is XtreamCatalogState.Ready)
         assertEquals(0, source.vodRequests)
         assertEquals(0, source.seriesRequests)
+    }
+
+    @Test
+    fun `cached snapshot boot reports indexing stage with cached counts`() = runTest {
+        val storage = MemoryStorage(snapshot(fetchedAt = 1_000L))
+        val repository = XtreamCatalogRepository(ControlledSource(), storage) { 2_000L }
+
+        repository.initialize()
+
+        assertTrue(repository.state.value is XtreamCatalogState.Ready)
+        assertEquals(XtreamCatalogBootPhase.INDEXING, repository.bootProgress.value.phase)
+        assertEquals(1, repository.bootProgress.value.vodCount)
+        assertEquals(1, repository.bootProgress.value.seriesCount)
+    }
+
+    @Test
+    fun `first load without cache reports download stage before fetching`() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val repository = XtreamCatalogRepository(ControlledSource(release = release), MemoryStorage()) { 10_000L }
+
+        val initialization = async { repository.initialize() }
+        runCurrent()
+
+        assertTrue(repository.state.value is XtreamCatalogState.Loading)
+        assertEquals(XtreamCatalogBootPhase.DOWNLOADING_VOD, repository.bootProgress.value.phase)
+        assertNull(repository.bootProgress.value.vodCount)
+
+        release.complete(Unit)
+        initialization.await()
+
+        assertTrue(repository.state.value is XtreamCatalogState.Ready)
+        assertEquals(XtreamCatalogBootPhase.INDEXING, repository.bootProgress.value.phase)
+        assertEquals(1, repository.bootProgress.value.vodCount)
+        assertEquals(1, repository.bootProgress.value.seriesCount)
     }
 
     @Test

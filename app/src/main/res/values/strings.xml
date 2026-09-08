@@ -2779,7 +2779,15 @@
 
     <string name="catalog_availability_unavailable">Unavailable</string>
     <string name="catalog_availability_checking">Checking</string>
-    <string name="xtream_profile_title">Profile</string>
+    <string name="catalog_boot_title">Preparing your catalog</string>
+    <string name="catalog_boot_subtitle">Checking playback availability so every title is ready to watch.</string>
+    <string name="catalog_boot_error_title">Could not prepare the catalog</string>
+    <string name="catalog_boot_error_body">Check your connection and try again.</string>
+    <string name="catalog_boot_account">Account verified</string>
+    <string name="catalog_boot_movies">Catalog movies</string>
+    <string name="catalog_boot_series">Catalog series</string>
+    <string name="catalog_boot_indexing">Indexing titles for playback</string>
+    <string name="xtream_profile_title">Account</string>
     <string name="xtream_profile_subtitle">Your provider account and subscription</string>
     <string name="xtream_profile_user">User</string>
     <string name="xtream_profile_status">Status</string>

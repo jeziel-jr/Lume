@@ -40,6 +40,21 @@ sealed interface XtreamCatalogState {
     data class Error(val message: String) : XtreamCatalogState
 }
 
+/** Observable stages of the first catalog preparation (cold start, no usable cache). */
+enum class XtreamCatalogBootPhase {
+    READING_CACHE,
+    DOWNLOADING_VOD,
+    DOWNLOADING_SERIES,
+    DOWNLOADING_CATEGORIES,
+    INDEXING,
+}
+
+data class XtreamCatalogBootProgress(
+    val phase: XtreamCatalogBootPhase = XtreamCatalogBootPhase.READING_CACHE,
+    val vodCount: Int? = null,
+    val seriesCount: Int? = null,
+)
+
 @JsonClass(generateAdapter = true)
 internal data class XtreamCatalogSnapshot(
     val schemaVersion: Int = CATALOG_SCHEMA_VERSION,
@@ -204,6 +219,8 @@ class XtreamCatalogRepository internal constructor(
     private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow<XtreamCatalogState>(XtreamCatalogState.Loading)
     val state: StateFlow<XtreamCatalogState> = _state.asStateFlow()
+    private val _bootProgress = MutableStateFlow(XtreamCatalogBootProgress())
+    val bootProgress: StateFlow<XtreamCatalogBootProgress> = _bootProgress.asStateFlow()
 
     @Volatile private var index: XtreamCatalogIndex? = null
     private var generationCounter = 0L
@@ -247,6 +264,7 @@ class XtreamCatalogRepository internal constructor(
         }
 
         val cacheReadStartedAt = SystemClock.elapsedRealtime()
+        _bootProgress.value = XtreamCatalogBootProgress(phase = XtreamCatalogBootPhase.READING_CACHE)
         val storedSnapshot = storage.read()
         val cached = storedSnapshot?.takeIf {
             it.schemaVersion == CATALOG_SCHEMA_VERSION &&
@@ -313,19 +331,38 @@ class XtreamCatalogRepository internal constructor(
     private suspend fun refresh(keepExistingOnFailure: Boolean) {
         val sourceFingerprint = sourceFingerprintProvider()
         val refreshStartedAt = SystemClock.elapsedRealtime()
+        _bootProgress.value = XtreamCatalogBootProgress(phase = XtreamCatalogBootPhase.DOWNLOADING_VOD)
         runCatching {
             coroutineScope {
                 val vod = async { timedCatalogFetch("vod") { dataSource.getVodStreams() } }
                 val series = async { timedCatalogFetch("series") { dataSource.getSeries() } }
                 val vodCategories = async { timedCatalogFetch("vod_categories") { dataSource.getVodCategories() } }
                 val seriesCategories = async { timedCatalogFetch("series_categories") { dataSource.getSeriesCategories() } }
+                val vodItems = vod.await()
+                _bootProgress.value = XtreamCatalogBootProgress(
+                    phase = XtreamCatalogBootPhase.DOWNLOADING_SERIES,
+                    vodCount = vodItems.size,
+                )
+                val seriesItems = series.await()
+                _bootProgress.value = XtreamCatalogBootProgress(
+                    phase = XtreamCatalogBootPhase.DOWNLOADING_CATEGORIES,
+                    vodCount = vodItems.size,
+                    seriesCount = seriesItems.size,
+                )
+                val vodCategoryItems = vodCategories.await()
+                val seriesCategoryItems = seriesCategories.await()
+                _bootProgress.value = XtreamCatalogBootProgress(
+                    phase = XtreamCatalogBootPhase.INDEXING,
+                    vodCount = vodItems.size,
+                    seriesCount = seriesItems.size,
+                )
                 XtreamCatalogSnapshot(
                     sourceFingerprint = sourceFingerprint,
                     fetchedAtMillis = nowMillis(),
-                    vod = vod.await(),
-                    series = series.await(),
-                    vodCategories = vodCategories.await(),
-                    seriesCategories = seriesCategories.await()
+                    vod = vodItems,
+                    series = seriesItems,
+                    vodCategories = vodCategoryItems,
+                    seriesCategories = seriesCategoryItems
                 ).also { snapshot ->
                     check(isPlausible(snapshot, index?.itemCount)) { "Xtream returned an implausible catalog" }
                     val writeStartedAt = SystemClock.elapsedRealtime()
@@ -362,6 +399,11 @@ class XtreamCatalogRepository internal constructor(
 
     private suspend fun install(snapshot: XtreamCatalogSnapshot) {
         val indexStartedAt = SystemClock.elapsedRealtime()
+        _bootProgress.value = XtreamCatalogBootProgress(
+            phase = XtreamCatalogBootPhase.INDEXING,
+            vodCount = snapshot.vod.size,
+            seriesCount = snapshot.series.size,
+        )
         generationCounter += 1
         index = withContext(indexDispatcher) {
             XtreamCatalogIndex.from(snapshot, generationCounter)
