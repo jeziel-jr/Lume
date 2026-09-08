@@ -218,6 +218,10 @@ private fun ManualSetupContent(
                 onClick = onBackToQr,
                 enabled = !validating,
                 shape = ButtonDefaults.shape(RoundedCornerShape(50)),
+                // Static geometry: the default focus scale (1.1) settling back to
+                // 1.0 when validating disables both buttons reads as a flattening
+                // glitch right before the screen returns to the QR view.
+                scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 1f),
             ) {
                 Text(stringResource(R.string.xtream_setup_back_to_qr))
             }
@@ -225,6 +229,7 @@ private fun ManualSetupContent(
                 onClick = onSubmit,
                 enabled = !validating,
                 shape = ButtonDefaults.shape(RoundedCornerShape(50)),
+                scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 1f),
             ) {
                 Text(stringResource(R.string.action_confirm))
             }
