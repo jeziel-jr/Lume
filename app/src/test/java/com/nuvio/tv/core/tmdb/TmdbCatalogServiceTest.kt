@@ -218,4 +218,72 @@ class TmdbCatalogServiceTest {
         assertEquals(listOf("movie", "series"), page?.items?.map { it.rawType })
         assertTrue(page?.hasMore == true)
     }
+
+    @Test
+    fun `home page genre override replaces the rail genre on movie and tv requests`() = runTest {
+        val definitions = TmdbCatalogService(mockk()).homeCatalogDefinitions
+        assertFalse(definitions.first { it.id == "trending-movies" }.supportsGenreFilter)
+        assertTrue(definitions.first { it.id == "comedy" }.supportsGenreFilter)
+
+        val api = mockk<TmdbApi>()
+        // Only requests carrying the user genre (878 = Ficcao cientifica) match these stubs;
+        // the comedy rail's own genre (35) or null would leave them unmatched and fail the test.
+        coEvery {
+            api.discoverMovies(
+                apiKey = any(),
+                language = "pt-BR",
+                page = 1,
+                sortBy = "popularity.desc",
+                withCompanies = null,
+                releaseDateLte = any(),
+                voteCountGte = 80,
+                withGenres = "878",
+                releaseDateGte = null,
+                voteAverageGte = null,
+                voteAverageLte = null,
+                withOriginalLanguage = null,
+                withOriginCountry = null,
+                withKeywords = null,
+                year = null,
+                watchRegion = null,
+                withWatchProviders = null,
+                withWatchMonetizationTypes = null,
+            )
+        } returns Response.success(
+            TmdbDiscoverResponse(
+                page = 1,
+                totalPages = 2,
+                results = listOf(TmdbDiscoverResult(101, title = "Ficcao em Familia", popularity = 5.0)),
+            ),
+        )
+        coEvery {
+            api.discoverTv(
+                apiKey = any(),
+                language = "pt-BR",
+                page = 1,
+                sortBy = "popularity.desc",
+                withCompanies = null,
+                withNetworks = null,
+                firstAirDateLte = any(),
+                voteCountGte = 80,
+                withGenres = "878",
+                firstAirDateGte = null,
+                voteAverageGte = null,
+                voteAverageLte = null,
+                withOriginalLanguage = null,
+                withOriginCountry = null,
+                withKeywords = null,
+                firstAirDateYear = null,
+                withStatus = null,
+                watchRegion = null,
+                withWatchProviders = null,
+                withWatchMonetizationTypes = null,
+            )
+        } returns Response.success(TmdbDiscoverResponse(results = emptyList()))
+
+        val page = TmdbCatalogService(api).homePage("comedy", 1, genre = "878")
+
+        assertEquals(listOf("tmdb:101"), page?.items?.map { it.id })
+        assertTrue(page?.hasMore == true)
+    }
 }

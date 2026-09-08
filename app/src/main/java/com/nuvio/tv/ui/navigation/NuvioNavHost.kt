@@ -34,6 +34,7 @@ import com.nuvio.tv.ui.screens.settings.PlaybackSettingsScreen
 import com.nuvio.tv.ui.screens.settings.SettingsScreen
 import com.nuvio.tv.ui.screens.settings.ThemeSettingsScreen
 import com.nuvio.tv.ui.screens.settings.TmdbSettingsScreen
+import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.ui.screens.xtream.XtreamSetupScreen
 import com.nuvio.tv.ui.screens.stream.StreamScreen
 import com.nuvio.tv.ui.screens.home.ContinueWatchingItem
@@ -127,6 +128,17 @@ fun NuvioNavHost(
                 onContinue = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.LayoutSelection.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.ProfileSelection.route) {
+            ProfileSelectionScreen(
+                onProfileSelected = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.ProfileSelection.route) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )

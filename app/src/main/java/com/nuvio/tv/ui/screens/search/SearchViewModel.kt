@@ -99,6 +99,8 @@ class SearchViewModel @Inject constructor(
                             discoverCatalogs = emptyList(),
                             selectedDiscoverType = "movie",
                             selectedDiscoverCatalogKey = null,
+                            selectedDiscoverGenre = null,
+                            discoverGenres = emptyList(),
                             discoverResults = emptyList(),
                             pendingDiscoverResults = emptyList(),
                             discoverHasMore = true,
@@ -189,6 +191,7 @@ class SearchViewModel @Inject constructor(
             )
             is SearchEvent.SelectDiscoverType -> selectDiscoverType(event.type)
             is SearchEvent.SelectDiscoverCatalog -> selectDiscoverCatalog(event.catalogKey)
+            is SearchEvent.SelectDiscoverGenre -> selectDiscoverGenre(event.genre)
             SearchEvent.LoadNextDiscoverResults -> loadNextDiscoverResults()
             SearchEvent.Retry -> performSearch(uiState.value.submittedQuery.ifBlank { uiState.value.query })
         }
@@ -437,7 +440,8 @@ class SearchViewModel @Inject constructor(
                 addonBaseUrl = TMDB_ADDON_BASE_URL,
                 catalogId = definition.id,
                 catalogName = definition.title,
-                type = apiType
+                type = apiType,
+                supportsGenreFilter = definition.supportsGenreFilter
             )
         }
 
@@ -455,6 +459,8 @@ class SearchViewModel @Inject constructor(
                 discoverCatalogs = discoverCatalogs,
                 selectedDiscoverType = selectedType,
                 selectedDiscoverCatalogKey = selectedCatalog?.key,
+                selectedDiscoverGenre = null,
+                discoverGenres = emptyList(),
                 discoverInitialized = true,
                 discoverLoading = false,
                 discoverResults = emptyList(),
@@ -463,6 +469,7 @@ class SearchViewModel @Inject constructor(
                 discoverPage = 1
             )
         }
+        loadDiscoverGenres(selectedType)
         fetchDiscoverContent(reset = true)
     }
 
@@ -477,12 +484,15 @@ class SearchViewModel @Inject constructor(
             it.copy(
                 selectedDiscoverType = type,
                 selectedDiscoverCatalogKey = selectedCatalog?.key,
+                selectedDiscoverGenre = null,
+                discoverGenres = emptyList(),
                 discoverResults = emptyList(),
                 pendingDiscoverResults = emptyList(),
                 discoverPage = 1,
                 discoverHasMore = true
             )
         }
+        loadDiscoverGenres(type)
         fetchDiscoverContent(reset = true)
     }
 
@@ -492,6 +502,7 @@ class SearchViewModel @Inject constructor(
             it.copy(
                 selectedDiscoverCatalogKey = catalog.key,
                 selectedDiscoverType = catalog.type,
+                selectedDiscoverGenre = null,
                 discoverResults = emptyList(),
                 pendingDiscoverResults = emptyList(),
                 discoverPage = 1,
@@ -499,6 +510,39 @@ class SearchViewModel @Inject constructor(
             )
         }
         fetchDiscoverContent(reset = true)
+    }
+
+    private fun selectDiscoverGenre(genre: String?) {
+        _uiState.update {
+            it.copy(
+                selectedDiscoverGenre = genre,
+                discoverResults = emptyList(),
+                pendingDiscoverResults = emptyList(),
+                discoverPage = 1,
+                discoverHasMore = true
+            )
+        }
+        fetchDiscoverContent(reset = true)
+    }
+
+    /** Loads the localized TMDB genre options for the given Discover type ("movie"/"series"). */
+    private fun loadDiscoverGenres(type: String) {
+        viewModelScope.launch {
+            val language = tmdbSettingsDataStore.settings.first().language.ifBlank { "pt-BR" }
+            val genres = runCatching {
+                if (type == "series") {
+                    tmdbCatalogService.tvGenres(language)
+                } else {
+                    tmdbCatalogService.movieGenres(language)
+                }
+            }.getOrDefault(emptyList())
+            if (_uiState.value.selectedDiscoverType != type) return@launch
+            _uiState.update {
+                it.copy(
+                    discoverGenres = genres.map { genre -> DiscoverGenre(genre.id.toString(), genre.name) }
+                )
+            }
+        }
     }
 
     private fun loadNextDiscoverResults() {
@@ -563,9 +607,10 @@ class SearchViewModel @Inject constructor(
             val currentPage = if (reset) 1 else state.discoverPage + 1
             val visibleCountBeforeRequest = state.discoverResults.size
             val language = tmdbSettingsDataStore.settings.first().language.ifBlank { "pt-BR" }
+            val genre = if (selectedCatalog.supportsGenreFilter) state.selectedDiscoverGenre else null
 
             val result = runCatching {
-                tmdbCatalogService.homePage(selectedCatalog.catalogId, currentPage, language)
+                tmdbCatalogService.homePage(selectedCatalog.catalogId, currentPage, language, genre)
             }
             result.onSuccess { pageRow ->
                 if (_uiState.value.discoverLocation == DiscoverLocation.OFF) return@onSuccess

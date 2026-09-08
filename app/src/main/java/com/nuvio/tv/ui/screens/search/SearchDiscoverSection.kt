@@ -91,6 +91,7 @@ internal fun DiscoverSection(
     onDiscoverItemFocused: (Int) -> Unit,
     onSelectType: (String) -> Unit,
     onSelectCatalog: (String) -> Unit,
+    onSelectGenre: (String?) -> Unit,
     onLoadMore: () -> Unit,
     onItemLongPress: (MetaPreview, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
@@ -113,6 +114,10 @@ internal fun DiscoverSection(
     }
     val selectedTypeLabel = localizedTypeLabel(uiState.selectedDiscoverType)
     val selectedCatalogLabel = selectedCatalog?.catalogName ?: stringResource(R.string.discover_select_catalog)
+    val genreFilterable = selectedCatalog?.supportsGenreFilter == true
+    val selectedGenreLabel = uiState.selectedDiscoverGenre
+        ?.let { genre -> uiState.discoverGenres.firstOrNull { it.id == genre }?.name }
+        ?: stringResource(R.string.discover_genre_default)
 
     Column(
         modifier = modifier
@@ -167,6 +172,28 @@ internal fun DiscoverSection(
                 },
                 blockFocus = blockFilterFocus
             )
+
+            DiscoverDropdownPicker(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.discover_filter_genre),
+                value = selectedGenreLabel,
+                selectedValue = uiState.selectedDiscoverGenre ?: "__default__",
+                expanded = expandedPicker == "genre",
+                options = buildList {
+                    add(DiscoverOption(stringResource(R.string.discover_genre_default), "__default__"))
+                    if (genreFilterable) {
+                        addAll(uiState.discoverGenres.map { DiscoverOption(it.name, it.id) })
+                    }
+                },
+                onExpandedChange = { shouldExpand ->
+                    expandedPicker = if (shouldExpand) "genre" else null
+                },
+                onSelect = { option ->
+                    onSelectGenre(option.value.takeUnless { it == "__default__" })
+                    expandedPicker = null
+                },
+                blockFocus = blockFilterFocus
+            )
         }
 
         selectedCatalog?.let { catalog ->
@@ -177,6 +204,10 @@ internal fun DiscoverSection(
                         .takeIf { it.isNotEmpty() }
                         ?.let(::add)
                 }
+                uiState.selectedDiscoverGenre
+                    ?.let { genre -> uiState.discoverGenres.firstOrNull { it.id == genre }?.name }
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(::add)
             }
             Text(
                 text = metadataSegments.joinToString(" • "),
@@ -226,7 +257,7 @@ internal fun DiscoverSection(
                     onItemLongPress = { item ->
                         onItemLongPress(item, selectedCatalog?.addonBaseUrl ?: "")
                     },
-                    filterKey = "${uiState.selectedDiscoverType}|${uiState.selectedDiscoverCatalogKey}"
+                    filterKey = "${uiState.selectedDiscoverType}|${uiState.selectedDiscoverCatalogKey}|${uiState.selectedDiscoverGenre}"
                 )
                 }
             }

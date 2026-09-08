@@ -136,6 +136,7 @@ import com.nuvio.tv.ui.components.LocalCardDepthStyle
 import com.nuvio.tv.ui.components.ProfileAvatarCircle
 import com.nuvio.tv.ui.navigation.NuvioNavHost
 import com.nuvio.tv.ui.navigation.Screen
+import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.ui.theme.NuvioComponents
 import com.nuvio.tv.ui.theme.NuvioMotion
 import com.nuvio.tv.ui.theme.NuvioPrimitives
@@ -388,6 +389,37 @@ class MainActivity : ComponentActivity() {
                         XtreamSetupScreen(onConfigured = {})
                         return@Surface
                     }
+
+                    // Cold-start profile picker. Wait until the profile preferences have
+                    // been read (profiles list, has-ever-selected, remember-last-profile)
+                    // before choosing what to show, so a multi-profile boot never flashes
+                    // Home first. When more than one profile exists and "remember last
+                    // profile" is not in effect, boot into the full-screen picker instead
+                    // of the app shell; picking or creating a profile activates it and the
+                    // app composes underneath with that profile already active. This gate
+                    // only runs on a cold start (no saved instance state) — restorations
+                    // keep whatever destination the nav graph was on.
+                    val profilePrefsLoaded by profileManager.activeProfileReady.collectAsState()
+                    val hasEverSelectedProfile by profileManager.hasEverSelectedProfile.collectAsState()
+                    val rememberLastProfileEnabled by profileManager.rememberLastProfileEnabled.collectAsState()
+
+                    if (!profilePrefsLoaded) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@Surface
+                    }
+
+                    var profileSelectionDismissed by remember { mutableStateOf(savedInstanceState != null) }
+                    val showProfileSelection = savedInstanceState == null &&
+                        profiles.size > 1 &&
+                        !(rememberLastProfileEnabled && hasEverSelectedProfile) &&
+                        !profileSelectionDismissed
+                    if (showProfileSelection) {
+                        ProfileSelectionScreen(
+                            onProfileSelected = { profileSelectionDismissed = true }
+                        )
+                        return@Surface
+                    }
+
                     val layoutChosen = true
                     val pendingDeepLink by pendingDeepLinkUrl.collectAsState()
 
