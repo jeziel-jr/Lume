@@ -72,8 +72,8 @@ android {
         applicationId = "com.jeziel.lume"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1063
-        versionName = "0.7.38-beta"
+        versionCode = 1064
+        versionName = "0.7.39-beta"
 
         buildConfigField("String", "INTRODB_API_URL", buildConfigString(localProperties.getProperty("INTRODB_API_URL", "https://api.introdb.app/")))
         buildConfigField("String", "ANIMESKIP_CLIENT_ID", buildConfigString(localProperties.getProperty("ANIMESKIP_CLIENT_ID", "")))
