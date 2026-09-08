@@ -67,7 +67,10 @@ internal fun ProfileSettingsContent(
                         Modifier
                     }
                 )
-                if (!isPrimary && !isActive) {
+                // Deletable when not primary; deleting the active secondary profile
+                // is safe because ProfileManager refuses the primary id and the data
+                // store falls back to the primary profile on active deletion.
+                if (!isPrimary) {
                     SettingsActionRow(
                         title = stringResource(R.string.profile_delete_btn),
                         subtitle = null,

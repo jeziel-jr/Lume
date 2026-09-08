@@ -247,7 +247,7 @@ fun SettingsScreen(
             when (section.category) {
                 SettingsCategory.EXPERIENCE -> isEssentialMode
                 SettingsCategory.DEBUG -> BuildConfig.IS_DEBUG_BUILD && !isEssentialMode
-                SettingsCategory.PROFILES -> isPrimaryProfileActive
+                SettingsCategory.PROFILES -> true
                 SettingsCategory.PARENTAL -> true
                 SettingsCategory.XTREAM_PROFILE -> true
                 SettingsCategory.APPEARANCE -> true

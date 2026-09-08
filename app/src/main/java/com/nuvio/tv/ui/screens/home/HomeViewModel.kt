@@ -668,11 +668,20 @@ class HomeViewModel @Inject constructor(
             orderedRows to orderedHomeRows
         }
         _fullCatalogRows.value = rows
+        val heroItems = rows.firstOrNull()?.items.orEmpty().take(12)
+        val gridItems = buildTmdbGridItems(
+            rows = rows,
+            homeRows = homeRows,
+            heroItems = heroItems,
+            heroSectionEnabled = _uiState.value.heroSectionEnabled,
+            posterCardWidthDp = _uiState.value.posterCardWidthDp,
+        )
         _uiState.update { state ->
             state.copy(
                 catalogRows = rows,
                 homeRows = homeRows,
-                heroItems = rows.firstOrNull()?.items.orEmpty().take(12),
+                heroItems = heroItems,
+                gridItems = gridItems,
                 isLoading = isInitialLoading && rows.isEmpty(),
                 error = null,
             )

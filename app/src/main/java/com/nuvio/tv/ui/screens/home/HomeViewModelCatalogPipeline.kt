@@ -506,3 +506,71 @@ private fun HomeViewModel.reconcileFullyWatchedFromLocalItems(
     }
     return mergedHolderIds
 }
+
+/**
+ * Builds the GRID-layout item stream from the TMDB-published Home rows.
+ * Replaces the legacy addon-store grid builder, which sourced from a catalog
+ * store that is no longer populated after the Nuvio heritage cleanup.
+ */
+internal fun buildTmdbGridItems(
+    rows: List<CatalogRow>,
+    homeRows: List<HomeRow>,
+    heroItems: List<MetaPreview>,
+    heroSectionEnabled: Boolean,
+    posterCardWidthDp: Int,
+): List<GridItem> {
+    val itemsPerRow = when (posterCardWidthDp) {
+        104 -> 7; 112 -> 6; 120 -> 6; 126 -> 6; 134 -> 5; 140 -> 5; else -> 6
+    }
+    val rowCount = if (posterCardWidthDp <= 104) 2 else 3
+    val seeAllThreshold = itemsPerRow * rowCount + 2
+    val maxWithSeeAll = itemsPerRow * rowCount - 1
+    val maxWithoutSeeAll = itemsPerRow * rowCount
+    return buildList {
+        if (heroSectionEnabled && heroItems.isNotEmpty()) {
+            add(GridItem.Hero(heroItems))
+        }
+        homeRows.forEach { homeRow ->
+            if (homeRow is HomeRow.Catalog) {
+                val row = homeRow.row
+                if (row.items.isNotEmpty()) {
+                    add(
+                        GridItem.SectionDivider(
+                            catalogName = row.catalogName,
+                            catalogId = row.catalogId,
+                            addonBaseUrl = row.addonBaseUrl,
+                            addonId = row.addonId,
+                            type = row.apiType,
+                            hideTypeSuffix = row.extraArgs["hideTypeSuffix"] == "true",
+                        )
+                    )
+                    val hasEnoughForSeeAll = row.hasMore || row.items.size >= seeAllThreshold
+                    val displayItems = if (hasEnoughForSeeAll) {
+                        row.items.take(maxWithSeeAll)
+                    } else {
+                        row.items.take(maxWithoutSeeAll)
+                    }
+                    displayItems.forEach { item ->
+                        add(
+                            GridItem.Content(
+                                item = item,
+                                addonBaseUrl = row.addonBaseUrl,
+                                catalogId = row.catalogId,
+                                catalogName = row.catalogName,
+                            )
+                        )
+                    }
+                    if (hasEnoughForSeeAll) {
+                        add(
+                            GridItem.SeeAll(
+                                catalogId = row.catalogId,
+                                addonId = row.addonId,
+                                type = row.apiType,
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

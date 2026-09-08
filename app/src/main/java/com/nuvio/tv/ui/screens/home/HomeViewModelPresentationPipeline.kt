@@ -217,18 +217,12 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                         posterCardCornerRadiusDp = prefs.posterCardCornerRadiusDp
                     )
                 }
-                if (shouldRefreshCatalogPresentation) {
-                    // When switching to GRID layout, load all pending lazy catalogs
-                    // since grid doesn't support placeholder shimmer rows.
-                    if (prefs.layout == HomeLayout.GRID) {
-                        loadAllPendingLazyCatalogs()
-                    }
-                    // When hero catalog keys change, hero rows react through the
-                    // published uiState.heroCatalogKeys; no legacy addon-catalog
-                    // hero loader exists anymore.
-                    if (!(heroKeysChanged && prefs.heroCatalogKeys.isNotEmpty())) {
-                        scheduleUpdateCatalogRows()
-                    }
+                if (shouldRefreshCatalogPresentation && prefs.layout == HomeLayout.GRID) {
+                    // Grid renders everything at once and does not support placeholder
+                    // rows, so make sure pending TMDB catalogs load on switch. Layout
+                    // changes must not re-run the legacy addon-store pipeline: TMDB
+                    // content is published by publishTmdbHome and must be left intact.
+                    loadAllPendingLazyCatalogs()
                 }
             }
     }
