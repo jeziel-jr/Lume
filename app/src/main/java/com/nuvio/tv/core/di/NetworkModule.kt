@@ -6,6 +6,7 @@ import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.core.network.IPv4FirstDns
 import com.nuvio.tv.core.tmdb.TmdbRateLimitInterceptor
 import com.nuvio.tv.data.remote.api.AniSkipApi
+import com.nuvio.tv.data.remote.api.AddonApi
 import com.nuvio.tv.data.remote.api.AnimeSkipApi
 import com.nuvio.tv.data.remote.api.ArmApi
 import com.nuvio.tv.data.remote.api.GitHubReleaseApi
@@ -262,4 +263,20 @@ object NetworkModule {
     @Singleton
     fun provideTrailerApi(@Named("trailer") retrofit: Retrofit): TrailerApi =
         retrofit.create(TrailerApi::class.java)
+
+    // --- Addon (Stremio manifest/catalog) API — dynamic @Url endpoints on a placeholder base ---
+
+    @Provides
+    @Singleton
+    fun provideAddonRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit =
+        Retrofit.Builder()
+            .baseUrl("https://placeholder.nuvio.tv/")
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideAddonApi(retrofit: Retrofit): AddonApi =
+        retrofit.create(AddonApi::class.java)
 }

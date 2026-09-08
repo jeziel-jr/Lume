@@ -15,6 +15,8 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
@@ -94,6 +97,7 @@ internal enum class SettingsCategory {
     XTREAM_PROFILE,
     APPEARANCE,
     LAYOUT,
+    CONTENT_DISCOVERY,
     INTEGRATION,
     PLAYBACK,
     ADVANCED,
@@ -173,6 +177,13 @@ private fun rememberSettingsSectionSpecs() = listOf(
         destination = SettingsSectionDestination.External
     ),
     SettingsSectionSpec(
+        category = SettingsCategory.CONTENT_DISCOVERY,
+        title = stringResource(R.string.settings_content_discovery),
+        icon = Icons.Default.Explore,
+        subtitle = stringResource(R.string.settings_content_discovery_subtitle),
+        destination = SettingsSectionDestination.Inline
+    ),
+    SettingsSectionSpec(
         category = SettingsCategory.INTEGRATION,
         title = stringResource(R.string.settings_integration),
         icon = Icons.Default.Link,
@@ -218,6 +229,7 @@ fun SettingsScreen(
     onNavigateToThemeSettings: () -> Unit = {},
     onNavigateToTmdbSettings: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
+    onNavigateToAddons: () -> Unit = {},
     profileViewModel: ProfileSettingsViewModel = hiltViewModel(),
     experienceModeViewModel: ExperienceModeSettingsViewModel = hiltViewModel()
 ) {
@@ -252,6 +264,7 @@ fun SettingsScreen(
                 SettingsCategory.XTREAM_PROFILE -> true
                 SettingsCategory.APPEARANCE -> true
                 SettingsCategory.LAYOUT -> true
+                SettingsCategory.CONTENT_DISCOVERY -> true
                 SettingsCategory.INTEGRATION -> true
                 SettingsCategory.PLAYBACK -> true
                 SettingsCategory.ADVANCED -> !isEssentialMode
@@ -277,6 +290,7 @@ fun SettingsScreen(
             SettingsCategory.PROFILES to FocusRequester(),
             SettingsCategory.PARENTAL to FocusRequester(),
             SettingsCategory.XTREAM_PROFILE to FocusRequester(),
+            SettingsCategory.CONTENT_DISCOVERY to FocusRequester(),
             SettingsCategory.INTEGRATION to FocusRequester(),
             SettingsCategory.ADVANCED to FocusRequester()
         )
@@ -510,7 +524,8 @@ fun SettingsScreen(
                                 onSelectIntegrationSection = { integrationSection = it },
                                 integrationAnimeSkipFocusRequester = integrationAnimeSkipFocusRequester,
                                 onNavigateToXtreamSetup = onNavigateToXtreamSetup,
-                                onNavigateToTmdbSettings = onNavigateToTmdbSettings
+                                onNavigateToTmdbSettings = onNavigateToTmdbSettings,
+                                onNavigateToAddons = onNavigateToAddons
                             )
                         }
                     }
@@ -651,7 +666,8 @@ fun SettingsScreen(
                         onSelectIntegrationSection = { integrationSection = it },
                         integrationAnimeSkipFocusRequester = integrationAnimeSkipFocusRequester,
                         onNavigateToXtreamSetup = onNavigateToXtreamSetup,
-                        onNavigateToTmdbSettings = onNavigateToTmdbSettings
+                        onNavigateToTmdbSettings = onNavigateToTmdbSettings,
+                        onNavigateToAddons = onNavigateToAddons
                     )
                 }
             }
@@ -670,7 +686,8 @@ private fun SettingsDetailPane(
     onSelectIntegrationSection: (IntegrationSettingsSection?) -> Unit,
     integrationAnimeSkipFocusRequester: FocusRequester,
     onNavigateToXtreamSetup: () -> Unit,
-    onNavigateToTmdbSettings: () -> Unit
+    onNavigateToTmdbSettings: () -> Unit,
+    onNavigateToAddons: () -> Unit
 ) {
     when (selectedCategory) {
         SettingsCategory.EXPERIENCE -> EssentialAdvancedSettingsContent(
@@ -701,6 +718,14 @@ private fun SettingsDetailPane(
             } else {
                 null
             },
+        )
+        SettingsCategory.CONTENT_DISCOVERY -> ContentDiscoverySettingsContent(
+            onNavigateToAddons = onNavigateToAddons,
+            initialFocusRequester = if (allowDetailAutofocus) {
+                contentFocusRequesters[SettingsCategory.CONTENT_DISCOVERY]
+            } else {
+                null
+            }
         )
         SettingsCategory.INTEGRATION -> IntegrationSettingsContent(
             selectedSection = integrationSection,
@@ -844,6 +869,37 @@ private fun IntegrationSettingsContent(
         IntegrationSettingsSection.AnimeSkip -> {
             AnimeSkipSettingsContent(
                 initialFocusRequester = animeSkipFocusRequester
+            )
+        }
+    }
+}
+
+@Composable
+private fun ContentDiscoverySettingsContent(
+    onNavigateToAddons: () -> Unit,
+    initialFocusRequester: FocusRequester?
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
+    ) {
+        SettingsDetailHeader(
+            title = stringResource(R.string.settings_content_discovery),
+            subtitle = stringResource(R.string.settings_content_discovery_subtitle)
+        )
+        SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
+            SettingsActionRow(
+                title = stringResource(R.string.addon_title),
+                subtitle = stringResource(R.string.settings_content_discovery_addons_subtitle),
+                onClick = onNavigateToAddons,
+                leadingIcon = Icons.Default.GridView,
+                modifier = if (initialFocusRequester != null) {
+                    Modifier.focusRequester(initialFocusRequester)
+                } else {
+                    Modifier
+                }
             )
         }
     }

@@ -4,7 +4,6 @@ import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.data.remote.api.TmdbApi
 import com.nuvio.tv.data.remote.api.TmdbDiscoverResponse
 import com.nuvio.tv.data.remote.api.TmdbDiscoverResult
-import com.nuvio.tv.data.remote.api.TmdbGenre
 import com.nuvio.tv.data.remote.api.TmdbListItem
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.ContentType
@@ -24,8 +23,6 @@ data class TmdbHomeCatalogDefinition(
     val id: String,
     val title: String,
     val contentType: ContentType,
-    /** True when the underlying catalog supports a user genre filter (TMDB discover with_genres). */
-    val supportsGenreFilter: Boolean,
 )
 
 private enum class CatalogMedia {
@@ -236,7 +233,6 @@ class TmdbCatalogService @Inject constructor(
             id = spec.id,
             title = spec.title,
             contentType = spec.contentType(),
-            supportsGenreFilter = spec is DiscoverSpec,
         )
     }
 
@@ -267,33 +263,11 @@ class TmdbCatalogService @Inject constructor(
         }.awaitAll().filterNotNull().filter { it.items.isNotEmpty() }
     }
 
-    /**
-     * Loads one page of a home catalog.
-     *
-     * @param genre When set, DiscoverSpec catalogs replace their fixed genre filter with this one
-     *   (single TMDB genre id, e.g. "878"). Catalogs that cannot be genre-filtered (trending,
-     *   on-the-air, static lists) ignore it. Null keeps the catalog definition unchanged.
-     */
-    suspend fun homePage(
-        catalogId: String,
-        page: Int,
-        language: String = "pt-BR",
-        genre: String? = null,
-    ): CatalogRow? {
+    suspend fun homePage(catalogId: String, page: Int, language: String = "pt-BR"): CatalogRow? {
         require(page > 0) { "page must be positive" }
         val spec = HOME_CATALOGS.firstOrNull { it.id == catalogId } ?: return null
-        return fetch(spec, page, language, genre)
+        return fetch(spec, page, language)
     }
-
-    suspend fun movieGenres(language: String = "pt-BR"): List<TmdbGenre> =
-        homeRequestSemaphore.withPermit {
-            api.getMovieGenres(BuildConfig.TMDB_API_KEY, language).body()
-        }?.genres.orEmpty()
-
-    suspend fun tvGenres(language: String = "pt-BR"): List<TmdbGenre> =
-        homeRequestSemaphore.withPermit {
-            api.getTvGenres(BuildConfig.TMDB_API_KEY, language).body()
-        }?.genres.orEmpty()
 
     private fun HomeCatalogSpec.contentType(): ContentType = when (this) {
         is TrendingSpec -> media.toContentType()
@@ -302,19 +276,14 @@ class TmdbCatalogService @Inject constructor(
         is DiscoverSpec -> if (media == SERIES) ContentType.SERIES else ContentType.MOVIE
     }
 
-    private suspend fun fetch(
-        spec: HomeCatalogSpec,
-        page: Int,
-        language: String,
-        genre: String? = null,
-    ): CatalogRow? = when (spec) {
+    private suspend fun fetch(spec: HomeCatalogSpec, page: Int, language: String): CatalogRow? = when (spec) {
         is TrendingSpec -> fetchTrending(spec, page, language)
         is OnTheAirSpec -> homeRequestSemaphore.withPermit {
             api.getTvOnTheAir(BuildConfig.TMDB_API_KEY, language, page).body()
         }
             ?.toRow(spec.id, spec.title, ContentType.SERIES)
         is TmdbListSpec -> fetchList(spec, page, language)
-        is DiscoverSpec -> fetchDiscover(spec, page, language, genre)
+        is DiscoverSpec -> fetchDiscover(spec, page, language)
     }
 
     private suspend fun fetchTrending(spec: TrendingSpec, page: Int, language: String): CatalogRow? {
@@ -349,21 +318,12 @@ class TmdbCatalogService @Inject constructor(
         )
     }
 
-    private suspend fun fetchDiscover(
-        spec: DiscoverSpec,
-        page: Int,
-        language: String,
-        genre: String?,
-    ): CatalogRow? = coroutineScope {
+    private suspend fun fetchDiscover(spec: DiscoverSpec, page: Int, language: String): CatalogRow? = coroutineScope {
         val today = LocalDate.now()
         val dateGte = spec.recentMonths?.let { today.minusMonths(it).toString() } ?: spec.releaseDateGte
         val dateLte = spec.classicYearsAgo?.let { today.minusYears(it).toString() }
             ?: spec.releaseDateLte
             ?: today.toString()
-        // A user-selected genre replaces (does not accumulate with) the genre the rail
-        // defines itself. Non-genre params (media, sort, provider, dates, ...) are kept.
-        val movieGenres = genre ?: spec.movieGenres
-        val tvGenres = genre ?: spec.tvGenres
         val movieRequest = if (CatalogMedia.MOVIE in spec.media) async {
             homeRequestSemaphore.withPermit { api.discoverMovies(
                 apiKey = BuildConfig.TMDB_API_KEY,
@@ -373,7 +333,7 @@ class TmdbCatalogService @Inject constructor(
                 withCompanies = spec.companies,
                 releaseDateLte = dateLte,
                 voteCountGte = spec.voteCountGte,
-                withGenres = movieGenres,
+                withGenres = spec.movieGenres,
                 releaseDateGte = dateGte,
                 voteAverageGte = spec.voteAverageGte,
                 withOriginalLanguage = spec.originalLanguage,
@@ -394,7 +354,7 @@ class TmdbCatalogService @Inject constructor(
                 withNetworks = spec.networks,
                 firstAirDateLte = dateLte,
                 voteCountGte = spec.voteCountGte,
-                withGenres = tvGenres,
+                withGenres = spec.tvGenres,
                 firstAirDateGte = dateGte,
                 voteAverageGte = spec.voteAverageGte,
                 withOriginalLanguage = spec.originalLanguage,

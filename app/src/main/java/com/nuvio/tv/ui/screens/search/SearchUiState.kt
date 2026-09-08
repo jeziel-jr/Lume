@@ -21,10 +21,8 @@ data class SearchUiState(
     val discoverCatalogs: List<DiscoverCatalog> = emptyList(),
     val selectedDiscoverType: String = "movie",
     val selectedDiscoverCatalogKey: String? = null,
-    /** TMDB genre id (as string) currently applied to the Discover content, or null for the catalog default. */
+    /** Genre option (raw addon catalog value) applied to the Discover content, or null for the catalog default. */
     val selectedDiscoverGenre: String? = null,
-    /** Localized TMDB genres offered by the genre picker for the current Discover type. */
-    val discoverGenres: List<DiscoverGenre> = emptyList(),
     val discoverResults: List<MetaPreview> = emptyList(),
     val pendingDiscoverResults: List<MetaPreview> = emptyList(),
     val discoverHasMore: Boolean = true,
@@ -48,14 +46,8 @@ data class DiscoverCatalog(
     val catalogId: String,
     val catalogName: String,
     val type: String,
-    /** False for catalogs that cannot be filtered by genre (trending, on-the-air, static lists). */
-    val supportsGenreFilter: Boolean = true,
-)
-
-@Immutable
-data class DiscoverGenre(
-    /** TMDB genre id as string (used as the with_genres value). */
-    val id: String,
-    /** Genre name localized in the current app language by TMDB. */
-    val name: String
+    /** Raw genre option values exposed by the addon catalog's "genre" extra. */
+    val genres: List<String>,
+    val supportsSkip: Boolean,
+    val skipStep: Int
 )

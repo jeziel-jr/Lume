@@ -69,6 +69,7 @@ import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.components.PosterCardStyle
 import com.nuvio.tv.ui.util.dpadVerticalFastScroll
 import com.nuvio.tv.ui.util.localizedContentType
+import com.nuvio.tv.ui.util.localizedGenreLabel
 import com.nuvio.tv.data.xtream.CatalogPlaybackAvailability
 import com.nuvio.tv.data.xtream.catalogAvailabilityKey
 
@@ -98,6 +99,7 @@ internal fun DiscoverSection(
 ) {
     val selectedCatalog = uiState.discoverCatalogs.firstOrNull { it.key == uiState.selectedDiscoverCatalogKey }
     val filteredCatalogs = uiState.discoverCatalogs.filter { it.type == uiState.selectedDiscoverType }
+    val genres = selectedCatalog?.genres.orEmpty()
     var expandedPicker by remember { mutableStateOf<String?>(null) }
     val filterFocusRequester = remember { FocusRequester() }
     var gridHasFocus by remember { mutableStateOf(false) }
@@ -114,10 +116,7 @@ internal fun DiscoverSection(
     }
     val selectedTypeLabel = localizedTypeLabel(uiState.selectedDiscoverType)
     val selectedCatalogLabel = selectedCatalog?.catalogName ?: stringResource(R.string.discover_select_catalog)
-    val genreFilterable = selectedCatalog?.supportsGenreFilter == true
-    val selectedGenreLabel = uiState.selectedDiscoverGenre
-        ?.let { genre -> uiState.discoverGenres.firstOrNull { it.id == genre }?.name }
-        ?: stringResource(R.string.discover_genre_default)
+    val selectedGenreLabel = uiState.selectedDiscoverGenre?.let { localizedGenreLabel(it) } ?: stringResource(R.string.discover_genre_default)
 
     Column(
         modifier = modifier
@@ -181,9 +180,7 @@ internal fun DiscoverSection(
                 expanded = expandedPicker == "genre",
                 options = buildList {
                     add(DiscoverOption(stringResource(R.string.discover_genre_default), "__default__"))
-                    if (genreFilterable) {
-                        addAll(uiState.discoverGenres.map { DiscoverOption(it.name, it.id) })
-                    }
+                    addAll(genres.map { DiscoverOption(localizedGenreLabel(it), it) })
                 },
                 onExpandedChange = { shouldExpand ->
                     expandedPicker = if (shouldExpand) "genre" else null
@@ -204,10 +201,7 @@ internal fun DiscoverSection(
                         .takeIf { it.isNotEmpty() }
                         ?.let(::add)
                 }
-                uiState.selectedDiscoverGenre
-                    ?.let { genre -> uiState.discoverGenres.firstOrNull { it.id == genre }?.name }
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let(::add)
+                uiState.selectedDiscoverGenre?.let { add(localizedGenreLabel(it)) }
             }
             Text(
                 text = metadataSegments.joinToString(" • "),

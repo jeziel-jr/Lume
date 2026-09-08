@@ -1071,7 +1071,8 @@ fun NuvioNavHost(
                 onNavigateToPlaybackSettings = { navController.navigate(Screen.PlaybackSettings.route) },
                 onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) },
                 onNavigateToTmdbSettings = { navController.navigate(Screen.TmdbSettings.route) },
-                onNavigateToAbout = { navController.navigate(Screen.About.route) }
+                onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                onNavigateToAddons = { navController.navigate(Screen.AddonManager.route) }
             )
         }
 
@@ -1099,6 +1100,13 @@ fun NuvioNavHost(
 
         composable(Screen.About.route) {
             AboutScreen(
+                onBackPress = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.AddonManager.route) {
+            com.nuvio.tv.ui.screens.addon.AddonManagerScreen(
+                showBuiltInHeader = !hideBuiltInHeaders,
                 onBackPress = { navController.popBackStack() }
             )
         }
