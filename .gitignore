@@ -53,3 +53,4 @@ docs/
 status-page/
 REMOTE_ENDPOINT_RUNBOOK.local.md
 !scripts/sign_remote_config.py
+!scripts/rotate_xtream_dns.py

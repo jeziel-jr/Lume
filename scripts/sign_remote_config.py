@@ -27,7 +27,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = REPO_ROOT / "remote-config" / "xtream.json"
 DEFAULT_KEY = Path.home() / ".lume" / "config-signing" / "xtream-config.key"
-DEFAULT_SIG = REPO_ROOT / "remote-config" / "xtream.json.sig"
 PUBLIC_PEM = "xtream-config.pub.pem"
 
 
@@ -135,7 +134,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--key", type=Path, default=DEFAULT_KEY, help=f"chave privada (padrão: {DEFAULT_KEY})")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG, help=f"JSON (padrão: {DEFAULT_CONFIG})")
-    parser.add_argument("--sig", type=Path, default=DEFAULT_SIG, help=f"assinatura (padrão: {DEFAULT_SIG})")
+    parser.add_argument(
+        "--sig",
+        type=Path,
+        default=None,
+        help="assinatura (padrão: o caminho do --config com .sig no fim)",
+    )
     parser.add_argument("--genkey", action="store_true", help="gera o par de chaves e sai")
     parser.add_argument("--print-pubkey", action="store_true", help="imprime a chave pública em SPKI DER base64")
     parser.add_argument("--verify", action="store_true", help="verifica a assinatura publicada")
@@ -145,6 +149,7 @@ def main() -> None:
         help="confirma endpoints http:// (sem TLS) na configuração",
     )
     args = parser.parse_args()
+    sig_path = args.sig or Path(f"{args.config}.sig")
 
     if args.genkey:
         generate_key(args.key)
@@ -153,9 +158,9 @@ def main() -> None:
         print(print_public_key(args.key))
         return
     if args.verify:
-        verify(args.key, args.config, args.sig)
+        verify(args.key, args.config, sig_path)
         return
-    sign(args.key, args.config, args.sig, allow_insecure=args.allow_insecure)
+    sign(args.key, args.config, sig_path, allow_insecure=args.allow_insecure)
 
 
 if __name__ == "__main__":

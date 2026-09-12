@@ -38,6 +38,7 @@ aceita se a assinatura conferir com uma chave pública embutida em
 ## Assinatura
 
 ```bash
+python3 scripts/rotate_xtream_dns.py http://novo-dominio.xyz   # troca completa: valida, sobe revision, assina e verifica
 python3 scripts/sign_remote_config.py --genkey          # uma vez: cria o par de chaves
 python3 scripts/sign_remote_config.py                   # assina remote-config/xtream.json
 python3 scripts/sign_remote_config.py --verify          # confere a assinatura publicada
@@ -49,4 +50,5 @@ precisa de backup: sem ela não há como publicar novas configurações para os 
 
 O passo a passo operacional completo (rotação, rollback, teste em aparelho próprio, diagnóstico)
 está em `REMOTE_ENDPOINT_RUNBOOK.local.md`, na raiz do repositório, que é ignorado pelo git de
-propósito por conter detalhes de operação.
+propósito por conter detalhes de operação. Pelo agente, o processo é acionado pelo skill
+`.omp/skills/dns-rotation/SKILL.md` ("preciso trocar o DNS").
