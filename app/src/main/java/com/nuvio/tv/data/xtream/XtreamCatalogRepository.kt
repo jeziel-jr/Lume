@@ -312,6 +312,23 @@ class XtreamCatalogRepository internal constructor(
         _state.value = XtreamCatalogState.Loading
     }
 
+    /**
+     * Rebuilds the catalog for a new endpoint without dropping what is already installed.
+     *
+     * An operator endpoint rotation must never blank Home: the current index and persisted snapshot
+     * keep serving availability while the new host is downloaded and re-indexed, and the refresh
+     * replaces them atomically on success. A failed refresh keeps the previous catalog, so a broken
+     * domain cannot leave the device worse than it was.
+     */
+    suspend fun switchEndpoint() = initializationMutex.withLock {
+        val keepExisting = index != null
+        refreshJob?.cancel()
+        refreshJob = null
+        activeSourceFingerprint = sourceFingerprintProvider()
+        _state.value = if (keepExisting) XtreamCatalogState.Ready(isRefreshing = true) else XtreamCatalogState.Loading
+        refresh(keepExistingOnFailure = keepExisting)
+    }
+
     internal suspend fun currentIndex(): XtreamCatalogIndex {
         index?.let { current ->
             if (nowMillis() - current.fetchedAtMillis >= CATALOG_TTL_MILLIS) {

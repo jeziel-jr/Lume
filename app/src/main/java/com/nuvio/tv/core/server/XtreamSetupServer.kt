@@ -16,7 +16,7 @@ import javax.crypto.spec.SecretKeySpec
 
 class XtreamSetupServer(
     private val context: Context,
-    private val defaultBaseUrl: String,
+    private val endpointProvider: () -> String,
     private val onCredentialsProposed: (String, XtreamCredentials) -> Unit,
     port: Int,
 ) : NanoHTTPD(port) {
@@ -36,7 +36,7 @@ class XtreamSetupServer(
         session.method == Method.GET && session.uri == "/crypto-js.js" -> serveCryptoJs()
         session.method == Method.GET && session.uri == "/api/config" -> json(
             Response.Status.OK,
-            mapOf("defaultBaseUrl" to defaultBaseUrl),
+            mapOf("server" to endpointProvider()),
         )
         session.method == Method.POST && session.uri == "/api/credentials" -> receiveCredentials(session)
         session.method == Method.GET && session.uri.startsWith("/api/status/") -> {
@@ -64,8 +64,10 @@ class XtreamSetupServer(
             val envelope = gson.fromJson(bodyFiles["postData"].orEmpty(), EncryptedEnvelope::class.java)
             val json = decrypt(envelope)
             val payload = gson.fromJson(json, CredentialPayload::class.java)
+            // The endpoint is the app's own operator-controlled value: the phone only supplies the
+            // account, so a compromised page can never point this TV at another server.
             val credentials = XtreamCredentials(
-                baseUrl = payload.baseUrl.orEmpty(),
+                baseUrl = endpointProvider(),
                 username = payload.username.orEmpty(),
                 password = payload.password.orEmpty(),
             ).normalized()
@@ -129,7 +131,6 @@ class XtreamSetupServer(
         val mac: String = "",
     )
     private data class CredentialPayload(
-        val baseUrl: String? = null,
         val username: String? = null,
         val password: String? = null,
     )
@@ -137,14 +138,14 @@ class XtreamSetupServer(
     companion object {
         fun startOnAvailablePort(
             context: Context,
-            defaultBaseUrl: String,
+            endpointProvider: () -> String,
             onCredentialsProposed: (String, XtreamCredentials) -> Unit,
             startPort: Int = 8110,
             maxAttempts: Int = 10,
         ): XtreamSetupServer? {
             for (port in startPort until startPort + maxAttempts) {
                 try {
-                    return XtreamSetupServer(context, defaultBaseUrl, onCredentialsProposed, port).also {
+                    return XtreamSetupServer(context, endpointProvider, onCredentialsProposed, port).also {
                         it.start(SOCKET_READ_TIMEOUT, false)
                     }
                 } catch (_: Exception) {
@@ -168,21 +169,20 @@ private object XtreamSetupWebPage {
             main{position:relative;overflow:hidden;width:min(100%,480px);background:linear-gradient(145deg,rgba(31,29,25,.98),rgba(23,21,18,.98));border:1px solid rgba(224,166,75,.2);border-radius:30px;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.48)}
             main:before{content:"";position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(224,166,75,.07);right:-90px;top:-100px}.brand{display:flex;align-items:center;gap:11px;margin-bottom:28px}.mark{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--amber);color:#171108;font-weight:900;font-size:20px;box-shadow:0 8px 24px rgba(224,166,75,.2)}.wordmark{font-size:18px;font-weight:800;letter-spacing:.08em}.eyebrow{font-size:11px;color:var(--amber);text-transform:uppercase;letter-spacing:.16em;font-weight:800;margin-bottom:8px}
             h1{margin:0 0 9px;font-size:clamp(27px,8vw,34px);line-height:1.05;letter-spacing:-.035em}p{color:var(--muted);margin:0 0 26px;line-height:1.55;font-size:14px}
-            label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:#d4cbbd;margin:17px 0 8px}.field-row{display:flex;gap:8px;align-items:stretch}input{width:100%;min-width:0;border:1px solid var(--line);background:var(--field);color:#fff;border-radius:14px;padding:14px 15px;font-size:16px;outline:none;transition:.2s border-color,.2s box-shadow,.2s background}input:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(224,166,75,.12)}input:disabled{opacity:1;color:#b9b0a3;background:#24211d;cursor:not-allowed}
-            .edit{width:50px;flex:0 0 50px;margin:0;padding:0;border-radius:14px;border:1px solid var(--line);background:#29251f;color:var(--amber);display:grid;place-items:center}.edit svg{width:20px;height:20px}.edit:active{transform:scale(.96)}
+            label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:#d4cbbd;margin:17px 0 8px}input{width:100%;min-width:0;border:1px solid var(--line);background:var(--field);color:#fff;border-radius:14px;padding:14px 15px;font-size:16px;outline:none;transition:.2s border-color,.2s box-shadow,.2s background}input:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(224,166,75,.12)}
+            .server{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:22px;border:1px solid var(--line);background:#24211d;border-radius:14px;padding:13px 15px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:#b9b0a3}.server strong{font-size:13px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:600}
             .submit{width:100%;margin-top:27px;border:0;border-radius:999px;padding:16px;background:linear-gradient(135deg,#e6ad54,#c9852d);color:#181108;font-size:16px;font-weight:800;box-shadow:0 12px 30px rgba(201,133,45,.2)}button:disabled{opacity:.52}.security{display:flex;gap:8px;align-items:center;margin-top:15px;color:#827a70;font-size:11px;justify-content:center}.security svg{width:14px;height:14px;color:#9f968a}
             #status{min-height:22px;margin-top:19px;color:var(--amber);text-align:center;font-size:14px}.error{color:#ef8e86!important}.ok{color:#8ed0a5!important}@media(max-width:420px){main{padding:24px;border-radius:25px}.brand{margin-bottom:23px}}
           </style>
         </head>
         <body><main><div class="brand"><div class="mark">L</div><div class="wordmark">LUME</div></div><div class="eyebrow">Configuração segura</div><h1>Conecte sua conta</h1><p>Use os dados do seu provedor. Eles serão enviados somente para esta TV e você ainda confirmará tudo na tela.</p>
-          <form id="form"><label>Servidor / DNS</label><div class="field-row"><input id="baseUrl" required disabled autocapitalize="none" spellcheck="false"><button id="editDns" class="edit" type="button" aria-label="Editar servidor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button></div>
+          <form id="form"><div class="server"><span>Servidor</span><strong id="server">—</strong></div>
           <label>Usuário</label><input id="username" required autocapitalize="none" autocomplete="username" spellcheck="false">
           <label>Senha</label><input id="password" required type="password" autocomplete="current-password">
           <button class="submit" id="submit" type="submit">Conectar à TV</button></form><div class="security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Envio protegido e válido apenas nesta sessão</span></div><div id="status"></div>
         </main><script src="/crypto-js.js"></script><script>
-          const statusEl=document.getElementById('status'),submit=document.getElementById('submit'),baseUrl=document.getElementById('baseUrl'),username=document.getElementById('username'),password=document.getElementById('password'),editDns=document.getElementById('editDns');
-          fetch('/api/config').then(r=>r.json()).then(v=>baseUrl.value=v.defaultBaseUrl||'');
-          editDns.addEventListener('click',()=>{baseUrl.disabled=false;baseUrl.focus();baseUrl.select();editDns.style.display='none'});
+          const statusEl=document.getElementById('status'),submit=document.getElementById('submit'),serverEl=document.getElementById('server'),username=document.getElementById('username'),password=document.getElementById('password');
+          fetch('/api/config').then(r=>r.json()).then(v=>serverEl.textContent=v.server||'—');
           const key=()=>{let s=location.hash.slice(1).replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return CryptoJS.enc.Base64.parse(s)};
           async function poll(id){const v=await fetch('/api/status/'+id).then(r=>r.json());
             if(v.status==='validating'){statusEl.textContent='Validando credenciais…';setTimeout(()=>poll(id),800)}
@@ -191,7 +191,7 @@ private object XtreamSetupWebPage {
             else if(v.status==='invalid'||v.status==='error'){statusEl.className='error';statusEl.textContent=v.message||'Não foi possível validar os dados.';submit.disabled=false}
             else{statusEl.className='error';statusEl.textContent='A sessão expirou. Gere outro QR na TV.'}}
           document.getElementById('form').addEventListener('submit',async e=>{e.preventDefault();submit.disabled=true;statusEl.className='';statusEl.textContent='Enviando…';try{
-            const secret=key(),iv=CryptoJS.lib.WordArray.random(16),plain=JSON.stringify({baseUrl:baseUrl.value,username:username.value,password:password.value});
+            const secret=key(),iv=CryptoJS.lib.WordArray.random(16),plain=JSON.stringify({username:username.value,password:password.value});
             const payload=CryptoJS.AES.encrypt(plain,secret,{iv,mode:CryptoJS.mode.CBC,padding:CryptoJS.pad.Pkcs7}).ciphertext;
             const mac=CryptoJS.HmacSHA256(iv.clone().concat(payload),secret);
             const response=await fetch('/api/credentials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({iv:CryptoJS.enc.Base64.stringify(iv),payload:CryptoJS.enc.Base64.stringify(payload),mac:CryptoJS.enc.Base64.stringify(mac)})});

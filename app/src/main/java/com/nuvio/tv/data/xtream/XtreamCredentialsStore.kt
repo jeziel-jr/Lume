@@ -59,10 +59,18 @@ class XtreamCredentialsStore @Inject constructor(
     private val _accountInfo = MutableStateFlow(storedAccount?.accountInfo)
     val accountInfo: StateFlow<XtreamAccountInfo?> = _accountInfo.asStateFlow()
 
-    val defaultBaseUrl: String
-        get() = normalizeXtreamBaseUrl(DEFAULT_XTREAM_BASE_URL)
-
     fun current(): XtreamCredentials? = _credentials.value
+
+    /**
+     * Rewrites only the endpoint of the stored account, preserving username, password and account
+     * metadata. Used by endpoint rotation; the user never edits this value directly.
+     */
+    fun updateBaseUrl(baseUrl: String) {
+        val current = current() ?: return
+        val normalized = normalizeXtreamBaseUrl(baseUrl)
+        if (normalized.isBlank() || normalized == current.baseUrl) return
+        save(current.copy(baseUrl = normalized), _accountInfo.value)
+    }
 
     fun save(value: XtreamCredentials, accountInfo: XtreamAccountInfo? = _accountInfo.value) {
         val normalized = value.normalized()
@@ -173,7 +181,6 @@ class XtreamCredentialsStore @Inject constructor(
         const val KEY_ALIAS = "lume_xtream_credentials_v1"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val FORMAT_VERSION = "v1"
-        const val DEFAULT_XTREAM_BASE_URL = "https://capone.icu"
     }
 
     private data class StoredAccount(

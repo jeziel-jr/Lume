@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "revision": 2,
+  "keyId": "k1",
+  "issuedAt": "2026-09-12T13:35:54Z",
+  "endpoints": [
+    "http://capone.icu",
+    "https://capone.icu"
+  ]
+}

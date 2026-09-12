@@ -94,6 +94,12 @@ internal fun XtreamProfileSettingsContent(
                     stringResource(R.string.xtream_profile_server),
                     credentials?.baseUrl.orEmpty(),
                 )
+                state.manualServer?.let { manual ->
+                    XtreamAccountInfoRow(
+                        stringResource(R.string.xtream_profile_manual_server),
+                        manual,
+                    )
+                }
                 if (info?.maxConnections != null) {
                     XtreamAccountInfoRow(
                         stringResource(R.string.xtream_profile_connections),
@@ -123,6 +129,44 @@ internal fun XtreamProfileSettingsContent(
                 text = stringResource(R.string.xtream_profile_refresh_error),
                 style = MaterialTheme.typography.bodySmall,
                 color = NuvioTheme.colors.Error,
+                modifier = Modifier.padding(horizontal = 18.dp),
+            )
+        }
+        if (state.manualServer != null) {
+            Text(
+                text = stringResource(R.string.xtream_profile_manual_server_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = NuvioTheme.colors.TextSecondary,
+                modifier = Modifier.padding(horizontal = 18.dp),
+            )
+        }
+        Button(
+            onClick = viewModel::refreshEndpoint,
+            enabled = !state.endpointRefreshing,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                if (state.endpointRefreshing) {
+                    stringResource(R.string.xtream_profile_endpoint_refreshing)
+                } else {
+                    stringResource(R.string.xtream_profile_endpoint_refresh)
+                },
+            )
+        }
+        if (state.manualServer != null) {
+            Button(
+                onClick = viewModel::resetManualServer,
+                enabled = !state.endpointRefreshing,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.xtream_profile_manual_server_reset))
+            }
+        }
+        state.endpointMessage?.let { message ->
+            Text(
+                text = stringResource(message),
+                style = MaterialTheme.typography.bodySmall,
+                color = NuvioTheme.colors.TextSecondary,
                 modifier = Modifier.padding(horizontal = 18.dp),
             )
         }

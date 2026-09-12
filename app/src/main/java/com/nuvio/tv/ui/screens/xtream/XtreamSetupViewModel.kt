@@ -1,22 +1,26 @@
 package com.nuvio.tv.ui.screens.xtream
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.qr.QrCodeGenerator
 import com.nuvio.tv.core.server.DeviceIpAddress
 import com.nuvio.tv.core.server.XtreamSetupServer
-import com.nuvio.tv.data.xtream.XtreamApiFactory
 import com.nuvio.tv.data.xtream.XtreamAccountInfo
+import com.nuvio.tv.data.xtream.XtreamApiFactory
 import com.nuvio.tv.data.xtream.XtreamAvailabilityStore
 import com.nuvio.tv.data.xtream.XtreamCatalogRepository
 import com.nuvio.tv.data.xtream.XtreamCredentials
 import com.nuvio.tv.data.xtream.XtreamCredentialsStore
+import com.nuvio.tv.data.xtream.XtreamEndpointResolver
 import com.nuvio.tv.data.xtream.XtreamPlaybackResolver
 import com.nuvio.tv.data.xtream.XtreamServerHealthMonitor
+import com.nuvio.tv.data.xtream.normalizeXtreamBaseUrl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,18 +29,23 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
-import java.util.UUID
 
 data class XtreamSetupUiState(
-    val qrCode: android.graphics.Bitmap? = null,
+    val qrCode: Bitmap? = null,
     val serverUrl: String? = null,
+    /** Provider endpoint defined for the app, shown read-only to the user. */
+    val serverEndpoint: String = "",
+    val resolvingEndpoint: Boolean = false,
     val error: String? = null,
     val pendingId: String? = null,
     val pendingCredentials: XtreamCredentials? = null,
     val pendingAccountInfo: XtreamAccountInfo? = null,
     val validating: Boolean = false,
     val applied: Boolean = false,
-    val defaultBaseUrl: String = "",
+    /** Operator escape hatch: reveals the editable endpoint field. */
+    val advancedServer: Boolean = false,
+    /** Endpoint typed in the escape hatch, applied only when the user confirms on the TV. */
+    val pendingManualEndpoint: String? = null,
 )
 
 @HiltViewModel
@@ -48,6 +57,7 @@ class XtreamSetupViewModel @Inject constructor(
     private val availabilityStore: XtreamAvailabilityStore,
     private val playbackResolver: XtreamPlaybackResolver,
     private val serverHealthMonitor: XtreamServerHealthMonitor,
+    private val endpointResolver: XtreamEndpointResolver,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(XtreamSetupUiState())
     val uiState: StateFlow<XtreamSetupUiState> = _uiState.asStateFlow()
@@ -59,34 +69,63 @@ class XtreamSetupViewModel @Inject constructor(
 
     fun start() {
         stopServer()
-        val ip = DeviceIpAddress.get(context)
-        if (ip == null) {
-            _uiState.value = XtreamSetupUiState(error = context.getString(R.string.error_network_required))
-            return
+        _uiState.update {
+            it.copy(
+                resolvingEndpoint = true,
+                error = null,
+                advancedServer = it.advancedServer || endpointResolver.manualOverride() != null,
+            )
         }
-        val currentDefault = credentialsStore.current()?.baseUrl ?: credentialsStore.defaultBaseUrl
-        val started = XtreamSetupServer.startOnAvailablePort(
-            context = context,
-            defaultBaseUrl = currentDefault,
-            onCredentialsProposed = ::validate,
-        )
-        if (started == null) {
-            _uiState.value = XtreamSetupUiState(error = context.getString(R.string.error_server_ports_unavailable))
-            return
-        }
-        server = started
-        val url = "http://$ip:${started.listeningPort}/#${started.qrFragment}"
-        _uiState.value = XtreamSetupUiState(
-            qrCode = QrCodeGenerator.generate(url, 512),
-            serverUrl = "http://$ip:${started.listeningPort}",
-            defaultBaseUrl = currentDefault,
-        )
         viewModelScope.launch {
+            // Bounded: a device without connectivity still reaches the form with the last known endpoint.
+            val endpoint = endpointResolver.awaitEndpoint()
+            val ip = DeviceIpAddress.get(context)
+            if (ip == null) {
+                _uiState.update {
+                    it.copy(
+                        resolvingEndpoint = false,
+                        error = context.getString(R.string.error_network_required),
+                    )
+                }
+                return@launch
+            }
+            val started = XtreamSetupServer.startOnAvailablePort(
+                context = context,
+                endpointProvider = endpointResolver::currentEndpoint,
+                onCredentialsProposed = ::validate,
+            )
+            if (started == null) {
+                _uiState.update {
+                    it.copy(
+                        resolvingEndpoint = false,
+                        error = context.getString(R.string.error_server_ports_unavailable),
+                    )
+                }
+                return@launch
+            }
+            server = started
+            val url = "http://$ip:${started.listeningPort}/#${started.qrFragment}"
+            _uiState.update {
+                it.copy(
+                    qrCode = QrCodeGenerator.generate(url, 512),
+                    serverUrl = "http://$ip:${started.listeningPort}",
+                    serverEndpoint = endpoint,
+                    resolvingEndpoint = false,
+                )
+            }
             delay(10 * 60 * 1_000L)
             if (_uiState.value.applied) return@launch
             stopServer()
-            _uiState.update { it.copy(qrCode = null, error = context.getString(R.string.xtream_setup_expired)) }
+            _uiState.update {
+                it.copy(qrCode = null, error = context.getString(R.string.xtream_setup_expired))
+            }
         }
+    }
+
+    /** Reveals the editable endpoint field for the operator; the user never sees this path. */
+    fun revealAdvancedServer() {
+        if (_uiState.value.advancedServer) return
+        _uiState.update { it.copy(advancedServer = true) }
     }
 
     private fun validate(id: String, credentials: XtreamCredentials) {
@@ -123,24 +162,38 @@ class XtreamSetupViewModel @Inject constructor(
         }
     }
 
-    fun submitManual(baseUrl: String, username: String, password: String) {
-        val credentials = XtreamCredentials(baseUrl, username, password).normalized()
-        if (!credentials.isComplete) {
+    fun submitManual(username: String, password: String, endpoint: String? = null) {
+        val state = _uiState.value
+        if (username.isBlank() || password.isBlank()) {
             _uiState.update { it.copy(error = context.getString(R.string.xtream_setup_missing_fields)) }
             return
+        }
+        val resolvedEndpoint = endpoint
+            ?.takeIf { it.isNotBlank() && state.advancedServer }
+            ?.let(::normalizeXtreamBaseUrl)
+            ?: endpointResolver.currentEndpoint()
+        val credentials = XtreamCredentials(resolvedEndpoint, username, password).normalized()
+        require(credentials.isComplete) { "Xtream setup produced incomplete credentials" }
+        _uiState.update {
+            it.copy(
+                pendingManualEndpoint = resolvedEndpoint.takeIf { state.advancedServer },
+                serverEndpoint = resolvedEndpoint,
+            )
         }
         validate(UUID.randomUUID().toString(), credentials)
     }
 
     fun confirm() {
-        val id = _uiState.value.pendingId ?: return
-        val credentials = _uiState.value.pendingCredentials ?: return
-        val accountInfo = _uiState.value.pendingAccountInfo
+        val state = _uiState.value
+        val id = state.pendingId ?: return
+        val credentials = state.pendingCredentials ?: return
+        val accountInfo = state.pendingAccountInfo
         val previous = credentialsStore.current()
         viewModelScope.launch {
             server?.updateStatus(id, XtreamSetupServer.Status.APPLIED)
             delay(900L)
             credentialsStore.save(credentials, accountInfo)
+            state.pendingManualEndpoint?.let(endpointResolver::setManualOverride)
             serverHealthMonitor.clear()
             apiFactory.clear()
             playbackResolver.clearRuntimeCaches()
@@ -152,6 +205,7 @@ class XtreamSetupViewModel @Inject constructor(
                     applied = true,
                     pendingCredentials = null,
                     pendingAccountInfo = null,
+                    pendingManualEndpoint = null,
                     validating = false,
                 )
             }
@@ -166,6 +220,7 @@ class XtreamSetupViewModel @Inject constructor(
                 pendingId = null,
                 pendingCredentials = null,
                 pendingAccountInfo = null,
+                pendingManualEndpoint = null,
                 validating = false,
             )
         }

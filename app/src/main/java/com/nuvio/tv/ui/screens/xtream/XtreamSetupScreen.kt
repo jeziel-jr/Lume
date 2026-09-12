@@ -20,7 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -39,6 +42,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -60,19 +64,43 @@ fun XtreamSetupScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var showManual by rememberSaveable { mutableStateOf(false) }
-    var manualBaseUrl by rememberSaveable(state.defaultBaseUrl) { mutableStateOf(state.defaultBaseUrl) }
+    var manualServer by rememberSaveable(state.serverEndpoint) { mutableStateOf(state.serverEndpoint) }
     var manualUsername by rememberSaveable { mutableStateOf("") }
     var manualPassword by rememberSaveable { mutableStateOf("") }
+    var operatorTaps by remember { mutableIntStateOf(0) }
+    var lastOperatorTapMillis by remember { mutableLongStateOf(0L) }
     LaunchedEffect(state.applied) { if (state.applied) onConfigured() }
 
     Box(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 64.dp, vertical = 42.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 64.dp, vertical = 42.dp)
+            // Hidden operator gesture: five OK presses reveal the editable endpoint field. End users
+            // never need it — the app always ships an operator-defined server.
+            .onPreviewKeyEvent { event ->
+                val activate = event.type == KeyEventType.KeyUp &&
+                    (event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter)
+                if (!activate) return@onPreviewKeyEvent false
+                val now = android.os.SystemClock.elapsedRealtime()
+                operatorTaps = if (now - lastOperatorTapMillis <= OPERATOR_TAP_WINDOW_MILLIS) {
+                    operatorTaps + 1
+                } else {
+                    1
+                }
+                lastOperatorTapMillis = now
+                if (operatorTaps < OPERATOR_TAPS_REQUIRED) return@onPreviewKeyEvent false
+                operatorTaps = 0
+                showManual = true
+                viewModel.revealAdvancedServer()
+                true
+            },
         contentAlignment = Alignment.Center,
     ) {
         if (showManual && state.pendingCredentials == null) {
             ManualSetupContent(
-                baseUrl = manualBaseUrl,
-                onBaseUrlChange = { manualBaseUrl = it },
+                server = manualServer,
+                onServerChange = { manualServer = it },
+                advancedServer = state.advancedServer,
                 username = manualUsername,
                 onUsernameChange = { manualUsername = it },
                 password = manualPassword,
@@ -80,7 +108,7 @@ fun XtreamSetupScreen(
                 validating = state.validating,
                 error = state.error,
                 onBackToQr = { showManual = false },
-                onSubmit = { viewModel.submitManual(manualBaseUrl, manualUsername, manualPassword) },
+                onSubmit = { viewModel.submitManual(manualUsername, manualPassword, manualServer) },
             )
             return@Box
         }
@@ -111,6 +139,17 @@ fun XtreamSetupScreen(
                 state.serverUrl?.let {
                     Spacer(Modifier.height(16.dp))
                     Text(it, color = NuvioTheme.colors.Primary)
+                }
+                if (state.resolvingEndpoint) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(stringResource(R.string.xtream_setup_preparing), color = NuvioTheme.colors.TextSecondary)
+                } else if (state.serverEndpoint.isNotBlank()) {
+                    Spacer(Modifier.height(16.dp))
+                    ManagedServerRow(
+                        label = stringResource(R.string.xtream_setup_server_label),
+                        hint = stringResource(R.string.xtream_setup_server_managed),
+                        value = state.serverEndpoint,
+                    )
                 }
                 if (state.pendingCredentials == null && !state.validating) {
                     Spacer(Modifier.height(18.dp))
@@ -154,8 +193,9 @@ fun XtreamSetupScreen(
 
 @Composable
 private fun ManualSetupContent(
-    baseUrl: String,
-    onBaseUrlChange: (String) -> Unit,
+    server: String,
+    onServerChange: (String) -> Unit,
+    advancedServer: Boolean,
     username: String,
     onUsernameChange: (String) -> Unit,
     password: String,
@@ -183,12 +223,20 @@ private fun ManualSetupContent(
             color = NuvioTheme.colors.TextSecondary,
         )
         Spacer(Modifier.height(18.dp))
-        ManualField(
-            value = baseUrl,
-            onValueChange = onBaseUrlChange,
-            label = stringResource(R.string.xtream_setup_server_label),
-            imeAction = ImeAction.Next,
-        )
+        if (advancedServer) {
+            ManualField(
+                value = server,
+                onValueChange = onServerChange,
+                label = stringResource(R.string.xtream_setup_advanced_server_label),
+                imeAction = ImeAction.Next,
+            )
+        } else {
+            ManagedServerRow(
+                label = stringResource(R.string.xtream_setup_server_label),
+                hint = stringResource(R.string.xtream_setup_server_managed),
+                value = server,
+            )
+        }
         ManualField(
             value = username,
             onValueChange = onUsernameChange,
@@ -233,6 +281,45 @@ private fun ManualSetupContent(
             ) {
                 Text(stringResource(R.string.action_confirm))
             }
+        }
+    }
+}
+
+@Composable
+private fun ManagedServerRow(label: String, hint: String, value: String) {
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
+                color = NuvioTheme.colors.TextSecondary,
+            )
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.labelSmall,
+                color = NuvioTheme.colors.Primary,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .fillMaxWidth()
+                .height(62.dp)
+                .background(NuvioTheme.colors.BackgroundCard, RoundedCornerShape(12.dp))
+                .border(1.dp, NuvioTheme.colors.Border, RoundedCornerShape(12.dp))
+                .padding(horizontal = 20.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                color = NuvioTheme.colors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -331,3 +418,7 @@ private fun maskUsername(value: String): String = when (value.length) {
     1, 2 -> "••••"
     else -> value.take(2) + "•".repeat((value.length - 2).coerceAtMost(8))
 }
+
+/** Hidden operator gesture: consecutive OK presses that reveal the editable endpoint field. */
+private const val OPERATOR_TAPS_REQUIRED = 5
+private const val OPERATOR_TAP_WINDOW_MILLIS = 1_200L
