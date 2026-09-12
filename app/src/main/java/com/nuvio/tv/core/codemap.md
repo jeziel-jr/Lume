@@ -69,4 +69,5 @@ Key integration boundaries are:
 - `core.server` and `core.qr` implement local configuration handoff; `core.player`, `core.debrid`,
   `core.cloud`, `core.torrent`, and `core.streams` converge on playable stream presentation and
   playback; `core.recommendations` and `core.sync.androidtv` publish local watch state to TV
-  surfaces.
+  surfaces. `core.config` owns the signed remote document that defines the provider endpoint, so an
+  endpoint rotation never requires an app release or user action.

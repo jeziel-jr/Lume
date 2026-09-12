@@ -14,7 +14,10 @@ changes, and hands confirmed changes back to the application through callbacks.
 - `XtreamSetupServer` creates a random 32-byte session key. The QR fragment carries that key; the
   phone encrypts credentials with AES/CBC/PKCS7 and authenticates IV plus ciphertext with HMAC-SHA256.
   The server decrypts, normalizes, requires complete `XtreamCredentials`, and tracks validation,
-  confirmation, applied, rejected, and error states by UUID.
+  confirmation, applied, rejected, and error states by UUID. The provider endpoint is never taken
+  from the request: the server reads the app's own operator-controlled endpoint through a provider
+  and only accepts username and password from the phone, so a compromised page cannot point the TV
+  at another host.
 - `AddonConfigServer` and `RepositoryConfigServer` stage changes in concurrent maps and expose
   status polling. They reject older pending proposals when a new proposal arrives. The addon mode
   flags and `sanitizePendingAddonChange` preserve disallowed fields for restricted pages.

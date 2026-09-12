@@ -30,6 +30,10 @@ mutators instead of leaking DataStore preferences to repositories or UI.
 - `CollectionsDataStore` serializes addon, TMDB, and Trakt sources and validates imports.
   Stream links, binge groups, track choices, subtitle delay, and stream badge rules have
   focused stores with legacy migration where required.
+- `RemoteConfigStore` persists the verified remote provider document together with the active
+  endpoint and an optional operator override. It is SharedPreferences-backed like
+  `XtreamCredentialsStore` because the active endpoint is read synchronously during startup and
+  setup, and it stores no secret.
 
 ## Flow
 

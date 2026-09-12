@@ -37,6 +37,17 @@ source, not the discovery or metadata authority.
   classifies HTTP, network, provider, and media responses, and persists credential-free
   health by source fingerprint. A healthy probe followed by player rejection becomes an
   app format failure.
+- `XtreamEndpointResolver` owns the endpoint every other component reads. Precedence is a local
+  operator override, the endpoint stored with the account, the last applied endpoint, then the
+  compiled `BOOTSTRAP_ENDPOINT`. It refreshes on startup, on a six-hour TTL, on a connectivity
+  failure reported by the health monitor (minimum interval), and on the manual Settings action,
+  accepts only a newer signed `revision`, and probes candidates (`XtreamEndpointProbe`: liveness on
+  the operator-approved host before setup — any response below 500 counts — and an authenticated
+  check afterwards) through the pure rules in
+  `XtreamEndpointPolicy`. `XtreamSourceSwitcher` performs the switch: it rewrites only the endpoint
+  in `XtreamCredentialsStore`, clears API, playback, availability, and health caches, and asks the
+  catalog repository to rebuild non-destructively, so Home keeps serving the previous snapshot until
+  the new index is installed.
 
 ## Flow
 
@@ -54,6 +65,10 @@ source, not the discovery or metadata authority.
 4. Health refresh authenticates the account, samples cached catalog media, probes range
    responses, and updates the combined diagnostic state. Player failures can update one
    media component without hiding the other.
+5. Endpoint rotation arrives from `core.config` as a verified document. The resolver probes the
+   published candidates, `XtreamSourceSwitcher` rewrites the stored endpoint, and the catalog
+   repository rebuilds its index in the background while the previous one keeps answering, so Home
+   and playback survive the change without user action.
 
 ## Integration
 
